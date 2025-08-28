@@ -44,7 +44,7 @@ services:
     container_name: api-nginx
     restart: unless-stopped
     ports:
-      - 8000:80
+      - 9000:80
     volumes:
       - ./:/var/www
       - ./docker/nginx:/etc/nginx/conf.d/
@@ -61,7 +61,7 @@ services:
     depends_on:
       - api-db
     ports:
-      - "8081:80"
+      - "9081:80"
     environment:
       PMA_HOST: api-db
       PMA_PORT: 3306
