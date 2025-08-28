@@ -1,0 +1,85 @@
+version: "3.8"
+services:
+  api-app:
+    build:
+      args:
+        user: sammy #example user
+        uid: 1000
+        app_debug: ${APP_DEBUG}
+      context: ./
+      dockerfile: docker/Dockerfile
+    image: api
+    container_name: api-app
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+      - ./docker/php/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini
+    networks:
+      dockernet:
+        ipv4_address: 192.168.30.2
+
+  api-db:
+    image: mysql:8.0
+    container_name: api-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD_ROOT}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker/mysql:/docker-entrypoint-initdb.d
+      - ./docker/mysql/data:/var/lib/mysql
+      - ./docker/mysql/logs:/var/log/mysql
+    networks:
+      dockernet:
+        ipv4_address: 192.168.30.3
+
+  api-nginx:
+    image: nginx:alpine
+    container_name: api-nginx
+    restart: unless-stopped
+    ports:
+      - 8000:80
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx:/etc/nginx/conf.d/
+    networks:
+      dockernet:
+        ipv4_address: 192.168.30.4
+
+  api-phpmyadmin: # use user: root, pass: sapo to login when you go localhost:8010 or if you open the fixed ip: 192.168.0.7 (below)
+    image: phpmyadmin/phpmyadmin
+    container_name: 'api-phpmyadmin'
+    restart: unless-stopped
+    links:
+      - api-db
+    depends_on:
+      - api-db
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: api-db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_PASSWORD_ROOT}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD_ROOT}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+
+    networks:
+      dockernet:
+        ipv4_address: 192.168.30.5
+
+networks:
+  dockernet:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.30.0/24
+
