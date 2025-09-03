@@ -43,4 +43,16 @@ RUN mkdir -p /home/$user/.composer && \
 # Set working directory
 WORKDIR /var/www
 
+# Copy composer files first to leverage Docker cache
+COPY composer.json composer.lock ./
+
+# Install composer dependencies
+RUN composer install --no-scripts --no-autoloader --prefer-dist --no-interaction
+
+# Copy the rest of the application
+COPY . .
+
+# Generate autoload files
+RUN composer dump-autoload --optimize
+
 USER $user
