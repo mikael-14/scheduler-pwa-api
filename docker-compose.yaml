@@ -61,7 +61,7 @@ services:
     depends_on:
       - api-db
     ports:
-      - "9081:80"
+      - 9081:80
     environment:
       PMA_HOST: api-db
       PMA_PORT: 3306

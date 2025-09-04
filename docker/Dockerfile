@@ -22,8 +22,16 @@ RUN docker-php-ext-configure intl \
 
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip opcache
 
+# Configure OPcache
+RUN echo "opcache.enable=1\n\
+opcache.memory_consumption=128\n\
+opcache.interned_strings_buffer=8\n\
+opcache.max_accelerated_files=10000\n\
+opcache.revalidate_freq=0\n\
+opcache.validate_timestamps=0" \
+> /usr/local/etc/php/conf.d/opcache.ini
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
