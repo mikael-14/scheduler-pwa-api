@@ -18,6 +18,11 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
+use DutchCodingCompany\FilamentSocialite\Provider;
+use Filament\Support\Colors;
+use Laravel\Socialite\Contracts\User as SocialiteUserContract;
+use Illuminate\Contracts\Auth\Authenticatable;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -54,6 +59,30 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])->plugin(
+                FilamentSocialitePlugin::make()
+                    // (required) Add providers corresponding with providers in `config/services.php`.
+                    ->providers([
+                        // Create a provider 'gitlab' corresponding to the Socialite driver with the same name.
+                        Provider::make('facebook')
+                            ->label('Facebook')
+                            ->icon('fab-gitlab')
+                            ->color(Color::hex('#2f2a6b'))
+                            ->outlined(false)
+                            ->stateless(false)
+                    
+                    ])
+                    // (optional) Override the panel slug to be used in the oauth routes. Defaults to the panel's configured path.
+                    ->slug('admin')
+                    // (optional) Enable/disable registration of new (socialite-) users.
+                    ->registration(true)
+                    // (optional) Enable/disable registration of new (socialite-) users using a callback.
+                    // In this example, a login flow can only continue if there exists a user (Authenticatable) already.
+                    ->registration(fn(string $provider, SocialiteUserContract $oauthUser, ?Authenticatable $user) => (bool) $user)
+                    // (optional) Change the associated model class.
+                    ->userModelClass(\App\Models\User::class)
+                    // (optional) Change the associated socialite class (see below).
+                    ->socialiteUserModelClass(\App\Models\SocialiteUser::class)
+            );
     }
 }
