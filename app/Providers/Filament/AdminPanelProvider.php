@@ -34,6 +34,8 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->registration()
+            ->passwordReset()
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -67,13 +69,13 @@ class AdminPanelProvider extends PanelProvider
                         Provider::make('facebook')
                             ->label('Facebook')
                             //->icon('fab-gitlab')
-                            ->color(Color::hex('#2f2a6b'))
+                            ->color(Color::hex('#1e12a0ff'))
                             ->outlined(false)
                             ->stateless(false),
                         Provider::make('google')
                             ->label('Google')
                             //->icon('fab-gitlab')
-                            ->color(Color::hex('#107500ff'))
+                            ->color(Color::hex('#208a0fff'))
                             ->outlined(false)
                             ->stateless(false)
 
