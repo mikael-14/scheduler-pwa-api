@@ -45,9 +45,12 @@ services:
     restart: unless-stopped
     ports:
       - 9000:80
+      - 9443:443
     volumes:
       - ./:/var/www
       - ./docker/nginx:/etc/nginx/conf.d/
+      - ./docker/nginx/selfsigned.crt:/etc/nginx/conf.d/selfsigned.crt
+      - ./docker/nginx/selfsigned.key:/etc/nginx/conf.d/selfsigned.key
     networks:
       dockernet:
         ipv4_address: 192.168.30.4
@@ -67,9 +70,8 @@ services:
       PMA_PORT: 3306
       PMA_USER: root
       PMA_PASSWORD: ${DB_PASSWORD_ROOT}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD_ROOT}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
 
     networks:
       dockernet:

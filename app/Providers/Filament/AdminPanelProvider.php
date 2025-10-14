@@ -66,7 +66,7 @@ class AdminPanelProvider extends PanelProvider
                         // Create a provider 'gitlab' corresponding to the Socialite driver with the same name.
                         Provider::make('facebook')
                             ->label('Facebook')
-                            ->icon('fab-gitlab')
+                            //->icon('fab-gitlab')
                             ->color(Color::hex('#2f2a6b'))
                             ->outlined(false)
                             ->stateless(false)
