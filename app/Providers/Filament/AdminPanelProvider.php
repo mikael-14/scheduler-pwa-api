@@ -23,6 +23,7 @@ use DutchCodingCompany\FilamentSocialite\Provider;
 use Filament\Support\Colors;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use Illuminate\Contracts\Auth\Authenticatable;
+use App\Models\User;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -70,7 +71,7 @@ class AdminPanelProvider extends PanelProvider
                             ->color(Color::hex('#2f2a6b'))
                             ->outlined(false)
                             ->stateless(false)
-                    
+
                     ])
                     // (optional) Override the panel slug to be used in the oauth routes. Defaults to the panel's configured path.
                     ->slug('admin')
@@ -78,7 +79,20 @@ class AdminPanelProvider extends PanelProvider
                     ->registration(true)
                     // (optional) Enable/disable registration of new (socialite-) users using a callback.
                     // In this example, a login flow can only continue if there exists a user (Authenticatable) already.
-                    ->registration(fn(string $provider, SocialiteUserContract $oauthUser, ?Authenticatable $user) => (bool) $user)
+                    ->registration(function (string $provider, SocialiteUserContract $oauthUser, ?Authenticatable $user) {
+                        // If user already exists, allow login
+                        if ($user) {
+                            return true;
+                        }
+                        // If provider is Facebook, create a new user
+                        if ($provider === 'facebook') {
+                            // Use findOrCreateFromSocialite to handle both new and existing users
+                            User::findOrCreateFromSocialite($oauthUser, $provider);
+                            return true; // allow login
+                        }
+
+                        return false; // Prevent registration for other providers
+                    })
                     // (optional) Change the associated model class.
                     ->userModelClass(\App\Models\User::class)
                     // (optional) Change the associated socialite class (see below).
