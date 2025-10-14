@@ -64,11 +64,16 @@ class AdminPanelProvider extends PanelProvider
                 FilamentSocialitePlugin::make()
                     // (required) Add providers corresponding with providers in `config/services.php`.
                     ->providers([
-                        // Create a provider 'gitlab' corresponding to the Socialite driver with the same name.
                         Provider::make('facebook')
                             ->label('Facebook')
                             //->icon('fab-gitlab')
                             ->color(Color::hex('#2f2a6b'))
+                            ->outlined(false)
+                            ->stateless(false),
+                        Provider::make('google')
+                            ->label('Google')
+                            //->icon('fab-gitlab')
+                            ->color(Color::hex('#107500ff'))
                             ->outlined(false)
                             ->stateless(false)
 
@@ -78,14 +83,13 @@ class AdminPanelProvider extends PanelProvider
                     // (optional) Enable/disable registration of new (socialite-) users.
                     ->registration(true)
                     // (optional) Enable/disable registration of new (socialite-) users using a callback.
-                    // In this example, a login flow can only continue if there exists a user (Authenticatable) already.
                     ->registration(function (string $provider, SocialiteUserContract $oauthUser, ?Authenticatable $user) {
                         // If user already exists, allow login
                         if ($user) {
                             return true;
                         }
                         // If provider is Facebook, create a new user
-                        if ($provider === 'facebook') {
+                        if ($provider === 'facebook' || $provider === 'google') {
                             // Use findOrCreateFromSocialite to handle both new and existing users
                             User::findOrCreateFromSocialite($oauthUser, $provider);
                             return true; // allow login
