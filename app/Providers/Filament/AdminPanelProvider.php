@@ -24,6 +24,7 @@ use Filament\Support\Colors;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\User;
+use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -62,7 +63,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])->plugin(
+            ])->plugins([
                 FilamentSocialitePlugin::make()
                     // (required) Add providers corresponding with providers in `config/services.php`.
                     ->providers([
@@ -102,7 +103,8 @@ class AdminPanelProvider extends PanelProvider
                     // (optional) Change the associated model class.
                     ->userModelClass(\App\Models\User::class)
                     // (optional) Change the associated socialite class (see below).
-                    ->socialiteUserModelClass(\App\Models\SocialiteUser::class)
-            );
+                    ->socialiteUserModelClass(\App\Models\SocialiteUser::class),
+                FilamentAuthenticationLogPlugin::make()
+            ]);
     }
 }
