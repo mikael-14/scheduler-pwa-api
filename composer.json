@@ -9,11 +9,14 @@
         "php": "^8.2",
         "dutchcodingcompany/filament-socialite": "^3.0",
         "filament/filament": "^4.0",
+        "geoip2/geoip2": "^3.3",
         "hexters/hexa-lite": "^3.0",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.10.1",
-        "tapp/filament-authentication-log": "^5.0"
+        "owen-it/laravel-auditing": "^14.0",
+        "tapp/filament-authentication-log": "^5.0",
+        "torann/geoip": "^3.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

@@ -1,87 +1,76 @@
 version: "3.8"
-services:
-  api-app:
-    build:
-      args:
-        user: sammy #example user
-        uid: 1000
-        app_debug: ${APP_DEBUG}
-      context: ./
-      dockerfile: docker/Dockerfile
-    image: api
-    container_name: api-app
-    restart: unless-stopped
-    working_dir: /var/www/
-    volumes:
-      - ./:/var/www
-      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-      - ./docker/php/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini
-    networks:
-      dockernet:
-        ipv4_address: 192.168.30.2
 
-  api-db:
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        USER: sammy
+        UID: 1000
+    container_name: api-app
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+      - /var/www/vendor
+      - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/99-xdebug.ini
+    environment:
+      XDEBUG_MODE: ${XDEBUG_MODE:-off}
+      XDEBUG_CONFIG: client_host=host.docker.internal client_port=9003
+    depends_on:
+      - db
+    networks:
+      - dockernet
+
+  nginx:
+    image: nginx:alpine
+    container_name: api-nginx
+    ports:
+      - "9000:80"
+      - "9443:443"
+    volumes:
+      - .:/var/www:delegated
+      - ./docker/nginx/api.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx/certs:/etc/nginx/certs
+    depends_on:
+      - app
+    networks:
+      - dockernet
+
+  db:
     image: mysql:8.0
     container_name: api-db
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${DB_DATABASE}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD_ROOT}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_USER: ${DB_USERNAME}
-      SERVICE_TAGS: dev
-      SERVICE_NAME: mysql
+      MYSQL_USER: ${DB_USERNAME}        # NOT root
+      MYSQL_PASSWORD: ${DB_PASSWORD}    # password for that user
     volumes:
-      - ./docker/mysql:/docker-entrypoint-initdb.d
-      - ./docker/mysql/data:/var/lib/mysql
-      - ./docker/mysql/logs:/var/log/mysql
-    networks:
-      dockernet:
-        ipv4_address: 192.168.30.3
-
-  api-nginx:
-    image: nginx:alpine
-    container_name: api-nginx
-    restart: unless-stopped
+      - mysql_data:/var/lib/mysql
     ports:
-      - 9000:80
-      - 9443:443
-    volumes:
-      - ./:/var/www
-      - ./docker/nginx:/etc/nginx/conf.d/
-      - ./docker/nginx/selfsigned.crt:/etc/nginx/conf.d/selfsigned.crt
-      - ./docker/nginx/selfsigned.key:/etc/nginx/conf.d/selfsigned.key
+      - "3306:3306"
     networks:
-      dockernet:
-        ipv4_address: 192.168.30.4
+      - dockernet
 
-  api-phpmyadmin: # use user: root, pass: sapo to login when you go localhost:8010 or if you open the fixed ip: 192.168.0.7 (below)
+  phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: 'api-phpmyadmin'
-    restart: unless-stopped
-    links:
-      - api-db
+    container_name: api-phpmyadmin
     depends_on:
-      - api-db
+      - db
     ports:
-      - 9081:80
+      - "9081:80"
     environment:
-      PMA_HOST: api-db
+      PMA_HOST: db
       PMA_PORT: 3306
       PMA_USER: root
       PMA_PASSWORD: ${DB_PASSWORD_ROOT}
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-
     networks:
-      dockernet:
-        ipv4_address: 192.168.30.5
+      - dockernet
 
 networks:
   dockernet:
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 192.168.30.0/24
 
+volumes:
+  mysql_data:

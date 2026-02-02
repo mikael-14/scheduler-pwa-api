@@ -8,11 +8,13 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use DutchCodingCompany\FilamentSocialite\Models\Contracts\FilamentSocialiteUser as FilamentSocialiteUserContract;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
+use Rappasoft\LaravelAuthenticationLog\Traits\AuthenticationLoggable;
+use Hexters\HexaLite\HexaLiteRolePermission;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, AuthenticationLoggable, HexaLiteRolePermission;
 
     /**
      * The attributes that are mass assignable.
@@ -56,24 +58,7 @@ class User extends Authenticatable
         return $this->hasMany(SocialiteUser::class);
     }
 
-    /**
-     * Create a user from Socialite and attach SocialiteUser record
-     */
-    public static function createFromSocialite(SocialiteUserContract $oauthUser, string $provider): self
-    {
-        $user = self::create([
-            'name' => $oauthUser->getName() ?? $oauthUser->getNickname(),
-            'email' => $oauthUser->getEmail(),
-            'password' => null,
-        ]);
 
-        $user->socialiteUsers()->create([
-            'provider' => $provider,
-            'provider_id' => $oauthUser->getId(),
-        ]);
-
-        return $user;
-    }
 
     /**
      * Optional: find existing user by email or provider
@@ -86,12 +71,26 @@ class User extends Authenticatable
             return $socialiteUser->getUser();
         }
 
-        $user = self::where('email', $oauthUser->getEmail())->first();
-        if ($user) {
-            SocialiteUser::createForProvider($provider, $oauthUser, $user);
-            return $user;
+        $email = $oauthUser->getEmail();
+        $name = $oauthUser->getName() ?? $oauthUser->getNickname();
+
+        $user = self::whereRaw('LOWER(email) = LOWER(?)', [$email])->first();
+
+        if (!$user) {
+            $user = self::create([
+                'email' => $email,
+                'name' => $name,
+                'password' => null,
+            ]);
         }
 
-        return self::createFromSocialite($oauthUser, $provider);
+        if (!$user->socialiteUsers()->where('provider', $provider)->exists()) {
+            $user->socialiteUsers()->create([
+                'provider' => $provider,
+                'provider_id' => $oauthUser->getId(),
+            ]);
+        }
+
+        return $user;
     }
 }

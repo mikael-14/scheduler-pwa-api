@@ -25,6 +25,7 @@ use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\User;
 use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
+use Hexters\HexaLite\HexaLite;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -87,24 +88,15 @@ class AdminPanelProvider extends PanelProvider
                     ->registration(true)
                     // (optional) Enable/disable registration of new (socialite-) users using a callback.
                     ->registration(function (string $provider, SocialiteUserContract $oauthUser, ?Authenticatable $user) {
-                        // If user already exists, allow login
-                        if ($user) {
-                            return true;
-                        }
-                        // If provider is Facebook, create a new user
-                        if ($provider === 'facebook' || $provider === 'google') {
-                            // Use findOrCreateFromSocialite to handle both new and existing users
-                            User::findOrCreateFromSocialite($oauthUser, $provider);
-                            return true; // allow login
-                        }
-
-                        return false; // Prevent registration for other providers
+                        return User::findOrCreateFromSocialite($oauthUser, $provider);
                     })
                     // (optional) Change the associated model class.
                     ->userModelClass(\App\Models\User::class)
                     // (optional) Change the associated socialite class (see below).
                     ->socialiteUserModelClass(\App\Models\SocialiteUser::class),
-                FilamentAuthenticationLogPlugin::make()
+                FilamentAuthenticationLogPlugin::make(),
+                HexaLite::make(),
+
             ]);
     }
 }
