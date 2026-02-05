@@ -25,7 +25,6 @@ use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\User;
 use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
-use Hexters\HexaLite\HexaLite;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -64,39 +63,56 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ])->plugins([
+            ])
+            ->plugins([
                 FilamentSocialitePlugin::make()
-                    // (required) Add providers corresponding with providers in `config/services.php`.
                     ->providers([
                         Provider::make('facebook')
                             ->label('Facebook')
-                            //->icon('fab-gitlab')
                             ->color(Color::hex('#1e12a0ff'))
                             ->outlined(false)
                             ->stateless(false),
                         Provider::make('google')
                             ->label('Google')
-                            //->icon('fab-gitlab')
                             ->color(Color::hex('#208a0fff'))
                             ->outlined(false)
-                            ->stateless(false)
-
+                            ->stateless(false),
                     ])
-                    // (optional) Override the panel slug to be used in the oauth routes. Defaults to the panel's configured path.
                     ->slug('admin')
-                    // (optional) Enable/disable registration of new (socialite-) users.
                     ->registration(true)
-                    // (optional) Enable/disable registration of new (socialite-) users using a callback.
-                    ->registration(function (string $provider, SocialiteUserContract $oauthUser, ?Authenticatable $user) {
-                        return User::findOrCreateFromSocialite($oauthUser, $provider);
-                    })
-                    // (optional) Change the associated model class.
-                    ->userModelClass(\App\Models\User::class)
-                    // (optional) Change the associated socialite class (see below).
-                    ->socialiteUserModelClass(\App\Models\SocialiteUser::class),
-                FilamentAuthenticationLogPlugin::make(),
-                HexaLite::make(),
+                    ->userModelClass(User::class)
+                    /**
+                     * Resolve an existing user (NO creation here)
+                     */
+                    ->resolveUserUsing(
+                        function (
+                            string $provider,
+                            SocialiteUserContract $oauthUser
+                        ): ?Authenticatable {
+                            return User::where('email', $oauthUser->getEmail())->first();
+                        }
+                    )
 
+                    /**
+                     * Create a user only if allowed
+                     */
+                    ->createUserUsing(
+                        function (
+                            string $provider,
+                            SocialiteUserContract $oauthUser
+                        ): Authenticatable {
+                            return User::create([
+                                'name' => $oauthUser->getName()
+                                    ?? $oauthUser->getNickname()
+                                    ?? 'User',
+                                'email' => $oauthUser->getEmail(),
+                                'password' => null,
+                            ]);
+                        }
+                    ),
+                // Resolve existing users by Socialite record or email
+
+                FilamentAuthenticationLogPlugin::make(),
             ]);
     }
 }
