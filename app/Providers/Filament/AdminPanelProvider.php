@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use Filament\Http\Middleware\Authenticate;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -65,6 +66,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->plugins([
+                FilamentShieldPlugin::make(),
                 FilamentSocialitePlugin::make()
                     ->providers([
                         Provider::make('facebook')
@@ -110,8 +112,6 @@ class AdminPanelProvider extends PanelProvider
                             ]);
                         }
                     ),
-                // Resolve existing users by Socialite record or email
-
                 FilamentAuthenticationLogPlugin::make(),
             ]);
     }
