@@ -31,7 +31,7 @@ class UserPolicy
 
     public function delete(AuthUser $authUser): bool
     {
-        return $authUser->can('Delete:User');
+        return false;
     }
 
     public function restore(AuthUser $authUser): bool
@@ -41,7 +41,7 @@ class UserPolicy
 
     public function forceDelete(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDelete:User');
+        return false;
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool

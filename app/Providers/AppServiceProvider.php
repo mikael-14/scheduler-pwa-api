@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Event;
+use CraftForge\FilamentLanguageSwitcher\Events\LocaleChanged;
+use Illuminate\Support\Facades\Auth;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,5 +23,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         //
+         Event::listen(LocaleChanged::class, function (LocaleChanged $event) {
+            if (Auth::check()) {
+                Auth::user()->update([
+                    'locale' => $event->newLocale,
+                ]);
+            }
+        });
     }
 }

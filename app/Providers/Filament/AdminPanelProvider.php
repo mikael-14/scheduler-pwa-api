@@ -22,9 +22,12 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
 use DutchCodingCompany\FilamentSocialite\Provider;
 use Filament\Support\Colors;
+use Filament\View\PanelsRenderHook;
+use CraftForge\FilamentLanguageSwitcher\FilamentLanguageSwitcherPlugin;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
 
 class AdminPanelProvider extends PanelProvider
@@ -67,6 +70,11 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentShieldPlugin::make(),
+                FilamentLanguageSwitcherPlugin::make()
+                    ->locales(config('app-locales.available'))
+                    ->renderHook(PanelsRenderHook::USER_MENU_BEFORE)
+                    ->showOnAuthPages()
+                    ->showFlags(false),
                 FilamentSocialitePlugin::make()
                     ->providers([
                         Provider::make('facebook')
@@ -83,9 +91,6 @@ class AdminPanelProvider extends PanelProvider
                     ->slug('admin')
                     ->registration(true)
                     ->userModelClass(User::class)
-                    /**
-                     * Resolve an existing user (NO creation here)
-                     */
                     ->resolveUserUsing(
                         function (
                             string $provider,
@@ -94,10 +99,6 @@ class AdminPanelProvider extends PanelProvider
                             return User::where('email', $oauthUser->getEmail())->first();
                         }
                     )
-
-                    /**
-                     * Create a user only if allowed
-                     */
                     ->createUserUsing(
                         function (
                             string $provider,
@@ -108,11 +109,35 @@ class AdminPanelProvider extends PanelProvider
                                     ?? $oauthUser->getNickname()
                                     ?? 'User',
                                 'email' => $oauthUser->getEmail(),
+                                'locale' => app()->getLocale(),
                                 'password' => null,
                             ]);
                         }
                     ),
                 FilamentAuthenticationLogPlugin::make(),
-            ]);
+            ])->bootUsing(function () {
+                $user = Auth::user();
+
+                if (!$user) {
+                    return;
+                }
+
+                // Skip background Livewire requests
+                if (request()->header('X-Livewire')) {
+                    return;
+                }
+
+                $currentLocale = app()->getLocale();
+                if ($user->locale && $user->locale !== $currentLocale) {
+                    app()->setLocale($user->locale);
+                    return;
+                }
+
+                if ($user->locale !== $currentLocale) {
+                    $user->update([
+                        'locale' => $currentLocale,
+                    ]);
+                }
+            });
     }
 }

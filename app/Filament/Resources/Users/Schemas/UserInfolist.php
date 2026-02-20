@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use Dom\Text;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Schema;
 
@@ -16,6 +17,7 @@ class UserInfolist
                     ->label('Email address'),
                 TextEntry::make('email_verified_at')
                     ->dateTime(),
+                TextEntry::make('locale'),
                 TextEntry::make('created_at')
                     ->dateTime(),
                 TextEntry::make('updated_at')

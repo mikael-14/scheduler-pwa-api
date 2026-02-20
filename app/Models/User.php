@@ -11,11 +11,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Rappasoft\LaravelAuthenticationLog\Traits\AuthenticationLoggable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles;
+    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -26,6 +27,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'locale',
     ];
 
     /**
