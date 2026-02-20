@@ -57,6 +57,8 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return ($this->status === 1);
+        // Allow both active users and pending users (null status)
+        // Pending users will be redirected via middleware
+        return ($this->status === 1 || $this->status === null);
     }
 }

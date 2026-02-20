@@ -29,6 +29,8 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
+use App\Http\Middleware\CheckPendingApproval;
+use App\Filament\Pages\PendingApproval;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -48,6 +50,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
+                PendingApproval::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
@@ -64,6 +67,7 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                CheckPendingApproval::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
