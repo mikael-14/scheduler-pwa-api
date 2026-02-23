@@ -14,12 +14,12 @@ return [
     ],
 
     'authenticatable' => [
-        'field-to-display' => null,
+        'field-to-display' => 'name',
     ],
 
     'navigation' => [
         'authentication-log' => [
-            'register' => true,
+            'register' => false,
             'sort' => 1,
             'icon' => 'heroicon-o-shield-check',
             'group' => 'Filament Shield',
