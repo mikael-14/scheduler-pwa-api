@@ -14,8 +14,8 @@ class CheckPendingApproval
 
         // If user is authenticated and status is null (pending approval)
         if ($user && $user->status === null) {
-            // Don't redirect if already on the pending approval page
-            if ($request->routeIs('filament.admin.pages.pending-approval')) {
+            // Don't redirect if already on the pending approval page or trying to logout
+            if ($request->routeIs('filament.admin.pages.pending-approval') || $request->routeIs('filament.admin.auth.logout')) {
                 return $next($request);
             }
 
