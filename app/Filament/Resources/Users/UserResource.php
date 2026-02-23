@@ -16,6 +16,9 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Tapp\FilamentAuthenticationLog\RelationManagers\AuthenticationLogsRelationManager;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
@@ -55,5 +58,20 @@ class UserResource extends Resource
             'view' => ViewUser::route('/{record}'),
             'edit' => EditUser::route('/{record}/edit'),
         ];
+    }
+    public static function getEloquentQuery(): Builder
+    {
+        $authUser = auth()->user();
+
+        if ($authUser->can('ViewAny:User')) {
+            return parent::getEloquentQuery();
+        }
+
+        if ($authUser->can('ViewOwned:User')) {
+            return parent::getEloquentQuery()
+                ->where('id', $authUser->id);
+        }
+
+        return parent::getEloquentQuery()->whereRaw('1 = 0');
     }
 }

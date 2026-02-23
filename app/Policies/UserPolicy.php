@@ -2,21 +2,32 @@
 
 namespace App\Policies;
 
+use App\Models\User;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class UserPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:User');
+        return $authUser->can('ViewAny:User') || $authUser->can('ViewOwned:User');
     }
 
-    public function view(AuthUser $authUser): bool
+    public function view(AuthUser $authUser, User $user): bool
     {
-        return $authUser->can('View:User');
+        // Admin permission → can view anyone
+        if ($authUser->can('ViewAny:User')) {
+            return true;
+        }
+
+        // Normal permission → can only view himself
+        if ($authUser->can('ViewOwned:User')) {
+            return $authUser->id === $user->id;
+        }
+
+        return false;
     }
 
     public function create(AuthUser $authUser): bool
@@ -31,7 +42,7 @@ class UserPolicy
 
     public function delete(AuthUser $authUser): bool
     {
-        return false;
+        return $authUser->can('Delete:User');
     }
 
     public function restore(AuthUser $authUser): bool
@@ -46,7 +57,7 @@ class UserPolicy
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:User');
+        return false;
     }
 
     public function restoreAny(AuthUser $authUser): bool
@@ -63,5 +74,4 @@ class UserPolicy
     {
         return $authUser->can('Reorder:User');
     }
-
 }

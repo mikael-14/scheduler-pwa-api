@@ -181,6 +181,9 @@ return [
                 'update',
                 'delete',
             ],
+            App\Filament\Resources\Users\UserResource::class => [
+                'viewOwned',
+            ],
         ],
         'exclude' => [
             Tapp\FilamentAuthenticationLog\Resources\AuthenticationLogResource::class,
