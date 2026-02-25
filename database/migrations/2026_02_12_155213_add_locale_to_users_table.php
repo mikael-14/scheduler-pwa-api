@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('locale')->default('pt');
-            $table->boolean('status')->default(null)->nullable();
+            $table->boolean('status')->default(true);
+            $table->timestamp('approved_at')->nullable();
         });
     }
 
@@ -25,6 +26,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn('locale');
             $table->dropColumn('status');
+            $table->dropColumn('approved_at');
         });
     }
 };

@@ -29,7 +29,9 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
+        'status',
         'locale',
+        'approved_at',
     ];
 
     /**
@@ -51,14 +53,39 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'approved_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
-        // Allow both active users and pending users (null status)
+        // Allow active users and pending users 
         // Pending users will be redirected via middleware
-        return ($this->status === 1 || $this->status === null);
+        // add this method to acept only verified email addresses
+        # $this->hasVerifiedEmail(); 
+        return ($this->status === 1);
+    }
+    // https://github.com/xlite-dev/filament-impersonate
+    /**
+     * By default, only Filament admins can impersonate other users. 
+     * You can control this by adding a 'canImpersonate' method to your FilamentUser class
+     */
+    public function canImpersonate(): bool
+    {
+        return $this->hasRole('super_admin') ? true : false;
+    }
+    /**
+     * You can also control which targets can be impersonated.
+     * Just add a 'canBeImpersonated' method to the user class with whatever logic you need
+     */
+    public function canBeImpersonated(): bool
+    {
+        // Let's prevent impersonating other users that are super admins
+        return !$this->hasRole('super_admin') && $this->status === 1 ? true : false;
+    }
+      public function isAdmin(): bool
+    {
+        return $this->hasRole('super_admin') ? true : false;
     }
 }
