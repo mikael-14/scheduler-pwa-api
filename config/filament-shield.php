@@ -183,6 +183,7 @@ return [
             ],
             App\Filament\Resources\Users\UserResource::class => [
                 'viewOwned',
+                'impersonate',
             ],
         ],
         'exclude' => [

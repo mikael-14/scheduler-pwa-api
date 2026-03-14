@@ -123,4 +123,15 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Date & Time Format
+    |--------------------------------------------------------------------------
+    | These configuration options determine the default date and time formats
+    | used across the application. You can customize these formats to suit your needs.
+    |
+    */
+    'date_format' => env('APP_DATE_FORMAT', 'Y-m-d'),
+    'time_format' => env('APP_TIME_FORMAT', 'H:i:s'),
+    'datetime_format' => env('APP_DATETIME_FORMAT', 'Y-m-d H:i:s'),
 ];

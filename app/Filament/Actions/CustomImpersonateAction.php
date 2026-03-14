@@ -10,7 +10,8 @@ class CustomImpersonateAction extends ImpersonateAction
     {
         parent::setUp();
 
-        $this->button();
+        //Button styling
+        //$this->button();
 
         $this->label('Impersonate');
 
