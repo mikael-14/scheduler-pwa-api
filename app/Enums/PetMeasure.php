@@ -6,7 +6,7 @@ use Filament\Support\Contracts\HasLabel;
  
 enum PetMeasure: string implements HasLabel
 {
-    case weight = 'weight';
+    case Weight = 'weight';
     
     public function getLabel(): ?string
     {
@@ -16,13 +16,13 @@ enum PetMeasure: string implements HasLabel
     public static function getUnit($value): ?string
     {
         return match ($value) {
-            self::weight => 'Kg',
+            self::Weight => 'Kg',
             default => '',
         };
     }
     public static function getVariation($value): ?float {
         return match ($value) {
-            self::weight => 0.099,
+            self::Weight => 0.099,
             default => null,
         };
     }

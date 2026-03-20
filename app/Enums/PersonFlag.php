@@ -14,7 +14,7 @@ enum PersonFlag: string implements HasLabel, HasColor
     case Veterinary = 'veterinary';
     case Adopter = 'adopter';
     case Sponsor = 'sponsor';
-    case Black_list = 'black_list';
+    case BlackList = 'black_list';
     
     public function getLabel(): ?string
     {
@@ -26,7 +26,7 @@ enum PersonFlag: string implements HasLabel, HasColor
             self::Veterinary => __('pet/personflag.veterinary'),
             self::Adopter => __('pet/personflag.adopter'),
             self::Sponsor => __('pet/personflag.sponsor'),
-            self::Black_list => __('pet/personflag.black_list'),
+            self::BlackList => __('pet/personflag.black_list'),
         };
     }
 
@@ -36,7 +36,7 @@ enum PersonFlag: string implements HasLabel, HasColor
             self::Temporary_family => 'warning',
             self::Sponsor => 'info',
             self::Adopter => 'info',
-            self::Black_list => 'danger',
+            self::BlackList => 'danger',
             self::Veterinary => 'success',
             default => 'primary',
         };

@@ -133,5 +133,5 @@ return [
     */
     'date_format' => env('APP_DATE_FORMAT', 'Y-m-d'),
     'time_format' => env('APP_TIME_FORMAT', 'H:i:s'),
-    'datetime_format' => env('APP_DATETIME_FORMAT', 'Y-m-d H:i:s'),
+    'date_time_format' => env('APP_DATE_TIME_FORMAT', 'Y-m-d H:i:s'),
 ];

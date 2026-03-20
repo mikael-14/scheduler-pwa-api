@@ -25,14 +25,14 @@ class UserInfolist
                     ->label('Active')
                     ->boolean(),
                 TextEntry::make('approved_at')
-                    ->dateTime(config('app.datetime_format'))
+                    ->dateTime(config('app.date_time_format'))
                     ->icon(Heroicon::CheckBadge)
                     ->color('success')
                     ->placeholder(__('Not approved')),
                 TextEntry::make('created_at')
-                    ->dateTime(config('app.datetime_format')),
+                    ->dateTime(config('app.date_time_format')),
                 TextEntry::make('updated_at')
-                    ->dateTime(config('app.datetime_format')),
+                    ->dateTime(config('app.date_time_format')),
                     ])
                     ->columns(2)
                     ->columnSpan('full'),

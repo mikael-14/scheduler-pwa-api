@@ -8,7 +8,7 @@ enum DewormingType: string implements HasLabel
 {
     case Internal = 'internal';
     case External = 'external';
-    case InternalAndExternal = 'internal and external';
+    case InternalAndExternal = 'internal_and_external';
 
     public function getLabel(): ?string
     {

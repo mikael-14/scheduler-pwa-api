@@ -7,10 +7,10 @@ use Filament\Support\Contracts\HasLabel;
  
 enum PrescriptionMedicineStatus: string implements HasLabel, HasColor
 {
-    case active = 'active';
-    case onhold = 'on_hold';
-    case canceled = 'canceled';
-    case completed = 'completed';
+    case Active = 'active';
+    case OnHold = 'on_hold';
+    case Canceled = 'canceled';
+    case Completed = 'completed';
     
     public function getLabel(): ?string
     {
@@ -20,10 +20,10 @@ enum PrescriptionMedicineStatus: string implements HasLabel, HasColor
     public function getColor(): string | array | null
     {
         return match ($this) {
-            self::active => 'info',
-            self::completed => 'success',
-            self::canceled => 'danger',
-            self::onhold => 'warning',
+            self::Active => 'info',
+            self::Completed => 'success',
+            self::Canceled => 'danger',
+            self::OnHold => 'warning',
             default => 'primary',
         };
     }
