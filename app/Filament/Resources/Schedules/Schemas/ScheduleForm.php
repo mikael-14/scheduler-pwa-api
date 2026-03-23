@@ -23,10 +23,12 @@ class ScheduleForm
                         DatePicker::make('date')
                             ->format(config('app.date_format'))
                             ->displayFormat(config('app.date_format'))
+                            ->default(now())
                             ->required(),
                         TimePicker::make('time')
                             ->format(config('app.time_format'))
                             ->seconds(false)
+                            ->default(now())
                             ->native()
                             ->step(15)
                             ->required(),

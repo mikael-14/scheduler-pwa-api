@@ -10,15 +10,21 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Symfony\Component\Console\Color;
 
 class ScheduleTypeResource extends Resource
 {
@@ -32,7 +38,8 @@ class ScheduleTypeResource extends Resource
             ->components([
                 TextInput::make('name')
                     ->required(),
-                TextInput::make('color')
+                ColorPicker::make('color')
+                    ->rgb()
                     ->default('#cccccc'),
             ]);
     }
@@ -43,19 +50,37 @@ class ScheduleTypeResource extends Resource
             ->columns([
                 TextColumn::make('name')
                     ->searchable(),
-                TextColumn::make('color')
-                    ->searchable(),
+                ColorColumn::make('color'),
+                TextColumn::make('color_code')->state(function (Model $record) {
+                    return $record->color ?? 'N/A';
+                }),
+                TextColumn::make('count')->counts('schedules'),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->dateTime(config('app.date_time_format'))
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Filter::make('created_at')
+                    ->schema([
+                        DatePicker::make('created_from'),
+                        DatePicker::make('created_until'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
             ])
             ->recordActions([
                 EditAction::make(),
