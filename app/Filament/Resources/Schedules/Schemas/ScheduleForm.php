@@ -7,8 +7,10 @@ use App\Models\ScheduleType;
 use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -32,14 +34,12 @@ class ScheduleForm
                             ->native()
                             ->step(15)
                             ->required(),
-                        TextInput::make('description'),
-                        TextInput::make('internal_note'),
-                        Select::make('status')
-                            ->options(ScheduleStatus::class)
-                            ->default(ScheduleStatus::Pending)
-                            ->searchable()
-                            ->preload(true)
-                            ->required(),
+                        Textarea::make('description')->autosize(),
+                        Textarea::make('internal_note')->autosize(),
+                                ToggleButtons::make('status')
+                ->inline()
+                ->options(ScheduleStatus::class)
+                ->required(),
                         Select::make('user_id')
                             ->options(User::pluck('name', 'id'))
                             ->searchable()

@@ -54,7 +54,7 @@ class ScheduleTypeResource extends Resource
                 TextColumn::make('color_code')->state(function (Model $record) {
                     return $record->color ?? 'N/A';
                 }),
-                TextColumn::make('count')->counts('schedules'),
+                TextColumn::make('schedules_count')->counts('schedules'),
                 TextColumn::make('created_at')
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
