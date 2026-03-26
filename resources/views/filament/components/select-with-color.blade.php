@@ -1,6 +1,8 @@
-<div class="flex rounded-md relative">
-    <div class="flex ">
-        <div style="background-color:{{ $color }}" class="justify-center mx-1 flex h-5 w-5 rounded-md"></div>
-        <div>{{ $name }}</div>
+<div class='fi-ta-color' style='padding: 0px;'>
+    <div class='fi-ta-color-item'
+        style='background-color: {{$color}};'>
     </div>
+    <span class='fi-select-input-item-label text-sm text-gray-950 dark:text-white'>
+        {{$name}}
+    </span>
 </div>

@@ -36,22 +36,34 @@ class ScheduleForm
                             ->required(),
                         Textarea::make('description')->autosize(),
                         Textarea::make('internal_note')->autosize(),
-                                ToggleButtons::make('status')
-                ->inline()
-                ->options(ScheduleStatus::class)
-                ->required(),
+                        ToggleButtons::make('status')
+                            ->inline()
+                            ->options(ScheduleStatus::class)
+                            ->required(),
                         Select::make('user_id')
                             ->options(User::pluck('name', 'id'))
                             ->searchable()
                             ->preload(true)
                             ->required(),
                         Select::make('schedule_type_id')
-                            ->options(ScheduleType::pluck('name', 'id'))
+                            ->options(self::getOptionWithColor(ScheduleType::all()))
                             ->searchable()
+                            ->allowHtml(true)
+                            ->native(false)
                             ->preload(true)
                             ->required(),
                     ])->columns(2)
                     ->columnSpan('full'),
             ]);
+    }
+
+    public static function getOptionWithColor(\Illuminate\Database\Eloquent\Collection $model)
+    {
+        return $model->mapWithKeys(function ($item) {
+            return [$item['id'] => view('filament.components.select-with-color')
+                ->with('name', $item['name'])
+                ->with('color', $item['color'])
+                ->render()];
+        });
     }
 }
