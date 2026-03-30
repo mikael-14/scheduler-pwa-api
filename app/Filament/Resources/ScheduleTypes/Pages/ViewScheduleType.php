@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Filament\Resources\ScheduleTypes\Pages;
+
+use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
+use Filament\Actions\EditAction;
+use Filament\Resources\Pages\ViewRecord;
+
+class ViewScheduleType extends ViewRecord
+{
+    protected static string $resource = ScheduleTypeResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            EditAction::make(),
+        ];
+    }
+}

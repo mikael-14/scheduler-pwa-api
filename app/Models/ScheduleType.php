@@ -42,7 +42,7 @@ class ScheduleType extends Model
 		'name',
 		'color',
 		'status',
-		'App\\Enums\\ScheduleType',
+		'type',
 		'start',
 		'end',
 		'description'
