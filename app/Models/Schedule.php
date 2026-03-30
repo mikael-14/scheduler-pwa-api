@@ -14,8 +14,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * Class Schedule
  * 
  * @property int $id
- * @property Carbon $date
- * @property Carbon $time
+ * @property Carbon $start_date
+ * @property Carbon|null $start_time
+ * @property Carbon|null $end_date
+ * @property Carbon|null $end_time
  * @property string|null $description
  * @property string|null $internal_note
  * @property string $status
@@ -36,15 +38,19 @@ class Schedule extends Model
 	protected $table = 'schedules';
 
 	protected $casts = [
-		'date' => 'datetime',
-		'time' => 'datetime',
+		'start_date' => 'datetime',
+		'start_time' => 'datetime',
+		'end_date' => 'datetime',
+		'end_time' => 'datetime',
 		'user_id' => 'int',
 		'schedule_type_id' => 'int'
 	];
 
 	protected $fillable = [
-		'date',
-		'time',
+		'start_date',
+		'start_time',
+		'end_date',
+		'end_time',
 		'description',
 		'internal_note',
 		'status',

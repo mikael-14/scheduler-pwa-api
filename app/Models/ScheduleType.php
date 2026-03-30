@@ -16,6 +16,11 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $id
  * @property string $name
  * @property string|null $color
+ * @property bool $status
+ * @property string $App\Enums\ScheduleType
+ * @property Carbon|null $start
+ * @property Carbon|null $end
+ * @property string|null $description
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * 
@@ -27,9 +32,20 @@ class ScheduleType extends Model
 {
 	protected $table = 'schedule_types';
 
+	protected $casts = [
+		'status' => 'bool',
+		'start' => 'datetime',
+		'end' => 'datetime'
+	];
+
 	protected $fillable = [
 		'name',
-		'color'
+		'color',
+		'status',
+		'App\\Enums\\ScheduleType',
+		'start',
+		'end',
+		'description'
 	];
 
 	public function schedules()

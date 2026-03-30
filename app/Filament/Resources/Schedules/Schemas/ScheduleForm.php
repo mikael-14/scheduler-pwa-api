@@ -34,17 +34,6 @@ class ScheduleForm
                             ->native()
                             ->step(15)
                             ->required(),
-                        Textarea::make('description')->autosize(),
-                        Textarea::make('internal_note')->autosize(),
-                        ToggleButtons::make('status')
-                            ->inline()
-                            ->options(ScheduleStatus::class)
-                            ->required(),
-                        Select::make('user_id')
-                            ->options(User::pluck('name', 'id'))
-                            ->searchable()
-                            ->preload(true)
-                            ->required(),
                         Select::make('schedule_type_id')
                             ->options(self::getOptionWithColor(ScheduleType::all()))
                             ->searchable()
@@ -52,6 +41,18 @@ class ScheduleForm
                             ->native(false)
                             ->preload(true)
                             ->required(),
+                        Select::make('user_id')
+                            ->options(User::pluck('name', 'id'))
+                            ->searchable()
+                            ->preload(true)
+                            ->required(),
+                        Textarea::make('description')->autosize(),
+                        Textarea::make('internal_note')->autosize(),
+                        ToggleButtons::make('status')
+                            ->inline()
+                            ->options(ScheduleStatus::class)
+                            ->required()
+                            ->columnSpanFull(),
                     ])->columns(2)
                     ->columnSpan('full'),
             ]);
