@@ -17,7 +17,8 @@ return new class extends Migration
             $table->string('name', 50);
             $table->string('color', 7)->default('#cccccc')->nullable();
             $table->boolean('status');
-            $table->enum('type', ScheduleType::cases())->nullable();
+            $table->boolean('range')->default(false);
+            $table->boolean('all_day')->default(false);
             $table->dateTime('start')->nullable();
             $table->dateTime('end')->nullable();
             $table->string('description')->nullable();

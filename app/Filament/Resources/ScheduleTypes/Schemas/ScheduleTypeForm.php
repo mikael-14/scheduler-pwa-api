@@ -22,42 +22,30 @@ class ScheduleTypeForm
             ->components([
                 Section::make('Schedule Information')
                     ->schema([
-                FusedGroup::make([
-                    TextInput::make('name')
-                        ->placeholder('name')
-                        ->columnSpan(2)
-                        ->required(),
-                    ColorPicker::make('color')
-                        ->placeholder('Select a color')
-                        ->default('#000000')
-                ])
-                    ->label('Basic Information')
-                    ->columns(3),
-                Toggle::make('status')
-                    ->inline(false)
-                    ->default(true)
-                    ->label('Status'),
-                Select::make('type')
-                    ->options(ScheduleType::class)
-                    ->live()
-                    ->afterStateUpdated(function (callable $set) {
-                        $set('start', null);
-                        $set('end', null);
-                    })
-                    ->placeholder('None'),
-                Textarea::make('description')
-                    ->placeholder('Description'),
-                DateTimePicker::make('start')
-                    ->placeholder('Start Date')
-                    ->visible(fn($get) => in_array($get('type'), [ScheduleType::Start, ScheduleType::Range]))
-                    ->required(fn($get) => in_array($get('type'), [ScheduleType::Start, ScheduleType::Range])),
-                DateTimePicker::make('end')
-                    ->placeholder('End Date')
-                    ->visible(fn($get) => in_array($get('type'), [ScheduleType::End, ScheduleType::Range]))
-                    ->required(fn($get) => in_array($get('type'), [ScheduleType::End, ScheduleType::Range])),
-            ])
-            ->columns(2)
-            ->columnSpanFull()
+                        FusedGroup::make([
+                            TextInput::make('name')
+                                ->placeholder('name')
+                                ->columnSpan(2)
+                                ->required(),
+                            ColorPicker::make('color')
+                                ->placeholder('Select a color')
+                                ->default('#000000')
+                        ])
+                            ->label('Basic Information')
+                            ->columns(3),
+                        Toggle::make('status')
+                            ->inline(false)
+                            ->default(true)
+                            ->label('Status'),
+                        DateTimePicker::make('start')
+                            ->placeholder('Start Date'),
+                        DateTimePicker::make('end')
+                            ->placeholder('End Date'),
+                              Textarea::make('description')
+                            ->placeholder('Description'),
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull()
             ]);
     }
 }
