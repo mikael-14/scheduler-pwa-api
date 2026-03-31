@@ -12,7 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\FusedGroup;
 use Filament\Schemas\Schema;
-use Symfony\Component\Console\Color;
+use Filament\Schemas\Components\Section;
 
 class ScheduleTypeForm
 {
@@ -20,35 +20,44 @@ class ScheduleTypeForm
     {
         return $schema
             ->components([
+                Section::make('Schedule Information')
+                    ->schema([
                 FusedGroup::make([
                     TextInput::make('name')
                         ->placeholder('name')
-                        ->columns(2)
+                        ->columnSpan(2)
                         ->required(),
                     ColorPicker::make('color')
-                        ->placeholder('Select a color'),
+                        ->placeholder('Select a color')
+                        ->default('#000000')
                 ])
-                ->label('Basic Information')
-                ->columns(3),
+                    ->label('Basic Information')
+                    ->columns(3),
                 Toggle::make('status')
                     ->inline(false)
                     ->default(true)
                     ->label('Status'),
                 Select::make('type')
-                    ->options(ScheduleType::cases())
+                    ->options(ScheduleType::class)
                     ->live()
-                    ->afterStateUpdated(fn (callable $set) => $set('start', null)->set('end', null))
+                    ->afterStateUpdated(function (callable $set) {
+                        $set('start', null);
+                        $set('end', null);
+                    })
                     ->placeholder('None'),
                 Textarea::make('description')
                     ->placeholder('Description'),
                 DateTimePicker::make('start')
                     ->placeholder('Start Date')
-                    ->visible(fn ($get) => in_array($get('type'), [ScheduleType::Start, ScheduleType::Range]))
-                    ->required(fn ($get) => in_array($get('type'), [ScheduleType::Start, ScheduleType::Range])),
+                    ->visible(fn($get) => in_array($get('type'), [ScheduleType::Start, ScheduleType::Range]))
+                    ->required(fn($get) => in_array($get('type'), [ScheduleType::Start, ScheduleType::Range])),
                 DateTimePicker::make('end')
                     ->placeholder('End Date')
-                    ->visible(fn ($get) => in_array($get('type'), [ScheduleType::End, ScheduleType::Range]))
-                    ->required(fn ($get) => in_array($get('type'), [ScheduleType::End, ScheduleType::Range])),
+                    ->visible(fn($get) => in_array($get('type'), [ScheduleType::End, ScheduleType::Range]))
+                    ->required(fn($get) => in_array($get('type'), [ScheduleType::End, ScheduleType::Range])),
+            ])
+            ->columns(2)
+            ->columnSpanFull()
             ]);
     }
 }

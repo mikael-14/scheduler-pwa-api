@@ -10,7 +10,7 @@ return [
     ],
     'type' => [
         'start' => 'Apenas Início',
-        'end' => 'Início e Fim',
+        'end' => 'Apenas Fim',
         'range' => 'Intervalo',
         'none' => 'Nenhum',
     ],

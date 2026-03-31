@@ -20,7 +20,7 @@ class ScheduleForm
     {
         return $schema
             ->components([
-                Section::make('User information')
+                Section::make('Schedule Information')
                     ->schema([
                         DatePicker::make('date')
                             ->format(config('app.date_format'))

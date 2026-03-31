@@ -10,7 +10,7 @@ return [
     ],
     'type' => [
         'start' => 'Start Only',
-        'end' => 'Start and End',
+        'end' => 'End Only',
         'range' => 'Range',
         'none' => 'None',
     ],
