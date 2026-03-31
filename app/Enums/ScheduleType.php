@@ -6,14 +6,16 @@ use Filament\Support\Contracts\HasLabel;
  
 enum ScheduleType: string implements HasLabel
 {
-    case StartOnly = 'start_only';
-    case StartAndEnd = 'start_and_end';
+    case Start = 'start';
+    case End = 'end';
+    case Range = 'range';
 
     public function getLabel(): ?string
     {
         return match ($this) {
-            self::StartOnly => __('pet/schedule.type.start_only'),
-            self::StartAndEnd => __('pet/schedule.type.start_and_end'),
+            self::Start => __('pet/schedule.type.start'),
+            self::End => __('pet/schedule.type.end'),
+            self::Range => __('pet/schedule.type.range'),
         };
     }
 
