@@ -21,7 +21,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
 use DutchCodingCompany\FilamentSocialite\Provider;
-use Filament\Support\Colors;
+use Saade\FilamentFullCalendar\FilamentFullCalendarPlugin;
 use Filament\View\PanelsRenderHook;
 use CraftForge\FilamentLanguageSwitcher\FilamentLanguageSwitcherPlugin;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
@@ -119,6 +119,7 @@ class AdminPanelProvider extends PanelProvider
                         }
                     ),
                 FilamentAuthenticationLogPlugin::make(),
+                FilamentFullCalendarPlugin::make(),
             ])->bootUsing(function () {
                 $user = Auth::user();
 
