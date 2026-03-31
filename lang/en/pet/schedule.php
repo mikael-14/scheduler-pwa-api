@@ -8,10 +8,4 @@ return [
         'completed' => 'Completed',
         'not_shown' => 'Not Shown',
     ],
-    'type' => [
-        'start' => 'Start Only',
-        'end' => 'End Only',
-        'range' => 'Range',
-        'none' => 'None',
-    ],
 ];

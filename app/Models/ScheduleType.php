@@ -17,7 +17,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property string|null $color
  * @property bool $status
- * @property string $App\Enums\ScheduleType
+ * @property bool $range
+ * @property bool $all_day
  * @property Carbon|null $start
  * @property Carbon|null $end
  * @property string|null $description
@@ -34,6 +35,8 @@ class ScheduleType extends Model
 
 	protected $casts = [
 		'status' => 'bool',
+		'range' => 'bool',
+		'all_day' => 'bool',
 		'start' => 'datetime',
 		'end' => 'datetime'
 	];
@@ -42,7 +45,8 @@ class ScheduleType extends Model
 		'name',
 		'color',
 		'status',
-		'type',
+		'range',
+		'all_day',
 		'start',
 		'end',
 		'description'

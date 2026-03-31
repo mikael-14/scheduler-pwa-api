@@ -2,24 +2,29 @@
 
 namespace App\Filament\Resources\ScheduleTypes\Tables;
 
+use Dom\Text;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Collection;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ColorColumn;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use PhpParser\Node\Expr\Ternary;
 
 class ScheduleTypesTable
 {
-   
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -29,8 +34,24 @@ class ScheduleTypesTable
                 ColorColumn::make('color'),
                 TextColumn::make('color_code')->state(function (Model $record) {
                     return $record->color ?? 'N/A';
-                }),
+                })->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('schedules_count')->counts('schedules'),
+                IconColumn::make('status')
+                    ->label('Status')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('description')
+                    ->limit(50)
+                    ->wrap()
+                    ->toggleable(),
+                IconColumn::make('range')
+                    ->label('Range')
+                    ->sortable()
+                    ->toggleable(),
+                IconColumn::make('all_day')
+                    ->label('All Day')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
@@ -56,7 +77,23 @@ class ScheduleTypesTable
                                 $data['created_until'],
                                 fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
-                    })
+                    }),
+                TernaryFilter::make('status'),
+                TernaryFilter::make('range'),
+                TernaryFilter::make('all_day'),
+                Filter::make('description')
+                    ->schema([
+                        TextInput::make('description')
+                            ->label('Description')
+                            ->placeholder('Search...')
+                            ->live()
+                            ->debounce(500),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when($data['description'], function (Builder $query, $value) {
+                            return $query->where('description', 'like', "%{$value}%");
+                        });
+                    }),
             ])
             ->recordActions([
                 EditAction::make(),
@@ -100,6 +137,4 @@ class ScheduleTypesTable
                 ]),
             ]);
     }
-
-   
 }
