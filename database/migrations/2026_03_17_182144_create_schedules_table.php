@@ -16,10 +16,9 @@ return new class extends Migration
     {
         Schema::create('schedules', function (Blueprint $table) {
             $table->id();
-            $table->date('start_date');
-            $table->time('start_time')->nullable();
-            $table->date('end_date')->nullable();
-            $table->time('end_time')->nullable();
+            $table->dateTime('start');
+            $table->dateTime('end')->nullable();
+            $table->boolean('all_day')->default(false);
             $table->string('description')->nullable();
             $table->string('internal_note')->nullable();
             $table->enum('status', ScheduleStatus::cases())->default(ScheduleStatus::Pending->value);

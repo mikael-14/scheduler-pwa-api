@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ScheduleTypes\Pages;
 
 use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
+use App\Livewire\CalendarWidget;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -14,6 +15,14 @@ class ViewScheduleType extends ViewRecord
     {
         return [
             EditAction::make(),
+        ];
+    }
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            CalendarWidget::make([
+                'record' => $this->record,
+            ]),
         ];
     }
 }
