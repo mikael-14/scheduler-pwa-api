@@ -2,18 +2,14 @@
 
 namespace App\Filament\Resources\ScheduleTypes\Schemas;
 
-use App\Enums\ScheduleType;
-use App\Models\Schedule;
+use Coolsam\Flatpickr\Forms\Components\Flatpickr;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\ColorPicker;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\FusedGroup;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
 
@@ -41,12 +37,27 @@ class ScheduleTypeForm
                             ->default(true)
                             ->label('Status')
                             ->helperText('Enable or disable this schedule type.'),
-                        DateTimePicker::make('start')
+                        Flatpickr::make('start')
+                            ->allowInput()
                             ->placeholder('Start Date')
-                            ->helperText('Optional: Set a start date for this schedule type.'),
-                        DateTimePicker::make('end')
+                            ->helperText('Optional: Set a start date for this schedule type.')
+                            ->hourIncrement(1) // Intervals of incrementing hours in a time picker
+                            ->minuteIncrement(5) // Intervals of minute increment in a time picker
+                            ->seconds(false) // Enable seconds in a time picker
+                            ->format(config('app.date_time_format'))
+                             ->altFormat(config('app.date_time_format'))
+                            ->time24hr(true)
+                            ->required(),
+                        Flatpickr::make('end')
+                            ->allowInput()
                             ->placeholder('End Date')
-                            ->helperText('Optional: Set an end date for this schedule type.'),
+                            ->helperText('Optional: Set an end date for this schedule type.')
+                            ->hourIncrement(1)
+                            ->minuteIncrement(5)
+                            ->seconds(false)
+                            ->format(config('app.date_time_format'))
+                             ->altFormat(config('app.date_time_format'))
+                            ->time24hr(true),
                         Textarea::make('description')
                             ->placeholder('Description'),
                         Flex::make([

@@ -11,6 +11,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Coolsam\Flatpickr\Forms\Components\Flatpickr;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Utilities\Get;
 
 class ScheduleForm
@@ -42,7 +43,7 @@ class ScheduleForm
                     ->searchable()
                     ->preload(true)
                     ->required(),
-                Flatpickr::make('date')
+                Flatpickr::make('start')
                     ->allowInput()
                     ->minDate(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
@@ -61,10 +62,45 @@ class ScheduleForm
                     ->minuteIncrement(5) // Intervals of minute increment in a time picker
                     ->seconds(false) // Enable seconds in a time picker
                     ->format(config('app.date_time_format'))
+                    ->altFormat(config('app.date_time_format'))
+                    ->time24hr(true)
+                    ->required(),
+                Flatpickr::make('end')
+                    ->allowInput()
+                    ->visible(function (Get $get) {
+                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
+                        return $config?->range ?? false;
+                    })
+                    ->maxDate(function (Get $get) {
+                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
+                        return $config?->end ?? null;
+                    })
+                    ->minDate(function (Get $get) {
+                        $start = $get('start');
+                        if ($start) {
+                            return $start;
+                        }
+                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
+                        return $config?->start ?? null;
+                    })
+                    ->time(function (Get $get) {
+                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
+                        if ($config === null || $config->all_day === false) {
+                            return true;
+                        } else {
+                            $get('all_day') ? false : true;
+                        }
+                        return true;
+                    })
+                    ->hourIncrement(1) // Intervals of incrementing hours in a time picker
+                    ->minuteIncrement(5) // Intervals of minute increment in a time picker
+                    ->seconds(false) // Enable seconds in a time picker
+                    ->format(config('app.date_time_format'))
+                    ->altFormat(config('app.date_time_format'))
                     ->time24hr(true)
                     ->required(),
                 Toggle::make('all_day')
-                    ->inline()
+                    ->inline(false)
                     ->live()
                     ->visible(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
@@ -73,7 +109,7 @@ class ScheduleForm
                     ->default(false),
                 Textarea::make('description')->autosize(),
                 Textarea::make('internal_note')->autosize(),
-                Toggle::make('status')
+                ToggleButtons::make('status')
                     ->inline()
                     ->options(ScheduleStatus::class)
                     ->required()
