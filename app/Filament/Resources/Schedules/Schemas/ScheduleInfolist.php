@@ -50,7 +50,6 @@ class ScheduleInfolist
                             ->placeholder('-'),
                         TextEntry::make('internal_note')
                             ->placeholder('-'),
-                 
                         TextEntry::make('created_at')
                             ->dateTime(config('app.date_time_format'))
                             ->placeholder('-'),

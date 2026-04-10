@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a172695c34668df332f457e13e27dd0a",
+    "content-hash": "382c066f8e39d0604f11ac707339944f",
     "packages": [
         {
             "name": "bezhansalleh/filament-plugin-essentials",
@@ -9806,6 +9806,79 @@
                 }
             ],
             "time": "2026-01-31T10:50:58+00:00"
+        },
+        {
+            "name": "zvizvi/user-fields",
+            "version": "0.0.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/zvizvi/filament-user-fields.git",
+                "reference": "2990216b01a49b0f9defb5d3180ff8f620f49c30"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/zvizvi/filament-user-fields/zipball/2990216b01a49b0f9defb5d3180ff8f620f49c30",
+                "reference": "2990216b01a49b0f9defb5d3180ff8f620f49c30",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0|^5.0",
+                "php": "^8.2",
+                "spatie/laravel-package-tools": "^1.15.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^8.0",
+                "orchestra/testbench": "^10.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan-deprecation-rules": "^1.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "UserFields": "Zvizvi\\UserFields\\Facades\\UserFields"
+                    },
+                    "providers": [
+                        "Zvizvi\\UserFields\\UserFieldsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Zvizvi\\UserFields\\": "src/",
+                    "Zvizvi\\UserFields\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "zvizvi",
+                    "email": "zvizvi5@outlook.com",
+                    "role": "Author"
+                }
+            ],
+            "description": "This is my package user-fields",
+            "homepage": "https://github.com/zvizvi/filament-user-fields",
+            "keywords": [
+                "laravel",
+                "user-fields",
+                "zvizvi"
+            ],
+            "support": {
+                "issues": "https://github.com/zvizvi/filament-user-fields/issues",
+                "source": "https://github.com/zvizvi/filament-user-fields"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/zvizvi",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-01-28T00:40:45+00:00"
         }
     ],
     "packages-dev": [

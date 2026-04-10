@@ -8,6 +8,7 @@ use Spatie\Permission\Models\Role;
 use App\Models\User;
 use Filament\Actions;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\FileUpload;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Hash;
 use Filament\Forms\Components\TextInput;
@@ -31,6 +32,14 @@ class CreateUser extends CreateRecord
             ->schema([
                 Section::make()
                     ->schema([
+                        FileUpload::make('avatar_url')
+                            ->label('Avatar')
+                            ->image()
+                            ->avatar()
+                            ->disk('public') // Explicitly use the public disk
+                            ->directory('avatars')
+                            ->visibility('public') // Ensure the file is saved with public visibility
+                            ->imageEditor(),
                         TextInput::make('name')
                             ->label(__('Username'))
                             ->required(),

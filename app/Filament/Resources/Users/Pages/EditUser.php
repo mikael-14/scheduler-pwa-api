@@ -11,10 +11,12 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
@@ -45,11 +47,22 @@ class EditUser extends EditRecord
 
     public function form(Schema $form): Schema
     {
-        return $form
+      return $form
+    ->schema([
+        Grid::make()
+            ->columns(3) // Set a 3-column grid to allow 2/3 and 1/3 split
             ->schema([
                 Section::make()
                     ->heading(__('User data'))
                     ->schema([
+                        FileUpload::make('avatar_url')
+                            ->label('Avatar')
+                            ->image()
+                            ->avatar()
+                            ->disk('public')
+                            ->directory('avatars')
+                            ->visibility('public')
+                            ->imageEditor(),
                         TextInput::make('name')
                             ->label(__('Username'))
                             ->required(),
@@ -58,13 +71,9 @@ class EditUser extends EditRecord
                             ->placeholder('email@example.com')
                             ->helperText(__('Make sure this email is valid and unique'))
                             ->required()
-                            ->unique(table: User::class, column: 'email', ignorable: fn() => $this->getRecord(), ignoreRecord: true),
+                            ->unique(table: User::class, column: 'email', ignorable: fn($record) => $record, ignoreRecord: true),
                         Select::make('locale')
-                            ->options(
-                                collect(config('app-locales.available'))
-                                    ->pluck('name', 'code')
-                                    ->toArray()
-                            )
+                            ->options(collect(config('app-locales.available'))->pluck('name', 'code')->toArray())
                             ->translateLabel()
                             ->selectablePlaceholder(false),
                         Toggle::make('status')
@@ -72,14 +81,14 @@ class EditUser extends EditRecord
                             ->inline(false)
                             ->helperText(__('Admin panel access')),
                         Select::make('role')
-                            ->options(
-                                Role::all()->pluck('name', 'id')
-                                    ->toArray()
-                            )
+                            ->options(Role::all()->pluck('name', 'id')->toArray())
                             ->multiple()
-                            ->hidden(!Filament::auth()->user()->can('ViewAny:Role'))
-                            ->dehydrated(Filament::auth()->user()->can('ViewAny:Role')),
-                    ]),
+                            ->hidden(!auth()->user()->can('ViewAny:Role'))
+                            ->dehydrated(auth()->user()->can('ViewAny:Role')),
+                    ])
+                    // Logic: If same user, take 2 columns. If different, take all 3.
+                    ->columnSpan(fn($record): int => ($record && auth()->id() === $record->id) ? 2 : 3),
+
                 Section::make()
                     ->heading(__('Change password'))
                     ->description(__('Fill this in case you want to change password'))
@@ -89,16 +98,17 @@ class EditUser extends EditRecord
                             ->password()
                             ->dehydrateStateUsing(fn($state) => Hash::make($state))
                             ->dehydrated(fn($state) => filled($state))
-                            ->same('confirm_password')
-                            ->visible(fn(): bool => Filament::auth()->user()->id == $this->record->id),
+                            ->same('confirm_password'),
                         TextInput::make('confirm_password')
                             ->translateLabel()
                             ->dehydrated(false)
-                            ->password()
-                            ->visible(fn(): bool => Filament::auth()->user()->id == $this->record->id),
+                            ->password(),
                     ])
-                    ->visible(fn(): bool => Filament::auth()->user()->id == $this->record->id)
-            ]);
+                    ->columnSpan(1) // Password takes the remaining 1 column
+                    ->visible(fn($record): bool => $record && auth()->id() === $record->id),
+            ])
+            ->columnSpanFull()
+    ]);
     }
     // protected function getRedirectUrl(): string
     // {
@@ -106,7 +116,7 @@ class EditUser extends EditRecord
     //     //for now let's refresh the page 
     //     return request()->header('Referer');
     // }
-    
+
     protected function afterSave(): void
     {
         $state = $this->form->getState();
@@ -118,7 +128,7 @@ class EditUser extends EditRecord
             $state['confirm_password'] = '';
         }
         //change role
-         if (isset($state['role'])) {
+        if (isset($state['role'])) {
             foreach ($state['role'] as $roleId) {
                 $this->record->assignRole($roleId);
             }

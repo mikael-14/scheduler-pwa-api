@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use Dom\Text;
 use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -21,6 +22,9 @@ class UserInfolist
                 TextEntry::make('email')
                     ->label('Email address'),
                 TextEntry::make('locale'),
+                ImageEntry::make('avatar_url')
+    ->imageHeight(40)
+    ->circular(),
                 IconEntry::make('status')
                     ->label('Active')
                     ->boolean(),

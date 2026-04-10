@@ -9,16 +9,18 @@ use Illuminate\Notifications\Notifiable;
 use DutchCodingCompany\FilamentSocialite\Models\Contracts\FilamentSocialiteUser as FilamentSocialiteUserContract;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Filament\Panel\Concerns\HasAvatars;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Rappasoft\LaravelAuthenticationLog\Traits\AuthenticationLoggable;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes;
+    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars;
 
     /**
      * The attributes that are mass assignable.
@@ -32,6 +34,7 @@ class User extends Authenticatable implements FilamentUser
         'status',
         'locale',
         'approved_at',
+        'avatar_url',
     ];
 
     /**
@@ -84,8 +87,13 @@ class User extends Authenticatable implements FilamentUser
         // Let's prevent impersonating other users that are super admins
         return !$this->hasRole('super_admin') && $this->status === 1 ? true : false;
     }
-      public function isAdmin(): bool
+    public function isAdmin(): bool
     {
         return $this->hasRole('super_admin') ? true : false;
+    }
+    public function getFilamentAvatarUrl(): ?string
+    {
+        // Return the full URL for the image or null if empty
+        return $this->avatar_url ? Storage::url($this->avatar_url) : null;
     }
 }
