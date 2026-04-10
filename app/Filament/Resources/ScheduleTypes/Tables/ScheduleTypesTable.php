@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ScheduleTypes\Tables;
 
 use Dom\Text;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -12,10 +13,12 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Collection;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -63,54 +66,60 @@ class ScheduleTypesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Filter::make('created_at')
-                    ->schema([
-                        DatePicker::make('created_from'),
-                        DatePicker::make('created_until'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['created_from'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                            )
-                            ->when(
-                                $data['created_until'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                            );
-                    }),
-                TernaryFilter::make('status'),
-                TernaryFilter::make('range'),
-                TernaryFilter::make('all_day'),
+                // Row 1: Quick Toggle Filters (4 Columns)
+                TernaryFilter::make('status')
+                    ->label('Status'),
+                TernaryFilter::make('range')
+                    ->label('Range'),
+                TernaryFilter::make('all_day')
+                    ->label('All Day'),
                 Filter::make('description')
                     ->schema([
                         TextInput::make('description')
-                            ->label('Description')
-                            ->placeholder('Search...')
-                            ->live()
-                            ->debounce(500),
+                            ->label('Description')->columnSpanFull()
+                    ])->query(function (Builder $query, array $data): Builder {
+                        return $query->when($data['description'], fn($q, $v) => $q->where('description', 'like', "%{$v}%"));
+                    }),
+                Filter::make('created_at')
+                    ->schema([
+                        Section::make('Record History')
+                            ->description('Filter by when this type was created')
+                            ->compact()
+                            ->columns(2)
+                            ->schema([
+                                DatePicker::make('created_from')
+                                    ->label('Created From'),
+                                DatePicker::make('created_until')
+                                    ->label('Created Until'),
+                            ]),
                     ])
+                    ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
-                        return $query->when($data['description'], function (Builder $query, $value) {
-                            return $query->where('description', 'like', "%{$value}%");
-                        });
+                        return $query
+                            ->when($data['created_from'], fn($q, $date) => $q->whereDate('created_at', '>=', $date))
+                            ->when($data['created_until'], fn($q, $date) => $q->whereDate('created_at', '<=', $date));
                     }),
             ])
+            ->filtersLayout(FiltersLayout::AboveContentCollapsible)
+            ->filtersFormColumns(4)
+            ->persistFiltersInSession()
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-                DeleteAction::make()
-                    ->before(function (DeleteAction $action) {
-                        $record = $action->getRecord();
-                        if ($record->schedules()->count() > 0) {
-                            Notification::make()
-                                ->title('Cannot delete record')
-                                ->body('This record has related schedules and cannot be deleted.')
-                                ->danger()
-                                ->send();
-                            $action->cancel();
-                        }
-                    }),
+                ActionGroup::make([
+                    DeleteAction::make()
+                        ->before(function (DeleteAction $action) {
+                            $record = $action->getRecord();
+                            if ($record->schedules()->count() > 0) {
+                                Notification::make()
+                                    ->title('Cannot delete record')
+                                    ->body('This record has related schedules and cannot be deleted.')
+                                    ->danger()
+                                    ->send();
+                                $action->cancel();
+                            }
+                        }),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
