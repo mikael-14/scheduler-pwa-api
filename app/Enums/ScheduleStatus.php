@@ -4,7 +4,7 @@ namespace App\Enums;
 
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
- 
+
 enum ScheduleStatus: string implements HasLabel, HasColor
 {
     case Pending = 'pending';

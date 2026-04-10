@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Enums\ScheduleStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -41,7 +42,8 @@ class Schedule extends Model
 		'end' => 'datetime',
 		'all_day' => 'bool',
 		'user_id' => 'int',
-		'schedule_type_id' => 'int'
+		'schedule_type_id' => 'int',
+		'status' => ScheduleStatus::class,
 	];
 
 	protected $fillable = [

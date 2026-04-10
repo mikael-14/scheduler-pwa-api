@@ -10,6 +10,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Collection;
 use Filament\Notifications\Notification;
@@ -85,14 +86,14 @@ class ScheduleTypesTable
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                DatePicker::make('created_from')
+                                DateTimePicker::make('created_from')
                                     ->label('Created From')
                                     ->native(false)
                                     ->hoursStep(1) // Intervals of incrementing hours in a time picker
                                     ->minutesStep(5) // Intervals of minute increment in a time picker
                                     ->seconds(false) // Enable seconds in a time picker
                                     ->displayFormat(config('app.date_time_format')),
-                                DatePicker::make('created_until')
+                                DateTimePicker::make('created_until')
                                     ->label('Created Until')
                                     ->native(false)
                                     ->hoursStep(1)

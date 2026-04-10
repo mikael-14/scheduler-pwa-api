@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Schedules\Tables;
 
 use App\Enums\ScheduleStatus;
+use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
+use App\Models\ScheduleType;
 use Coolsam\Flatpickr\Forms\Components\Flatpickr;
 use Dom\Text;
 use Filament\Actions\BulkActionGroup;
@@ -68,7 +70,6 @@ class SchedulesTable
                 TextColumn::make('internal_note')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('created_at')
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
