@@ -18,25 +18,27 @@ class UserInfolist
             ->components([
                 Section::make('User information')
                     ->schema([
-                TextEntry::make('name'),
-                TextEntry::make('email')
-                    ->label('Email address'),
-                TextEntry::make('locale'),
-                ImageEntry::make('avatar_url')
-    ->imageHeight(40)
-    ->circular(),
-                IconEntry::make('status')
-                    ->label('Active')
-                    ->boolean(),
-                TextEntry::make('approved_at')
-                    ->dateTime(config('app.date_time_format'))
-                    ->icon(Heroicon::CheckBadge)
-                    ->color('success')
-                    ->placeholder(__('Not approved')),
-                TextEntry::make('created_at')
-                    ->dateTime(config('app.date_time_format')),
-                TextEntry::make('updated_at')
-                    ->dateTime(config('app.date_time_format')),
+                        ImageEntry::make('avatar_url')
+                            ->imageHeight(100)
+                            ->disk('public')
+                            ->visibility('public')
+                            ->circular(),
+                        TextEntry::make('name'),
+                        TextEntry::make('email')
+                            ->label('Email address'),
+                        TextEntry::make('locale'),
+                        IconEntry::make('status')
+                            ->label('Active')
+                            ->boolean(),
+                        TextEntry::make('approved_at')
+                            ->dateTime(config('app.date_time_format'))
+                            ->icon(Heroicon::CheckBadge)
+                            ->color('success')
+                            ->placeholder(__('Not approved')),
+                        TextEntry::make('created_at')
+                            ->dateTime(config('app.date_time_format')),
+                        TextEntry::make('updated_at')
+                            ->dateTime(config('app.date_time_format')),
                     ])
                     ->columns(2)
                     ->columnSpan('full'),

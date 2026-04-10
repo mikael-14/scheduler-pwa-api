@@ -14,6 +14,8 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Utilities\Get;
 
+use function Symfony\Component\Clock\now;
+
 class ScheduleForm
 {
     public static function configure(Schema $schema): Schema
@@ -45,9 +47,15 @@ class ScheduleForm
                     ->required(),
                 Flatpickr::make('start')
                     ->allowInput()
+                    ->key(fn (Get $get) => 'start_' . $get('schedule_type_id'))
+                    ->visible(fn (Get $get) => $get('schedule_type_id') ?? false)
                     ->minDate(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->start ?? null;
+                        return $config?->start?->format(config('app.date_time_format')) ?? null;
+                    })
+                    ->maxDate(function (Get $get) {
+                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
+                        return $config?->end?->format(config('app.date_time_format')) ?? null;
                     })
                     ->time(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
@@ -67,13 +75,14 @@ class ScheduleForm
                     ->required(),
                 Flatpickr::make('end')
                     ->allowInput()
+                    ->key(fn (Get $get) => 'end_' . $get('schedule_type_id'))
                     ->visible(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
                         return $config?->range ?? false;
                     })
                     ->maxDate(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->end ?? null;
+                        return $config?->end?->format(config('app.date_time_format')) ?? null;
                     })
                     ->minDate(function (Get $get) {
                         $start = $get('start');
@@ -81,7 +90,7 @@ class ScheduleForm
                             return $start;
                         }
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->start ?? null;
+                        return $config?->start?->format(config('app.date_time_format')) ?? null;
                     })
                     ->time(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;

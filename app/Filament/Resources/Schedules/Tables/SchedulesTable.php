@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Schedules\Tables;
 
+use App\Enums\ScheduleStatus;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -29,7 +30,8 @@ class SchedulesTable
                 TextColumn::make('internal_note')
                     ->searchable(),
                 TextColumn::make('status')
-                    ->badge(),
+                    ->badge()
+                    ->color(fn (string $state): string => ScheduleStatus::from($state)->getColor()),
                 TextColumn::make('user_id')
                     ->numeric()
                     ->sortable(),

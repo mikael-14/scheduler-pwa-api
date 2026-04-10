@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Schedules\Schemas;
 
+use App\Enums\ScheduleStatus;
 use App\Models\Schedule;
 use BladeUI\Icons\Components\Icon;
 use Filament\Infolists\Components\ColorEntry;
@@ -29,10 +30,12 @@ class ScheduleInfolist
                                 return [
                                     'name' => $record->schedule_type?->name ?? '-',
                                     'color' => $record->schedule_type?->color ?? '#eee',
+                                    'label' => 'Schedule Type',
                                 ];
                             }),
                           TextEntry::make('status')
-                            ->badge(),
+                            ->badge()
+                            ->color(fn (string $state): string => ScheduleStatus::from($state)->getColor()),
                         TextEntry::make('user.name')
                             ->placeholder('-'),
                         TextEntry::make('start')
