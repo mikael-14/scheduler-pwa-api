@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Schedules\Tables;
 
 use App\Enums\ScheduleStatus;
+use Coolsam\Flatpickr\Forms\Components\Flatpickr;
+use Dom\Text;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -16,8 +18,12 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\ColorColumn;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,14 +34,17 @@ class SchedulesTable
     {
         return $table
             ->columns([
-                TextColumn::make('schedule_type.name')
-                    ->formatStateUsing(function ($record) {
-                        $color = $record->schedule_type?->color ?? 'gray';
-                        $name = $record->schedule_type?->name ?? 'N/A';
-                        return view('filament.components.colored-icon-column', compact('color', 'name'));
-                    })
-                    ->searchable()
-                    ->sortable(),
+                ColumnGroup::make('Schedule Type')
+                    ->columns([
+                        ColorColumn::make('schedule_type.color')
+                            ->label('Color'),
+                        TextColumn::make('schedule_type.name')
+                            ->label('Type')
+                            ->searchable()
+                            ->sortable(),
+                    ])
+                    ->alignLeft()
+                    ->wrapHeader(),
                 TextColumn::make('user.name')
                     ->sortable()
                     ->searchable(),
@@ -78,6 +87,7 @@ class SchedulesTable
                 SelectFilter::make('schedule_type')
                     ->relationship('schedule_type', 'name')
                     ->preload()
+                    ->searchable()
                     ->multiple(),
                 SelectFilter::make('user')
                     ->relationship('user', 'name')
@@ -91,41 +101,34 @@ class SchedulesTable
                 // Row 2: Date Ranges in a clean, spans-all-columns section
                 Filter::make('date_range')
                     ->schema([
-                        Section::make('Filter by Dates')
-                            ->description('Narrow down schedules by start or end dates')
-                            ->compact()
-                            ->columns(4) // One column for each date picker
+                        Grid::make(2) // Create a 2-column grid for the dates
                             ->schema([
-                                DatePicker::make('from_start')
-                                    ->label('Start From'),
-                                DatePicker::make('until_start')
-                                    ->label('Start Until'),
-                                DatePicker::make('from_end')
-                                    ->label('End From'),
-                                DatePicker::make('until_end')
-                                    ->label('End Until'),
-                            ]),
+                                DateTimePicker::make('from')
+                                    ->native(false)
+                                    ->hoursStep(1) // Intervals of incrementing hours in a time picker
+                                    ->minutesStep(5) // Intervals of minute increment in a time picker
+                                    ->seconds(false) // Enable seconds in a time picker
+                                    ->displayFormat(config('app.date_time_format')),
+                                DateTimePicker::make('end')
+                                    ->native(false)
+                                    ->hoursStep(1) // Intervals of incrementing hours in a time picker
+                                    ->minutesStep(5) // Intervals of minute increment in a time picker
+                                    ->seconds(false) // Enable seconds in a time picker
+                                    ->displayFormat(config('app.date_time_format')),
+                            ])
                     ])
-                    ->columnSpanFull() // Forces this to take its own row
+                    ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
-                                $data['from_start'],
+                                $data['from'],
                                 fn(Builder $query, $date): Builder => $query->whereDate('start', '>=', $date),
                             )
                             ->when(
-                                $data['until_start'],
+                                $data['end'],
                                 fn(Builder $query, $date): Builder => $query->whereDate('start', '<=', $date),
-                            )
-                            ->when(
-                                $data['from_end'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('end', '>=', $date),
-                            )
-                            ->when(
-                                $data['until_end'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('end', '<=', $date),
                             );
-                    }),
+                    })
             ])
             ->filtersLayout(FiltersLayout::AboveContentCollapsible)
             ->persistFiltersInSession()

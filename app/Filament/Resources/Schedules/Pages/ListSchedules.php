@@ -22,24 +22,22 @@ class ListSchedules extends ListRecords
 
     public function getTabs(): array
     {
-        $tabs = [];
+        return [
+            'upcoming' => Tab::make('Upcoming')
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('start', '>=', now()->startOfDay()))
+                ->icon('heroicon-m-calendar-days'),
 
-        // 1. Add the "All" tab first
-        $tabs['all'] = Tab::make(__('All'));
+            'past' => Tab::make('Past')
+                ->modifyQueryUsing(fn(Builder $query) => $query->where('start', '<', now()->startOfDay()))
+                ->icon('heroicon-m-clock'),
 
-        // 2. Loop through all Enum cases to generate status tabs
-        foreach (ScheduleStatus::cases() as $status) {
-            $tabs[$status->value] = Tab::make($status->getLabel())
-                ->modifyQueryUsing(fn(Builder $query) => $query->where('status', $status->value))
-                ->badge(fn() => $this->getModel()::where('status', $status->value)->count())
-                ->badgeColor($status->getColor());
-        }
+            'all' => Tab::make('All History'),
+        ];
+    }
 
-        // 3. Optional: Add a custom "Mine" tab at the end
-        $tabs['mine'] = Tab::make(__('Mine'))
-            ->modifyQueryUsing(fn(Builder $query) => $query->where('user_id', auth()->id()))
-            ->icon('heroicon-m-user');
-
-        return $tabs;
+    // Add this to make 'Upcoming' the default when the page opens
+    public function getDefaultActiveTab(): string | int | null
+    {
+        return 'upcoming';
     }
 }

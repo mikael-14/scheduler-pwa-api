@@ -13,6 +13,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Collection;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Tables\Columns\ColorColumn;
@@ -33,9 +34,9 @@ class ScheduleTypesTable
     {
         return $table
             ->columns([
+                ColorColumn::make('color'),
                 TextColumn::make('name')
                     ->searchable(),
-                ColorColumn::make('color'),
                 TextColumn::make('color_code')->state(function (Model $record) {
                     return $record->color ?? 'N/A';
                 })->toggleable(isToggledHiddenByDefault: true),
@@ -82,15 +83,22 @@ class ScheduleTypesTable
                     }),
                 Filter::make('created_at')
                     ->schema([
-                        Section::make('Record History')
-                            ->description('Filter by when this type was created')
-                            ->compact()
-                            ->columns(2)
+                        Grid::make(2)
                             ->schema([
                                 DatePicker::make('created_from')
-                                    ->label('Created From'),
+                                    ->label('Created From')
+                                    ->native(false)
+                                    ->hoursStep(1) // Intervals of incrementing hours in a time picker
+                                    ->minutesStep(5) // Intervals of minute increment in a time picker
+                                    ->seconds(false) // Enable seconds in a time picker
+                                    ->displayFormat(config('app.date_time_format')),
                                 DatePicker::make('created_until')
-                                    ->label('Created Until'),
+                                    ->label('Created Until')
+                                    ->native(false)
+                                    ->hoursStep(1)
+                                    ->minutesStep(5)
+                                    ->seconds(false)
+                                    ->displayFormat(config('app.date_time_format')),
                             ]),
                     ])
                     ->columnSpanFull()
