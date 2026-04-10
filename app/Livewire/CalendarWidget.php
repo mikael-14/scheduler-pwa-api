@@ -67,6 +67,7 @@ class CalendarWidget extends FullCalendarWidget
                 'meridiem' => false,
                 'hour12' => false, // Set to false for 24-hour format
             ],
+           
         ];
     }
 

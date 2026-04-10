@@ -4,8 +4,9 @@ namespace App\Enums;
 
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
+use Filament\Support\Contracts\HasDescription;
 
-enum ScheduleStatus: string implements HasLabel, HasColor
+enum ScheduleStatus: string implements HasLabel, HasColor, HasDescription
 {
     case Pending = 'pending';
     case Approved = 'approved';
@@ -38,5 +39,15 @@ enum ScheduleStatus: string implements HasLabel, HasColor
             default => 'info'
         };
     }
-
+    public function getDescription(): string | null
+    {
+        return match ($this) {
+            self::Pending => __('pet/schedule.description.pending'),
+            self::Approved => __('pet/schedule.description.approved'),
+            self::Rejected => __('pet/schedule.description.rejected'),
+            self::Cancelled => __('pet/schedule.description.cancelled'),
+            self::Completed => __('pet/schedule.description.completed'),
+            self::NotShown => __('pet/schedule.description.not_shown'),
+        };
+    }
 }
