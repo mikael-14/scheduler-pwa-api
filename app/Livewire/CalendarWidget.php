@@ -7,6 +7,7 @@ use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Schedule;
 use App\Models\ScheduleType;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -16,6 +17,8 @@ use Saade\FilamentFullCalendar\Actions\EditAction;
 class CalendarWidget extends FullCalendarWidget
 {
     public Model|int|string|null $record = null;
+
+    protected int | string | array $columnSpan = 'full'; // can be set to 'full' or a specific number of columns;
 
     public function fetchEvents(array $fetchInfo): array
     {
@@ -67,7 +70,7 @@ class CalendarWidget extends FullCalendarWidget
                 'meridiem' => false,
                 'hour12' => false, // Set to false for 24-hour format
             ],
-           
+
         ];
     }
 

@@ -63,8 +63,7 @@ class SchedulesTable
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
                 TextColumn::make('status')
-                    ->badge()
-                    ->color(fn(string $state): string => ScheduleStatus::from($state)->getColor()),
+                    ->badge(),
                 TextColumn::make('description')
                     ->searchable(),
                 TextColumn::make('internal_note')
