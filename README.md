@@ -1,61 +1,187 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+﻿<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# Scheduler API
 
-## About Laravel
+A Laravel-based scheduler API project with a Filament admin interface. Built with Laravel 12, Filament 5, Tailwind CSS, Vite, and Docker support.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Key technologies
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- PHP 8.2+
+- Laravel 12
+- Filament 5
+- Tailwind CSS
+- Vite
+- MySQL 8.0
+- Docker / Docker Compose
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Main packages and plugins
 
-## Learning Laravel
+- Laravel: https://laravel.com/
+- Filament: https://filamentphp.com/
+- Filament Shield: https://github.com/bezhansalleh/filament-shield
+- Filament Language Switcher: https://github.com/craft-forge/filament-language-switcher
+- Filament Socialite: https://github.com/dutchcodingcompany/filament-socialite
+- Filament FullCalendar: https://github.com/saade/filament-fullcalendar
+- Filament Impersonate: https://github.com/xlite-dev/filament-impersonate
+- Laravel Sanctum: https://laravel.com/docs/sanctum
+- Spatie Laravel Permission: https://spatie.be/docs/laravel-permission
+- Laravel Auditing: https://github.com/owen-it/laravel-auditing
+- MaxMind GeoIP2: https://github.com/maxmind/GeoIP2-php
+- Torann GeoIP: https://github.com/Torann/laravel-geoip
+- Zvizvi User Fields: https://github.com/zvizvi/user-fields
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Prerequisites
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- PHP 8.2 or later
+- Composer
+- Node.js and npm
+- Docker & Docker Compose (optional but recommended)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Local setup (native PHP)
 
-## Laravel Sponsors
+1. Clone the repository
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+git clone <repository-url> scheduler-api
+cd scheduler-api
+```
 
-### Premium Partners
+2. Install PHP dependencies
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+composer install
+```
 
-## Contributing
+3. Install frontend dependencies
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+npm install
+```
 
-## Code of Conduct
+4. Copy environment file and generate application key
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Security Vulnerabilities
+5. Configure database settings in `.env`
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=your_database
+DB_USERNAME=your_user
+DB_PASSWORD=your_password
+```
+
+6. Run database migrations
+
+```bash
+php artisan migrate
+```
+
+## Docker setup
+
+This project includes `docker-compose.yaml` for a local development stack.
+
+1. Create or update `.env` with Docker database credentials
+
+```env
+DB_DATABASE=laravel
+DB_USERNAME=laravel
+DB_PASSWORD=secret
+DB_PASSWORD_ROOT=root_secret
+```
+
+2. Start Docker services
+
+```bash
+docker compose up -d
+```
+
+3. SSH to the container 
+```bash
+docker exec -it -u 0 api-app bash
+```
+
+4. Install dependencies
+
+```bash
+composer install
+npm install
+```
+
+5. Run migrations
+
+```bash
+php artisan migrate
+```
+
+6. Access the services
+
+- App: http://localhost:9000
+- phpMyAdmin: http://localhost:9081
+
+## Filament Shield - Roles & Permissions
+
+Filament Shield integrates role-based access control (RBAC) with Filament using Spatie Laravel Permission.
+
+### Setup
+
+1. Generate permissions and roles for your models:
+
+```bash
+php artisan shield:install
+```
+
+This command will:
+- Create a `permissions` table and `roles` table
+- Auto-generate permissions for all Filament resources
+- Generate default roles (e.g., Super Admin)
+
+2. Create a super admin user (if needed):
+
+```bash
+php artisan shield:create-super-admin
+```
+
+### Usage
+
+- Access role/permission management in the Filament admin panel
+- Assign roles to users via the Users resource
+- Define resource policies in `app/Policies/` to control access
+- Use `@can('permission-name')` in blade templates to conditionally render content
+
+For detailed documentation, visit: https://github.com/bezhansalleh/filament-shield
+
+## Useful commands
+
+- `composer install` — install PHP dependencies
+- `npm install` — install JavaScript dependencies
+- `npm run dev` — start Vite development server
+- `npm run build` — build production assets
+- `php artisan migrate` — run database migrations
+- `php artisan test` — run PHP tests
+- `php artisan config:clear` — clear cached configuration
+
+## Testing
+
+Run the Laravel test suite:
+
+```bash
+php artisan test
+```
+
+## Notes
+
+- Admin resources and pages are organized under `app/Filament`.
+- Role and permission management is implemented with Spatie Laravel Permission.
+- API authentication uses Laravel Sanctum.
+- Scheduling views use Filament FullCalendar.
+- Xdebug is mounted in Docker at `docker/php/xdebug.ini` and can be enabled via `XDEBUG_MODE`.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is licensed under the MIT License.
