@@ -1,5 +1,8 @@
 <x-filament-widgets::widget>
     <x-filament::section>
+        <div class="mb-6">
+            {{ $this->filterForm }}
+        </div>
         <x-slot name="heading">
             Legend
         </x-slot>

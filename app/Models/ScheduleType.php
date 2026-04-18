@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon|null $start
  * @property Carbon|null $end
  * @property string|null $description
+ * @property Carbon|null $min_time
+ * @property Carbon|null $max_time
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * 
@@ -38,7 +40,9 @@ class ScheduleType extends Model
 		'range' => 'bool',
 		'all_day' => 'bool',
 		'start' => 'datetime',
-		'end' => 'datetime'
+		'end' => 'datetime',
+		'min_time' => 'datetime',
+		'max_time' => 'datetime'
 	];
 
 	protected $fillable = [
@@ -49,7 +53,9 @@ class ScheduleType extends Model
 		'all_day',
 		'start',
 		'end',
-		'description'
+		'description',
+		'min_time',
+		'max_time'
 	];
 
 	public function schedules()

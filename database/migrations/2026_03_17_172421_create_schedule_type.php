@@ -21,6 +21,8 @@ return new class extends Migration
             $table->boolean('all_day')->default(false);
             $table->dateTime('start')->nullable();
             $table->dateTime('end')->nullable();
+            $table->time('min_time')->nullable();
+            $table->time('max_time')->nullable();
             $table->string('description')->nullable();
             $table->timestamps();
         });

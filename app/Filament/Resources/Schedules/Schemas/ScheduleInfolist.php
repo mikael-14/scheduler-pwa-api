@@ -34,8 +34,7 @@ class ScheduleInfolist
                                 ];
                             }),
                           TextEntry::make('status')
-                            ->badge()
-                            ->color(fn (string $state): string => ScheduleStatus::from($state)->getColor()),
+                            ->badge(),
                         TextEntry::make('user.name')
                             ->placeholder('-'),
                         TextEntry::make('start')

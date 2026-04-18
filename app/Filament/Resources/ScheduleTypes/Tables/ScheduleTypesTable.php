@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\ScheduleTypes\Tables;
 
+use App\Enums\ScheduleStatus;
+use App\Models\Schedule;
 use Dom\Text;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -41,7 +43,10 @@ class ScheduleTypesTable
                 TextColumn::make('color_code')->state(function (Model $record) {
                     return $record->color ?? 'N/A';
                 })->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('schedules_count')->counts('schedules'),
+                TextColumn::make('schedules_count')
+                    ->counts([
+                        'schedules' => fn(Builder $query) => $query->where('status', ScheduleStatus::Pending),
+                    ]),
                 IconColumn::make('status')
                     ->label('Status')
                     ->sortable()
@@ -50,6 +55,14 @@ class ScheduleTypesTable
                     ->limit(50)
                     ->wrap()
                     ->toggleable(),
+                TextColumn::make('start')
+                    ->dateTime(config('app.date_time_format'))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('end')
+                    ->dateTime(config('app.date_time_format'))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('range')
                     ->label('Range')
                     ->sortable()
@@ -61,7 +74,7 @@ class ScheduleTypesTable
                 TextColumn::make('created_at')
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
@@ -82,32 +95,25 @@ class ScheduleTypesTable
                     ])->query(function (Builder $query, array $data): Builder {
                         return $query->when($data['description'], fn($q, $v) => $q->where('description', 'like', "%{$v}%"));
                     }),
-                Filter::make('created_at')
+                Filter::make('range_date')
                     ->schema([
                         Grid::make(2)
                             ->schema([
-                                DateTimePicker::make('created_from')
-                                    ->label('Created From')
+                                DatePicker::make('start')
+                                    ->label('Start')
                                     ->native(false)
-                                    ->hoursStep(1) // Intervals of incrementing hours in a time picker
-                                    ->minutesStep(5) // Intervals of minute increment in a time picker
-                                    ->seconds(false) // Enable seconds in a time picker
-                                    ->displayFormat(config('app.date_time_format')),
-                                DateTimePicker::make('created_until')
-                                    ->label('Created Until')
+                                    ->displayFormat(config('app.date_format')),
+                                DatePicker::make('end')
+                                    ->label('End')
                                     ->native(false)
-                                    ->hoursStep(1)
-                                    ->minutesStep(5)
-                                    ->seconds(false)
-                                    ->displayFormat(config('app.date_time_format')),
+                                    ->displayFormat(config('app.date_format')),
                             ]),
                     ])
-                    ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
-                            ->when($data['created_from'], fn($q, $date) => $q->whereDate('created_at', '>=', $date))
-                            ->when($data['created_until'], fn($q, $date) => $q->whereDate('created_at', '<=', $date));
-                    }),
+                            ->when($data['start'], fn($q, $date) => $q->whereDate('start', '>=', $date))
+                            ->when($data['end'], fn($q, $date) => $q->whereDate('end', '<=', $date));
+                    })->columnSpanFull(),
             ])
             ->filtersLayout(FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(4)

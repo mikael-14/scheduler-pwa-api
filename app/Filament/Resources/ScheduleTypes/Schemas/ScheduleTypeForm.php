@@ -45,9 +45,8 @@ class ScheduleTypeForm
                             ->minuteIncrement(5) // Intervals of minute increment in a time picker
                             ->seconds(false) // Enable seconds in a time picker
                             ->format(config('app.date_time_format'))
-                             ->altFormat(config('app.date_time_format'))
-                            ->time24hr(true)
-                            ->required(),
+                            ->altFormat(config('app.date_time_format'))
+                            ->time24hr(true),
                         Flatpickr::make('end')
                             ->allowInput()
                             ->placeholder('End Date')
@@ -56,8 +55,32 @@ class ScheduleTypeForm
                             ->minuteIncrement(5)
                             ->seconds(false)
                             ->format(config('app.date_time_format'))
-                             ->altFormat(config('app.date_time_format'))
+                            ->altFormat(config('app.date_time_format'))
                             ->time24hr(true),
+                        Flatpickr::make('min_time')
+                            ->allowInput()
+                            ->placeholder('Min Time')
+                            ->helperText('Optional: Set the minimum hour for schedule each day.')
+                            ->hourIncrement(1)
+                            ->minuteIncrement(5)
+                            ->seconds(false)
+                            ->format(config('app.time_format'))
+                            ->altFormat(config('app.time_format'))
+                            ->time24hr(true)
+                            ->time(true)
+                            ->timePicker(),
+                        Flatpickr::make('max_time')
+                            ->allowInput()
+                            ->placeholder('Max Time')
+                            ->helperText('Optional: Set the maximum hour for schedule each day.')
+                            ->hourIncrement(1)
+                            ->minuteIncrement(5)
+                            ->seconds(false)
+                            ->format(config('app.time_format'))
+                            ->altFormat(config('app.time_format'))
+                            ->time24hr(true)
+                            ->time(true)
+                            ->timePicker(),
                         Textarea::make('description')
                             ->placeholder('Description'),
                         Flex::make([
