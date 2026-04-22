@@ -23,6 +23,25 @@ class CalendarWidget extends FullCalendarWidget
     public array $filterStatus = [];
     public array $filterUserIds = [];
 
+    public function getModel(): string
+    {
+        return Schedule::class;
+    }
+
+    protected function headerActions(): array
+    {
+        return [
+            \Saade\FilamentFullCalendar\Actions\CreateAction::make()
+                ->model(Schedule::class) // Explicitly set the model here
+                ->mountUsing(function (Schema $form) {
+                    // Pre-fill fields if needed, e.g., the schedule type
+                    return $form->fill([
+                        'schedule_type_id' => $this->record->id,
+                    ]);
+                }),
+        ];
+    }
+    
     #[On('filterCalendar')]
     public function updateFilter($status = [], $userIds = []): void
     {
@@ -32,6 +51,7 @@ class CalendarWidget extends FullCalendarWidget
         // This tells the frontend JS: "Go call the fetchEvents method again"
         $this->dispatch('filament-fullcalendar--refresh');
     }
+
     public function fetchEvents(array $fetchInfo): array
     {
         return Schedule::query()

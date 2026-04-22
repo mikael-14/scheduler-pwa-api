@@ -33,11 +33,11 @@ class ScheduleTypeInfolist
                                 IconEntry::make('range')
                                     ->label('Range')
                                     ->boolean()
-                                    ->belowLabel('Indicates if this schedule type has to have specific times slots.'),
+                                    ->tooltip('Indicates if this schedule type has to have specific times slots.'),
                                 IconEntry::make('all_day')
                                     ->label('All Day')
                                     ->boolean()
-                                    ->belowLabel('Indicates if this schedule type is can have an all-day event.'),
+                                    ->tooltip('Indicates if this schedule type is can have an all-day event.'),
                             ]),
                         // Dates
                         TextEntry::make('start')
