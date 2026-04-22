@@ -1,13 +1,12 @@
 <x-filament-widgets::widget>
     <x-filament::section>
-        <div class="mb-6">
-            {{ $this->filterForm }}
-        </div>
         <x-slot name="heading">
             Legend
         </x-slot>
-
-        <div style="display: flex; flex-wrap: wrap; align-items: center; row-gap: 8px;">
+        <form wire:submit.prevent="">
+            {{ $this->form }}
+        </form>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; row-gap: 8px;margin-top: 16px;">
             @foreach($items as $item)
                 <div style="display: flex; align-items: center; border-left: 1px solid rgba(156, 163, 175, 0.3); padding: 0 16px; margin-left: -1px;" 
                      class="first:border-l-0 first:pl-0">

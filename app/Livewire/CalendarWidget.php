@@ -6,23 +6,38 @@ use App\Enums\ScheduleStatus;
 use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Schedule;
-use App\Models\ScheduleType;
+use Livewire\Attributes\On;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Saade\FilamentFullCalendar\Actions\EditAction;
+use Livewire\Attributes\Url;
 
-class CalendarWidget extends FullCalendarWidget 
+class CalendarWidget extends FullCalendarWidget
 {
 
     public Model|int|string|null $record = null;
 
     protected int | string | array $columnSpan = 'full'; // can be set to 'full' or a specific number of columns;
 
+    public array $filterStatus = [];
+    public array $filterUserIds = [];
+
+    #[On('filterCalendar')]
+    public function updateFilter($status = [], $userIds = []): void
+    {
+        $this->filterStatus = $status;
+        $this->filterUserIds = $userIds;
+
+        // This tells the frontend JS: "Go call the fetchEvents method again"
+        $this->dispatch('filament-fullcalendar--refresh');
+    }
     public function fetchEvents(array $fetchInfo): array
     {
         return Schedule::query()
             ->where('schedule_type_id', $this->record->id)
+            ->when(!empty($this->filterStatus), fn($query) => $query->whereIn('status', $this->filterStatus))
+            ->when(!empty($this->filterUserIds), fn($query) => $query->whereIn('user_id', $this->filterUserIds))
             ->whereBetween('start', [
                 $fetchInfo['start'],
                 $fetchInfo['end'],
@@ -72,7 +87,7 @@ class CalendarWidget extends FullCalendarWidget
                 'hour12' => false, // Set to false for 24-hour format
             ],
         ];
-        if ($this->record->min_time ) {
+        if ($this->record->min_time) {
             $allConfig['slotMinTime'] = $this->record->min_time->format('H:i:s');
         }
         if ($this->record->max_time) {
