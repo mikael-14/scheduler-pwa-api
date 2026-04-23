@@ -17,6 +17,7 @@ class ScheduleTypeInfolist
             ->components([
                 Section::make('Details')
                     ->collapsible()
+                    ->collapsed(true)
                     ->schema([
                         Grid::make(3)
                             ->schema([

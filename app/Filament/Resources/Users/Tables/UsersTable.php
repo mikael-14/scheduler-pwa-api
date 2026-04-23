@@ -10,6 +10,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Table;
 use App\Filament\Actions\CustomImpersonateAction;
+use App\Models\User;
 use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
@@ -20,6 +21,7 @@ use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Zvizvi\UserFields\Components\UserColumn;
 
 class UsersTable
 {
@@ -27,9 +29,9 @@ class UsersTable
     {
         return $table
             ->columns([
-                TextColumn::make('name')
-                    ->label('Username')
-                    ->translateLabel()
+                UserColumn::make('username')
+                    ->label('User')
+                    ->state(fn(User $record) => $record)
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('Email address')

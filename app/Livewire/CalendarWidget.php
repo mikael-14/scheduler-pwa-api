@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use App\Enums\ScheduleStatus;
 use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Schedule;
@@ -11,7 +10,6 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Saade\FilamentFullCalendar\Actions\EditAction;
-use Livewire\Attributes\Url;
 
 class CalendarWidget extends FullCalendarWidget
 {
@@ -41,7 +39,7 @@ class CalendarWidget extends FullCalendarWidget
                 }),
         ];
     }
-    
+
     #[On('filterCalendar')]
     public function updateFilter($status = [], $userIds = []): void
     {

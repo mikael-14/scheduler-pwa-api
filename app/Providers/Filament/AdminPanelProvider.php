@@ -12,7 +12,6 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -31,6 +30,8 @@ use Illuminate\Support\Facades\Auth;
 use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
 use App\Http\Middleware\CheckPendingApproval;
 use App\Filament\Pages\PendingApproval;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -113,6 +114,7 @@ class AdminPanelProvider extends PanelProvider
                                     ?? $oauthUser->getNickname()
                                     ?? 'User',
                                 'email' => $oauthUser->getEmail(),
+                                'avatar' => $this->downloadAndStoreAvatar($oauthUser->getAvatar()),
                                 'locale' => app()->getLocale(),
                                 'password' => null,
                             ]);
@@ -144,5 +146,15 @@ class AdminPanelProvider extends PanelProvider
                     ]);
                 }
             });
+    }
+    private function downloadAndStoreAvatar(string $avatarUrl): string|null
+    {
+        if (empty($avatarUrl)) {
+            return null;
+        }
+        $response = Http::get($avatarUrl);
+        $filename = 'avatars/' . uniqid() . '.jpg';
+        Storage::disk('public')->put($filename, $response->body());
+        return $filename;
     }
 }
