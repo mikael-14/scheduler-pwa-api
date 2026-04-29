@@ -13,6 +13,7 @@ use Coolsam\Flatpickr\Forms\Components\Flatpickr;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Utilities\Get;
+use Zvizvi\UserFields\Components\UserSelect;
 
 use function Symfony\Component\Clock\now;
 
@@ -40,15 +41,15 @@ class ScheduleForm
                     ->native(false)
                     ->preload(true)
                     ->required(),
-                Select::make('user_id')
-                    ->options(User::where('status', true)->pluck('name', 'id'))
+                UserSelect::make('user_id')
+                    ->label('Select User')
+                    ->relationship('user', 'name')
                     ->searchable()
-                    ->preload(true)
-                    ->required(),
+                    ->preload(true),
                 Flatpickr::make('start')
                     ->allowInput()
-                    ->key(fn (Get $get) => 'start_' . $get('schedule_type_id'))
-                    ->visible(fn (Get $get) => $get('schedule_type_id') ?? false)
+                    ->key(fn(Get $get) => 'start_' . $get('schedule_type_id'))
+                    ->visible(fn(Get $get) => $get('schedule_type_id') ?? false)
                     ->minDate(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
                         return $config?->start?->format(config('app.date_time_format')) ?? null;
@@ -75,7 +76,7 @@ class ScheduleForm
                     ->required(),
                 Flatpickr::make('end')
                     ->allowInput()
-                    ->key(fn (Get $get) => 'end_' . $get('schedule_type_id'))
+                    ->key(fn(Get $get) => 'end_' . $get('schedule_type_id'))
                     ->visible(function (Get $get) {
                         $config = ScheduleType::find($get('schedule_type_id')) ?? null;
                         return $config?->range ?? false;

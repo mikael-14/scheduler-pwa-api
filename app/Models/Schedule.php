@@ -10,6 +10,7 @@ use App\Enums\ScheduleStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Class Schedule
@@ -32,9 +33,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * @package App\Models
  */
-class Schedule extends Model
+class Schedule extends Model implements Auditable
 {
 	use SoftDeletes;
+	use \OwenIt\Auditing\Auditable;
 	protected $table = 'schedules';
 
 	protected $casts = [

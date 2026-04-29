@@ -32,6 +32,7 @@ use App\Http\Middleware\CheckPendingApproval;
 use App\Filament\Pages\PendingApproval;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Tapp\FilamentAuditing\FilamentAuditingPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -75,6 +76,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 FilamentShieldPlugin::make(),
+                FilamentAuditingPlugin::make(),
                 FilamentLanguageSwitcherPlugin::make()
                     ->locales(config('app-locales.available'))
                     ->renderHook(PanelsRenderHook::USER_MENU_BEFORE)

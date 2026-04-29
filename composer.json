@@ -19,6 +19,7 @@
         "owen-it/laravel-auditing": "^14.0",
         "saade/filament-fullcalendar": "^4.0@beta",
         "spatie/laravel-permission": "^6.24",
+        "tapp/filament-auditing": "4.0.9",
         "tapp/filament-authentication-log": "^5.0",
         "torann/geoip": "^3.0",
         "xlite-dev/filament-impersonate": "^3.0",
