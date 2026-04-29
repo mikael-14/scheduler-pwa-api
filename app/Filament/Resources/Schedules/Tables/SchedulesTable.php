@@ -29,6 +29,7 @@ use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Zvizvi\UserFields\Components\UserSelectFilter;
 
 class SchedulesTable
 {
@@ -83,25 +84,15 @@ class SchedulesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // Row 1: Main Status & Category Selectors
                 SelectFilter::make('schedule_type')
                     ->relationship('schedule_type', 'name')
                     ->preload()
                     ->searchable()
-                    ->multiple(),
-                SelectFilter::make('user')
-                    ->relationship('user', 'name')
-                    ->searchable()
-                    ->preload(),
-                SelectFilter::make('status')
-                    ->options(ScheduleStatus::class),
-                TernaryFilter::make('all_day')
-                    ->label('All day event?'),
-                TrashedFilter::make(),
-                // Row 2: Date Ranges in a clean, spans-all-columns section
+                    ->multiple()
+                    ->columnSpan(2),
                 Filter::make('date_range')
                     ->schema([
-                        Grid::make(2) // Create a 2-column grid for the dates
+                        Grid::make(2)
                             ->schema([
                                 DateTimePicker::make('from')
                                     ->native(false)
@@ -115,9 +106,8 @@ class SchedulesTable
                                     ->minutesStep(5) // Intervals of minute increment in a time picker
                                     ->seconds(false) // Enable seconds in a time picker
                                     ->displayFormat(config('app.date_time_format')),
-                            ])
+                            ]),
                     ])
-                    ->columnSpanFull()
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
@@ -129,6 +119,18 @@ class SchedulesTable
                                 fn(Builder $query, $date): Builder => $query->whereDate('start', '<=', $date),
                             );
                     })
+                    ->columnSpan(2),
+                SelectFilter::make('status')
+                    ->options(ScheduleStatus::class),
+                UserSelectFilter::make('assigned_to')
+                    ->relationship('user', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->multiple()
+                    ->columnSpan(3),
+                TernaryFilter::make('all_day')
+                    ->label('All day event?'),
+                TrashedFilter::make(),
             ])
             ->filtersLayout(FiltersLayout::AboveContentCollapsible)
             ->persistFiltersInSession()
