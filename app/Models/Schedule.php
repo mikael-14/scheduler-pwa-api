@@ -35,8 +35,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  */
 class Schedule extends Model implements Auditable
 {
-	use SoftDeletes;
-	use \OwenIt\Auditing\Auditable;
+	use SoftDeletes, \OwenIt\Auditing\Auditable;
 	protected $table = 'schedules';
 
 	protected $casts = [

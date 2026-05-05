@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Class ModelHasRole
@@ -15,9 +16,12 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @package App\Models
  */
-class ModelHasRole extends Model
+class ModelHasRole extends Model implements Auditable
 {
+	use \OwenIt\Auditing\Auditable;
+
 	protected $table = 'model_has_roles';
+	
 	public $incrementing = false;
 	public $timestamps = false;
 

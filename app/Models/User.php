@@ -14,11 +14,12 @@ use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Filament\Models\Contracts\HasAvatar;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class User extends Authenticatable implements FilamentUser, HasAvatar
+class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars;
+    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars, \OwenIt\Auditing\Auditable;
 
     /**
      * The attributes that are mass assignable.

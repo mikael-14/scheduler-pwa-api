@@ -9,7 +9,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-
+use OwenIt\Auditing\Contracts\Auditable;
 /**
  * Class ScheduleType
  * 
@@ -31,8 +31,10 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @package App\Models
  */
-class ScheduleType extends Model
+class ScheduleType extends Model implements Auditable
 {
+	use \OwenIt\Auditing\Auditable;
+
 	protected $table = 'schedule_types';
 
 	protected $casts = [
