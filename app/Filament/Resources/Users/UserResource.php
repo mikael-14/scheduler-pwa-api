@@ -20,12 +20,16 @@ use Filament\Facades\Filament;
 use Filament\Support\Enums\Alignment;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
+use UnitEnum;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Filament Shield';
+
 
     protected static ?string $recordTitleAttribute = 'name';
 

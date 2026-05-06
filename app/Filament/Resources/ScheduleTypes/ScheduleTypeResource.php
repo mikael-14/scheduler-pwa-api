@@ -15,12 +15,15 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class ScheduleTypeResource extends Resource
 {
     protected static ?string $model = ScheduleType::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::Cog;
+    
+    protected static string|UnitEnum|null $navigationGroup = 'Scheduler';
 
     protected static ?string $recordTitleAttribute = 'name';
 
