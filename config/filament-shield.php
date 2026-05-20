@@ -185,6 +185,11 @@ return [
                 'viewOwned',
                 'impersonate',
             ],
+            App\Filament\Resources\Schedules\ScheduleResource::class => [
+                'editOwned',
+                'deleteOwned',
+                'editPast',
+            ],
         ],
         'exclude' => [
             Tapp\FilamentAuthenticationLog\Resources\AuthenticationLogResource::class,
@@ -228,6 +233,7 @@ return [
         'exclude' => [
             \Filament\Widgets\AccountWidget::class,
             \Filament\Widgets\FilamentInfoWidget::class,
+            \App\Filament\Widgets\UserWelcomeWidget::class,
         ],
     ],
 

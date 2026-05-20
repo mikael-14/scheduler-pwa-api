@@ -74,4 +74,15 @@ class UserPolicy
     {
         return $authUser->can('Reorder:User');
     }
+
+    public function viewOwned(AuthUser $authUser): bool
+    {
+        return $authUser->can('ViewOwned:User');
+    }
+
+    public function impersonate(AuthUser $authUser): bool
+    {
+        return $authUser->can('Impersonate:User');
+    }
+
 }
