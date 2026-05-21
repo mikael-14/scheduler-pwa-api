@@ -29,6 +29,7 @@ use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Zvizvi\UserFields\Components\UserColumn;
 use Zvizvi\UserFields\Components\UserSelectFilter;
 
 class SchedulesTable
@@ -48,7 +49,8 @@ class SchedulesTable
                     ])
                     ->alignLeft()
                     ->wrapHeader(),
-                TextColumn::make('user.name')
+                UserColumn::make('username')
+                ->state(fn($record) => $record->user)
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('start')

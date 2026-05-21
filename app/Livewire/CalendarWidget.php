@@ -8,6 +8,7 @@ use App\Models\Schedule;
 use Livewire\Attributes\On;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Model;
 use Saade\FilamentFullCalendar\Actions\EditAction;
 
@@ -62,18 +63,25 @@ class CalendarWidget extends FullCalendarWidget
             ])
             ->get()
             ->map(function ($event) {
-                // 1. Get the color key from the Enum (e.g., 'warning')
                 $colorKey = $event->status->getColor();
-                // 2. Wrap it in the CSS variable syntax
                 $backgroundColor = "var(--{$colorKey}-600)";
+
+                $hasComment = !empty($event->description);
+
+                $title = ($event->all_day ? '⌛ ' : '') . $event->user->name;
+                if ($hasComment) {
+                    $title = $title . ' 💬';
+                }
+
                 return [
                     'id'    => $event->id,
-                    'title' => $event->user->name . ($event->all_day ? ' (All Day)' : ''),
+                    'title' => $title,
                     'start' => $event->start,
                     'end'   => $event->end,
                     'allDay' => $event->all_day,
                     'backgroundColor' => $backgroundColor,
                     'borderColor'     => $backgroundColor,
+                    'description' => $event->description,
                 ];
             })
             ->toArray();
@@ -105,6 +113,7 @@ class CalendarWidget extends FullCalendarWidget
                 'hour12' => false, // Set to false for 24-hour format
             ],
         ];
+
         if ($this->record->min_time) {
             $allConfig['slotMinTime'] = $this->record->min_time->format('H:i:s');
         }
@@ -113,7 +122,20 @@ class CalendarWidget extends FullCalendarWidget
         }
         return $allConfig;
     }
+    public function eventDidMount(): string
+    {
+        return <<<JS
+        function({ event, timeText, isStart, isEnd, isMirror, isPast, isFuture, isToday, el, view }){
+              const description = event.extendedProps.description;
 
+            if (description) {
+                el.setAttribute("x-tooltip", "tooltip");
+                // Safely handle quotes and newlines by using JSON.stringify
+                el.setAttribute("x-data", "{ tooltip: " + JSON.stringify(description) + " }");
+            }
+        }
+    JS;
+    }
     protected function modalActions(): array
     {
         return [

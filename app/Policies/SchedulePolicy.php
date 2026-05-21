@@ -67,4 +67,19 @@ class SchedulePolicy
         return $authUser->can('Reorder:Schedule');
     }
 
+    public function editOwned(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return $authUser->can('EditOwned:Schedule');
+    }
+
+    public function deleteOwned(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return $authUser->can('DeleteOwned:Schedule');
+    }
+
+    public function editPast(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return $authUser->can('EditPast:Schedule');
+    }
+
 }
