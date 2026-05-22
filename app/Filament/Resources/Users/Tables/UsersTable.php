@@ -36,13 +36,17 @@ class UsersTable
                 TextColumn::make('email')
                     ->label('Email address')
                     ->searchable(),
+                TextColumn::make('roles.name')
+                    ->label('Roles')
+                    ->badge()
+                    ->color('primary'),
                 IconColumn::make('status')
                     ->label('Active')
                     ->sortable()
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('approved_at')
-                    ->dateTime()
+                    ->dateTime(config('app.date_time_format'))
                     ->placeholder('Not approved')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -50,11 +54,11 @@ class UsersTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
