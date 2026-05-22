@@ -14,57 +14,57 @@ class ScheduleTypePolicy
     
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:ScheduleType');
+        return $authUser->can('view_any_schedule_type');
     }
 
     public function view(AuthUser $authUser, ScheduleType $scheduleType): bool
     {
-        return $authUser->can('View:ScheduleType');
+        return $authUser->can('view_schedule_type');
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:ScheduleType');
+        return $authUser->can('create_schedule_type');
     }
 
     public function update(AuthUser $authUser, ScheduleType $scheduleType): bool
     {
-        return $authUser->can('Update:ScheduleType');
+        return $authUser->can('update_schedule_type');
     }
 
     public function delete(AuthUser $authUser, ScheduleType $scheduleType): bool
     {
-        return $authUser->can('Delete:ScheduleType');
+        return $authUser->can('delete_schedule_type');
     }
 
     public function restore(AuthUser $authUser, ScheduleType $scheduleType): bool
     {
-        return $authUser->can('Restore:ScheduleType');
+        return $authUser->can('restore_schedule_type');
     }
 
     public function forceDelete(AuthUser $authUser, ScheduleType $scheduleType): bool
     {
-        return $authUser->can('ForceDelete:ScheduleType');
+        return $authUser->can('force_delete_schedule_type');
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:ScheduleType');
+        return $authUser->can('force_delete_any_schedule_type');
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:ScheduleType');
+        return $authUser->can('restore_any_schedule_type');
     }
 
     public function replicate(AuthUser $authUser, ScheduleType $scheduleType): bool
     {
-        return $authUser->can('Replicate:ScheduleType');
+        return $authUser->can('replicate_schedule_type');
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:ScheduleType');
+        return $authUser->can('reorder_schedule_type');
     }
 
 }

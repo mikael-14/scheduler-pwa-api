@@ -68,11 +68,11 @@ class UserResource extends Resource
     {
         $authUser = auth()->user();
 
-        if ($authUser->can('ViewAny:User')) {
+        if ($authUser->can('view_any_user')) {
             return parent::getEloquentQuery();
         }
 
-        if ($authUser->can('ViewOwned:User')) {
+        if ($authUser->can('view_owned_user')) {
             return parent::getEloquentQuery()
                 ->where('id', $authUser->id);
         }

@@ -101,8 +101,8 @@ return [
     */
 
     'permissions' => [
-        'separator' => ':',
-        'case' => 'pascal',
+        'separator' => '_',
+        'case' => 'snake',
         'generate' => true,
     ],
 
@@ -175,20 +175,20 @@ return [
         'subject' => 'model',
         'manage' => [
             \BezhanSalleh\FilamentShield\Resources\Roles\RoleResource::class => [
-                'viewAny',
+                'view_any',
                 'view',
                 'create',
                 'update',
                 'delete',
             ],
             App\Filament\Resources\Users\UserResource::class => [
-                'viewOwned',
+                'view_owned',
                 'impersonate',
             ],
             App\Filament\Resources\Schedules\ScheduleResource::class => [
-                'editOwned',
-                'deleteOwned',
-                'editPast',
+                'edit_owned',
+                'delete_owned',
+                'edit_past',
             ],
         ],
         'exclude' => [

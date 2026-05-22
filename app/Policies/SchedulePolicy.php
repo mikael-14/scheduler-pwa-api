@@ -14,72 +14,72 @@ class SchedulePolicy
     
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:Schedule');
+        return $authUser->can('view_any_schedule');
     }
 
     public function view(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('View:Schedule');
+        return $authUser->can('view_schedule');
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:Schedule');
+        return $authUser->can('create_schedule');
     }
 
     public function update(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('Update:Schedule');
+        return $authUser->can('update_schedule');
     }
 
     public function delete(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('Delete:Schedule');
+        return $authUser->can('delete_schedule');
     }
 
     public function restore(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('Restore:Schedule');
+        return $authUser->can('restore_schedule');
     }
 
     public function forceDelete(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('ForceDelete:Schedule');
+        return $authUser->can('force_delete_schedule');
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:Schedule');
+        return $authUser->can('force_delete_any_schedule');
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:Schedule');
+        return $authUser->can('restore_any_schedule');
     }
 
     public function replicate(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('Replicate:Schedule');
+        return $authUser->can('replicate_schedule');
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:Schedule');
+        return $authUser->can('reorder_schedule');
     }
 
     public function editOwned(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('EditOwned:Schedule');
+        return $authUser->can('edit_owned_schedule');
     }
 
     public function deleteOwned(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('DeleteOwned:Schedule');
+        return $authUser->can('delete_owned_schedule');
     }
 
     public function editPast(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('EditPast:Schedule');
+        return $authUser->can('edit_past_schedule');
     }
 
 }

@@ -47,68 +47,68 @@ class EditUser extends EditRecord
 
     public function form(Schema $form): Schema
     {
-      return $form
-    ->schema([
-        Grid::make()
-            ->columns(3) // Set a 3-column grid to allow 2/3 and 1/3 split
+        return $form
             ->schema([
-                Section::make()
-                    ->heading(__('User data'))
+                Grid::make()
+                    ->columns(3) // Set a 3-column grid to allow 2/3 and 1/3 split
                     ->schema([
-                        FileUpload::make('avatar_url')
-                            ->label('Avatar')
-                            ->image()
-                            ->avatar()
-                            ->disk('public')
-                            ->directory('avatars')
-                            ->visibility('public')
-                            ->imageEditor(),
-                        TextInput::make('name')
-                            ->label(__('Username'))
-                            ->required(),
-                        TextInput::make('email')
-                            ->translateLabel()
-                            ->placeholder('email@example.com')
-                            ->helperText(__('Make sure this email is valid and unique'))
-                            ->required()
-                            ->unique(table: User::class, column: 'email', ignorable: fn($record) => $record, ignoreRecord: true),
-                        Select::make('locale')
-                            ->options(collect(config('app-locales.available'))->pluck('name', 'code')->toArray())
-                            ->translateLabel()
-                            ->selectablePlaceholder(false),
-                        Toggle::make('status')
-                            ->label(__('Active'))
-                            ->inline(false)
-                            ->helperText(__('Admin panel access')),
-                        Select::make('role')
-                            ->options(Role::all()->pluck('name', 'id')->toArray())
-                            ->multiple()
-                            ->hidden(!auth()->user()->can('ViewAny:Role'))
-                            ->dehydrated(auth()->user()->can('ViewAny:Role')),
-                    ])
-                    // Logic: If same user, take 2 columns. If different, take all 3.
-                    ->columnSpan(fn($record): int => ($record && auth()->id() === $record->id) ? 2 : 3),
+                        Section::make()
+                            ->heading(__('User data'))
+                            ->schema([
+                                FileUpload::make('avatar_url')
+                                    ->label('Avatar')
+                                    ->image()
+                                    ->avatar()
+                                    ->disk('public')
+                                    ->directory('avatars')
+                                    ->visibility('public')
+                                    ->imageEditor(),
+                                TextInput::make('name')
+                                    ->label(__('Username'))
+                                    ->required(),
+                                TextInput::make('email')
+                                    ->translateLabel()
+                                    ->placeholder('email@example.com')
+                                    ->helperText(__('Make sure this email is valid and unique'))
+                                    ->required()
+                                    ->unique(table: User::class, column: 'email', ignorable: fn($record) => $record, ignoreRecord: true),
+                                Select::make('locale')
+                                    ->options(collect(config('app-locales.available'))->pluck('name', 'code')->toArray())
+                                    ->translateLabel()
+                                    ->selectablePlaceholder(false),
+                                Toggle::make('status')
+                                    ->label(__('Active'))
+                                    ->inline(false)
+                                    ->helperText(__('Admin panel access')),
+                                Select::make('role')
+                                    ->options(Role::all()->pluck('name', 'id')->toArray())
+                                    ->multiple()
+                                    ->hidden(!auth()->user()->can('view_any_role'))
+                                    ->dehydrated(auth()->user()->can('view_any_role')),
+                            ])
+                            // Logic: If same user, take 2 columns. If different, take all 3.
+                            ->columnSpan(fn($record): int => ($record && auth()->id() === $record->id) ? 2 : 3),
 
-                Section::make()
-                    ->heading(__('Change password'))
-                    ->description(__('Fill this in case you want to change password'))
-                    ->schema([
-                        TextInput::make('password')
-                            ->translateLabel()
-                            ->password()
-                            ->dehydrateStateUsing(fn($state) => Hash::make($state))
-                            ->dehydrated(fn($state) => filled($state))
-                            ->same('confirm_password'),
-                        TextInput::make('confirm_password')
-                            ->translateLabel()
-                            ->dehydrated(false)
-                            ->password(),
+                        Section::make()
+                            ->heading(__('Change password'))
+                            ->description(__('Fill this in case you want to change password'))
+                            ->schema([
+                                TextInput::make('password')
+                                    ->translateLabel()
+                                    ->password()
+                                    ->dehydrateStateUsing(fn($state) => Hash::make($state))
+                                    ->dehydrated(fn($state) => filled($state))
+                                    ->same('confirm_password'),
+                                TextInput::make('confirm_password')
+                                    ->translateLabel()
+                                    ->dehydrated(false)
+                                    ->password(),
+                            ])
+                            ->columnSpan(1) // Password takes the remaining 1 column
+                            ->visible(fn($record): bool => $record && auth()->id() === $record->id),
                     ])
-                    ->columnSpan(1) // Password takes the remaining 1 column
-                    ->visible(fn($record): bool => $record && auth()->id() === $record->id),
-            ])
-            ->columnSpanFull()
-    ]);
+                    ->columnSpanFull()
+            ]);
     }
     // protected function getRedirectUrl(): string
     // {

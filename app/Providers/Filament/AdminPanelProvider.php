@@ -11,7 +11,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
+use Rupadana\ApiService\ApiServicePlugin;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -78,6 +78,7 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentShieldPlugin::make(),
                 FilamentAuditingPlugin::make(),
+                ApiServicePlugin::make(),
                 FilamentLanguageSwitcherPlugin::make()
                     ->locales(config('app-locales.available'))
                     ->renderHook(PanelsRenderHook::USER_MENU_BEFORE)

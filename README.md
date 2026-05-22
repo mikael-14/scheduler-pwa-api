@@ -147,6 +147,10 @@ This command will:
 php artisan shield:create-super-admin
 ```
 
+3. Generate new polices in case of new resource created 
+```bash 
+php artisan shield:generate --all
+```
 ### Usage
 
 - Access role/permission management in the Filament admin panel

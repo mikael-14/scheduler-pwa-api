@@ -14,57 +14,57 @@ class AuditPolicy
     
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:Audit');
+        return $authUser->can('view_any_audit');
     }
 
     public function view(AuthUser $authUser, Audit $audit): bool
     {
-        return $authUser->can('View:Audit');
+        return $authUser->can('view_audit');
     }
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:Audit');
+        return $authUser->can('create_audit');
     }
 
     public function update(AuthUser $authUser, Audit $audit): bool
     {
-        return $authUser->can('Update:Audit');
+        return $authUser->can('update_audit');
     }
 
     public function delete(AuthUser $authUser, Audit $audit): bool
     {
-        return $authUser->can('Delete:Audit');
+        return $authUser->can('delete_audit');
     }
 
     public function restore(AuthUser $authUser, Audit $audit): bool
     {
-        return $authUser->can('Restore:Audit');
+        return $authUser->can('restore_audit');
     }
 
     public function forceDelete(AuthUser $authUser, Audit $audit): bool
     {
-        return $authUser->can('ForceDelete:Audit');
+        return $authUser->can('force_delete_audit');
     }
 
     public function forceDeleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ForceDeleteAny:Audit');
+        return $authUser->can('force_delete_any_audit');
     }
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:Audit');
+        return $authUser->can('restore_any_audit');
     }
 
     public function replicate(AuthUser $authUser, Audit $audit): bool
     {
-        return $authUser->can('Replicate:Audit');
+        return $authUser->can('replicate_audit');
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:Audit');
+        return $authUser->can('reorder_audit');
     }
 
 }

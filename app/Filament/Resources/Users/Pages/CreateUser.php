@@ -64,7 +64,7 @@ class CreateUser extends CreateRecord
                             )
                             ->multiple()
                             ->native(false)
-                            ->visible(Filament::auth()->user()->can('ViewAny:Role')),
+                            ->visible(Filament::auth()->user()->can('view_any_role')),
                         Toggle::make('status')
                             ->inline(false)
                             ->helperText(__('Access'))

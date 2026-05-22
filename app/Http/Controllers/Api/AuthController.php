@@ -93,16 +93,18 @@ class AuthController extends Controller
 
             $token = $user->createToken('pwa-login')->plainTextToken;
 
-            return response()->json([
-                'token' => $token,
-                'user' => $user,
-            ]);
+            // Redirect the user back to your frontend app's login callback page
+            // Append the token so your PWA JavaScript can read it out of the URL
+            $pwaUrl = config('app.pwa_url', 'http://localhost:3000');
+
+            return redirect()->away("{$pwaUrl}/auth/callback?token={$token}");
         } catch (\Throwable $e) {
             Log::error("{$provider} login error: " . $e->getMessage());
-            return response()->json(['error' => 'Unable to authenticate with ' . $provider], 400);
+
+            $pwaUrl = config('app.pwa_url', 'http://localhost:3000');
+            return redirect()->away("{$pwaUrl}/login?error=auth_failed");
         }
     }
-
     /**
      * Logout (revoke token)
      */

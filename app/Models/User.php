@@ -15,11 +15,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Filament\Models\Contracts\HasAvatar;
 use OwenIt\Auditing\Contracts\Auditable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars, \OwenIt\Auditing\Auditable;
+    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars, \OwenIt\Auditing\Auditable, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -75,7 +76,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
      */
     public function canImpersonate(): bool
     {
-        return $this->can('Impersonate:User') ? true : false;
+        return $this->can('impersonate_user') ? true : false;
     }
     /**
      * You can also control which targets can be impersonated.

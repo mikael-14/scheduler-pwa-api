@@ -9,21 +9,21 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class UserPolicy
 {
     use HandlesAuthorization;
-
+    
     public function viewAny(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewAny:User') || $authUser->can('ViewOwned:User');
+        return $authUser->can('view_any_user') || $authUser->can('view_owned_user');
     }
 
     public function view(AuthUser $authUser, User $user): bool
     {
         // Admin permission → can view anyone
-        if ($authUser->can('ViewAny:User')) {
+        if ($authUser->can('view_any_user')) {
             return true;
         }
 
         // Normal permission → can only view himself
-        if ($authUser->can('ViewOwned:User')) {
+        if ($authUser->can('view_owned_user')) {
             return $authUser->id === $user->id;
         }
 
@@ -32,22 +32,22 @@ class UserPolicy
 
     public function create(AuthUser $authUser): bool
     {
-        return $authUser->can('Create:User');
+        return $authUser->can('create_user');
     }
 
     public function update(AuthUser $authUser): bool
     {
-        return $authUser->can('Update:User');
+        return $authUser->can('update_user');
     }
 
     public function delete(AuthUser $authUser): bool
     {
-        return $authUser->can('Delete:User');
+        return $authUser->can('delete_user');
     }
 
     public function restore(AuthUser $authUser): bool
     {
-        return $authUser->can('Restore:User');
+        return $authUser->can('restore_user');
     }
 
     public function forceDelete(AuthUser $authUser): bool
@@ -62,27 +62,27 @@ class UserPolicy
 
     public function restoreAny(AuthUser $authUser): bool
     {
-        return $authUser->can('RestoreAny:User');
+        return $authUser->can('restore_any_user');
     }
 
     public function replicate(AuthUser $authUser): bool
     {
-        return $authUser->can('Replicate:User');
+        return $authUser->can('replicate_user');
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('Reorder:User');
+        return $authUser->can('reorder_user');
     }
 
     public function viewOwned(AuthUser $authUser): bool
     {
-        return $authUser->can('ViewOwned:User');
+        return $authUser->can('view_owned_user');
     }
 
     public function impersonate(AuthUser $authUser): bool
     {
-        return $authUser->can('Impersonate:User');
+        return $authUser->can('impersonate_user');
     }
 
 }
