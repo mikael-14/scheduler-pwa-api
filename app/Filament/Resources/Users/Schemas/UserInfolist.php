@@ -23,6 +23,11 @@ class UserInfolist
                             ->disk('public')
                             ->visibility('public')
                             ->circular(),
+                        TextEntry::make('roles.name')
+                            ->label('Assigned Roles')
+                            ->listWithLineBreaks()
+                            ->badge()
+                            ->visible(Filament::auth()->user()->can('view_any_role')),
                         TextEntry::make('name'),
                         TextEntry::make('email')
                             ->label('Email address'),
