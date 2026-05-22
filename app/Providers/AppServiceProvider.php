@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Policies\AuditPolicy;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use CraftForge\FilamentLanguageSwitcher\Events\LocaleChanged;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Tapp\FilamentAuditing\Filament\Resources\Audits\AuditResource;
+use Tapp\FilamentAuditing\Models\Audit;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
 
         // This forces the AuditResource to live in a specific group
         AuditResource::navigationGroup('Filament Shield'); // Change 'Settings' to your desired group name
+        Gate::policy(Audit::class, AuditPolicy::class);
         //AuditResource::navigationIcon('heroicon-o-clipboard-document-check');
         Event::listen(LocaleChanged::class, function (LocaleChanged $event) {
             if (Auth::check()) {
