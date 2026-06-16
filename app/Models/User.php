@@ -61,6 +61,17 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         ];
     }
 
+    
+	public function schedules()
+	{
+		return $this->hasMany(Schedule::class);
+	}
+
+	public function scheduleUsers()
+	{
+		return $this->hasMany(ScheduleUser::class);
+	}
+    
     public function canAccessPanel(Panel $panel): bool
     {
         // Allow active users and pending users 

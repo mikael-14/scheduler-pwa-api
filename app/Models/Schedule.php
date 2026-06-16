@@ -8,6 +8,7 @@ namespace App\Models;
 
 use App\Enums\ScheduleStatus;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Contracts\Auditable;
@@ -30,6 +31,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  * 
  * @property ScheduleType|null $schedule_type
  * @property User|null $user
+ * @property Collection|User[] $users
  *
  * @package App\Models
  */
@@ -43,8 +45,7 @@ class Schedule extends Model implements Auditable
 		'end' => 'datetime',
 		'all_day' => 'bool',
 		'user_id' => 'int',
-		'schedule_type_id' => 'int',
-		'status' => ScheduleStatus::class,
+		'schedule_type_id' => 'int'
 	];
 
 	protected $fillable = [
@@ -66,5 +67,10 @@ class Schedule extends Model implements Auditable
 	public function user()
 	{
 		return $this->belongsTo(User::class);
+	}
+
+	public function scheduleUsers() // Renamed for clarity, now a hasMany to the pivot model
+	{
+		return $this->hasMany(ScheduleUser::class); // Relates to the new pivot model
 	}
 }

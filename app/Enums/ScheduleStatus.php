@@ -3,10 +3,11 @@
 namespace App\Enums;
 
 use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasIcon;
 use Filament\Support\Contracts\HasLabel;
 use Filament\Support\Contracts\HasDescription;
 
-enum ScheduleStatus: string implements HasLabel, HasColor, HasDescription
+enum ScheduleStatus: string implements HasLabel, HasColor, HasDescription, HasIcon
 {
     case Pending = 'pending';
     case Approved = 'approved';
@@ -39,6 +40,19 @@ enum ScheduleStatus: string implements HasLabel, HasColor, HasDescription
             default => 'info'
         };
     }
+
+    public function getIcon(): ?string
+    {
+        return match ($this) {
+            self::Pending => 'heroicon-m-clock',
+            self::Approved => 'heroicon-m-check-circle',
+            self::Rejected => 'heroicon-m-x-circle',
+            self::Cancelled => 'heroicon-m-minus-circle',
+            self::Completed => 'heroicon-m-check-badge',
+            self::NotShown => 'heroicon-m-eye-slash',
+        };
+    }
+
     public function getDescription(): string | null
     {
         return match ($this) {

@@ -8,11 +8,14 @@ use App\Models\User;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Section;
+use App\Models\ScheduleUser; // Import the new pivot model
 use Filament\Schemas\Schema;
 use Coolsam\Flatpickr\Forms\Components\Flatpickr;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Icons\Heroicon;
 use Zvizvi\UserFields\Components\UserSelect;
 
 use function Symfony\Component\Clock\now;
@@ -44,6 +47,7 @@ class ScheduleForm
                 UserSelect::make('user_id')
                     ->label('Select User')
                     ->relationship('user', 'name')
+                    ->live()
                     ->searchable()
                     ->preload(true),
                 Flatpickr::make('start')
@@ -121,9 +125,55 @@ class ScheduleForm
                 Textarea::make('internal_note')->autosize(),
                 ToggleButtons::make('status')
                     ->inline()
+                    ->default(ScheduleStatus::Pending->value)
                     ->options(ScheduleStatus::class)
                     ->required()
                     ->columnSpanFull(),
+                Repeater::make('schedules')
+                    ->relationship('scheduleUsers') // Use the new hasMany relationship to the pivot model
+                    ->reorderable(false)
+                    ->schema([
+                        UserSelect::make('user_id')
+                            ->label('Select User')
+                            ->relationship('user', 'name') // Relationship from ScheduleUser to User
+                            ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                            ->disableOptionWhen(function ($value, Get $get) {
+                                $mainUserId = $get('../../user_id');
+                                return $value && $mainUserId && (string) $value === (string) $mainUserId;
+                            }, merge: true)
+                            ->searchable()
+                            ->preload(true),
+                         Select::make('status')
+                            ->searchable()
+                            ->default(ScheduleStatus::Pending->value)
+                            ->selectablePlaceholder(false)
+                            ->native(false)
+                            ->live()
+                            ->options(ScheduleStatus::class)
+                            ->suffixIcon(fn ($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getIcon() ?? Heroicon::QuestionMarkCircle)
+                            ->suffixIconColor(fn ($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getColor() ?? 'gray')
+                            ->required(),
+                        Textarea::make('description')->autosize()->rows(1),
+                       
+                    ])
+                    ->mutateRelationshipDataBeforeCreateUsing(function (array $data, Get $get): ?array {
+                        $mainUserId = $get('user_id');
+                        // If the user selected in the repeater item is the same as the main user, return null to exclude it
+                        if ($mainUserId && isset($data['user_id']) && (string) $data['user_id'] === (string) $mainUserId) {
+                            return null;
+                        }
+                        return $data;
+                    })
+                    ->mutateRelationshipDataBeforeSaveUsing(function (array $data, Get $get): ?array {
+                        $mainUserId = $get('user_id');
+                        // Prevent saving an existing item if it now matches the main user ID
+                        if ($mainUserId && isset($data['user_id']) && (string) $data['user_id'] === (string) $mainUserId) {
+                            return null;
+                        }
+                        return $data;
+                    })
+                    ->columns(3)
+                    ->columnSpanFull()
 
             ];
     }
