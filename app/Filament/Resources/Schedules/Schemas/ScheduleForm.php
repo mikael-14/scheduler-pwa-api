@@ -130,7 +130,7 @@ class ScheduleForm
                     ->required()
                     ->columnSpanFull(),
                 Repeater::make('schedules')
-                    ->relationship('scheduleUsers') // Use the new hasMany relationship to the pivot model
+                    ->relationship('schedule_users') // Use the new hasMany relationship to the pivot model
                     ->reorderable(false)
                     ->schema([
                         UserSelect::make('user_id')

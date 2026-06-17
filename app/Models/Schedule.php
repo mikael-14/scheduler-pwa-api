@@ -45,7 +45,8 @@ class Schedule extends Model implements Auditable
 		'end' => 'datetime',
 		'all_day' => 'bool',
 		'user_id' => 'int',
-		'schedule_type_id' => 'int'
+		'schedule_type_id' => 'int',
+		'status' => ScheduleStatus::class,
 	];
 
 	protected $fillable = [
@@ -69,7 +70,7 @@ class Schedule extends Model implements Auditable
 		return $this->belongsTo(User::class);
 	}
 
-	public function scheduleUsers() // Renamed for clarity, now a hasMany to the pivot model
+	public function schedule_users()
 	{
 		return $this->hasMany(ScheduleUser::class); // Relates to the new pivot model
 	}

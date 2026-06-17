@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Auth;
 use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
 use App\Http\Middleware\CheckPendingApproval;
 use App\Filament\Pages\PendingApproval;
+use Filament\Enums\DatabaseNotificationsPosition;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tapp\FilamentAuditing\FilamentAuditingPlugin;
@@ -42,6 +43,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
             ->registration()
             ->passwordReset()
@@ -59,7 +61,11 @@ class AdminPanelProvider extends PanelProvider
                // AccountWidget::class,
                 //FilamentInfoWidget::class,
             ])
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->profile()
+            ->databaseNotifications()
+            ->databaseNotificationsPolling(interval: 30)
+            ->databaseNotifications(position: DatabaseNotificationsPosition::Topbar)
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Enums\ScheduleStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
@@ -31,7 +32,8 @@ class ScheduleUser extends Model
 
 	protected $casts = [
 		'schedule_id' => 'int',
-		'user_id' => 'int'
+		'user_id' => 'int',
+		'status' => ScheduleStatus::class,
 	];
 
 	protected $fillable = [

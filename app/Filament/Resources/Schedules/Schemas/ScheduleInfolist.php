@@ -7,6 +7,8 @@ use App\Models\Schedule;
 use BladeUI\Icons\Components\Icon;
 use Filament\Infolists\Components\ColorEntry;
 use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Group;
@@ -33,19 +35,19 @@ class ScheduleInfolist
                                     'label' => 'Schedule Type',
                                 ];
                             }),
-                          TextEntry::make('status')
+                        TextEntry::make('status')
                             ->badge(),
                         TextEntry::make('user.name')
                             ->placeholder('-'),
                         TextEntry::make('start')
-                            ->dateTime(fn ($record) => $record->all_day ? config('app.date_format') : config('app.date_time_format')) 
+                            ->dateTime(fn($record) => $record->all_day ? config('app.date_format') : config('app.date_time_format'))
                             ->placeholder('-'),
                         IconEntry::make('all_day')
                             ->label('All Day')
                             ->visible(fn(Schedule $record) => $record->all_day)
                             ->boolean(),
                         TextEntry::make('end')
-                            ->dateTime(config('app.date_time_format')) 
+                            ->dateTime(config('app.date_time_format'))
                             ->visible(fn(Schedule $record) => $record->end !== null)
                             ->placeholder('-'),
                         TextEntry::make('description')
@@ -61,8 +63,32 @@ class ScheduleInfolist
                         TextEntry::make('deleted_at')
                             ->dateTime(config('app.date_time_format'))
                             ->visible(fn(Schedule $record): bool => $record->trashed()),
+
                     ])->columnSpan('full')
                     ->columns(2),
+                Section::make('Participants')
+                    ->columnSpanFull()
+                    ->schema([
+                        RepeatableEntry::make('scheduleUsers')
+                            ->label('')
+                            ->table([
+                                TableColumn::make('Name'),
+                                TableColumn::make('Status'),
+                                TableColumn::make('Description'),
+                            ])
+                            ->schema([
+                                TextEntry::make('user.name')
+                                    ->label('Name')
+                                    ->placeholder('-'),
+                                TextEntry::make('status')
+                                    ->label('Status')
+                                    ->badge(),
+                                TextEntry::make('description')
+                                    ->label('Description')
+                                    ->placeholder('-'),
+                            ])
+
+                    ])->visible(fn(Schedule $record) => $record->scheduleUsers()->exists()),
             ]);
     }
 }

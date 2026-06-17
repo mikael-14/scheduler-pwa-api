@@ -16,11 +16,14 @@ use Illuminate\Support\Facades\Storage;
 use Filament\Models\Contracts\HasAvatar;
 use OwenIt\Auditing\Contracts\Auditable;
 use Laravel\Sanctum\HasApiTokens;
+use NotificationChannels\WebPush\HasPushSubscriptions;
+
 
 class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars, \OwenIt\Auditing\Auditable, HasApiTokens;
+    use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars, \OwenIt\Auditing\Auditable, HasApiTokens, HasPushSubscriptions;
+
 
     /**
      * The attributes that are mass assignable.

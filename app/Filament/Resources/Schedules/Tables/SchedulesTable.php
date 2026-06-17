@@ -49,8 +49,9 @@ class SchedulesTable
                     ])
                     ->alignLeft()
                     ->wrapHeader(),
-                UserColumn::make('username')
-                ->state(fn($record) => $record->user)
+                UserColumn::make('user')
+                    ->wrapped(false)
+                    ->tooltip(fn($record) => $record->description)
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('start')
@@ -67,8 +68,31 @@ class SchedulesTable
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge(),
-                TextColumn::make('description')
+                TextColumn::make('schedule_users.user.name')
+                    ->label('Participants')
+                    ->badge()
+                    ->color(function (string $state, $record) {
+                    // Find the relation item matching the current badge's user name
+                    $scheduleUser = $record->schedule_users
+                        ->first(fn ($su) => $su->user?->name === $state);
+                    
+                    // Return the color directly from your ScheduleStatus Enum
+                    return $scheduleUser?->status?->getColor() ?? 'gray';
+                })
+                ->icon(function (string $state, $record) {
+                    // Find the relation item matching the current badge's user name
+                    $scheduleUser = $record->schedule_users
+                        ->first(fn ($su) => $su->user?->name === $state);
+                    
+                    // Return the icon directly from your ScheduleStatus Enum
+                    return $scheduleUser?->status?->getIcon();
+                })
+                    ->placeholder('-')
+                    ->toggleable()
                     ->searchable(),
+                TextColumn::make('description')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('internal_note')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -85,6 +109,7 @@ class SchedulesTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['schedule_users.user']))
             ->filters([
                 SelectFilter::make('schedule_type')
                     ->relationship('schedule_type', 'name')
@@ -140,6 +165,7 @@ class SchedulesTable
                 ViewAction::make(),
                 EditAction::make(),
             ])
+            ->columnManagerColumns(2)
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),

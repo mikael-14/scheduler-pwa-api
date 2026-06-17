@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Tapp\FilamentAuditing\Filament\Resources\Audits\AuditResource;
 use Tapp\FilamentAuditing\Models\Audit;
+use Illuminate\Notifications\DatabaseNotification;
+use App\Observers\FilamentNotificationObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,8 +29,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         //use Tapp\FilamentAuditing\Resources\AuditResource;
-
-        // This forces the AuditResource to live in a specific group
+        DatabaseNotification::observe(FilamentNotificationObserver::class);
         AuditResource::navigationGroup('Filament Shield'); // Change 'Settings' to your desired group name
         Gate::policy(Audit::class, AuditPolicy::class);
         //AuditResource::navigationIcon('heroicon-o-clipboard-document-check');
