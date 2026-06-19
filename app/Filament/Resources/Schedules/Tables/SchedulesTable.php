@@ -72,21 +72,21 @@ class SchedulesTable
                     ->label('Participants')
                     ->badge()
                     ->color(function (string $state, $record) {
-                    // Find the relation item matching the current badge's user name
-                    $scheduleUser = $record->schedule_users
-                        ->first(fn ($su) => $su->user?->name === $state);
-                    
-                    // Return the color directly from your ScheduleStatus Enum
-                    return $scheduleUser?->status?->getColor() ?? 'gray';
-                })
-                ->icon(function (string $state, $record) {
-                    // Find the relation item matching the current badge's user name
-                    $scheduleUser = $record->schedule_users
-                        ->first(fn ($su) => $su->user?->name === $state);
-                    
-                    // Return the icon directly from your ScheduleStatus Enum
-                    return $scheduleUser?->status?->getIcon();
-                })
+                        // Find the relation item matching the current badge's user name
+                        $scheduleUser = $record->schedule_users
+                            ->first(fn($su) => $su->user?->name === $state);
+
+                        // Return the color directly from your ScheduleStatus Enum
+                        return $scheduleUser?->status?->getColor() ?? 'gray';
+                    })
+                    ->icon(function (string $state, $record) {
+                        // Find the relation item matching the current badge's user name
+                        $scheduleUser = $record->schedule_users
+                            ->first(fn($su) => $su->user?->name === $state);
+
+                        // Return the icon directly from your ScheduleStatus Enum
+                        return $scheduleUser?->status?->getIcon();
+                    })
                     ->placeholder('-')
                     ->toggleable()
                     ->searchable(),
@@ -109,7 +109,7 @@ class SchedulesTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['schedule_users.user']))
+            ->modifyQueryUsing(fn(Builder $query) => $query->with(['schedule_users.user']))
             ->filters([
                 SelectFilter::make('schedule_type')
                     ->relationship('schedule_type', 'name')

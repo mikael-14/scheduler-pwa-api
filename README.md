@@ -154,9 +154,10 @@ php artisan shield:generate --all
 ### Usage
 
 - Access role/permission management in the Filament admin panel
-- Assign roles to users via the Users resource
+- Assign roles to users via the Users resources
 - Define resource policies in `app/Policies/` to control access
 - Use `@can('permission-name')` in blade templates to conditionally render content
+- API Docs https://localhost:9443/docs/api#/ 
 
 For detailed documentation, visit: https://github.com/bezhansalleh/filament-shield
 

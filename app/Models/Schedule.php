@@ -11,7 +11,11 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\Rule;
 use OwenIt\Auditing\Contracts\Auditable;
+use Rupadana\ApiService\Contracts\HasAllowedFields;
+use Rupadana\ApiService\Contracts\HasAllowedFilters;
+use Rupadana\ApiService\Contracts\HasAllowedSorts;
 
 /**
  * Class Schedule
@@ -35,7 +39,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  *
  * @package App\Models
  */
-class Schedule extends Model implements Auditable
+class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedFilters, HasAllowedSorts
 {
 	use SoftDeletes, \OwenIt\Auditing\Auditable;
 	protected $table = 'schedules';
@@ -74,4 +78,55 @@ class Schedule extends Model implements Auditable
 	{
 		return $this->hasMany(ScheduleUser::class); // Relates to the new pivot model
 	}
+
+	public static function getAllowedFields(): array
+	{
+		return [
+			'id',
+			'start',
+			'end',
+			'all_day',
+			'description',
+			'internal_note',
+			'status',
+			'user_id',
+			'schedule_type_id',
+		];
+	}
+
+	public static function getAllowedSorts(): array
+	{
+		return [
+			'id',
+			'start',
+			'status',
+		];
+	}
+
+	public static function getAllowedFilters(): array
+	{
+		return [
+			'status',
+			'all_day', // Assuming this is a boolean or similar
+			'start',   // Allow filtering by start date
+			'end',     // Allow filtering by end date
+			'user_id', // Allow filtering by user ID
+			'schedule_type_id', // Allow filtering by schedule type ID
+			'status'
+		];
+	}
+#API
+	public static function getValidationRules(): array
+    {
+        return [
+            'start' => 'required|date',
+            'end' => 'nullable|date',
+            'all_day' => 'required|boolean',
+            'description' => 'nullable|string',
+            'internal_note' => 'nullable|string',
+            'status' => ['required', Rule::enum(ScheduleStatus::class)],
+            'user_id' => 'nullable|exists:users,id',
+            'schedule_type_id' => 'nullable|exists:schedule_types,id',
+        ];
+    }
 }

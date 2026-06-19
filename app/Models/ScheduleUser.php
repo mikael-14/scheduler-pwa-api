@@ -9,6 +9,9 @@ namespace App\Models;
 use App\Enums\ScheduleStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\Rule;
+use OwenIt\Auditing\Contracts\Auditable;
+
 
 /**
  * Class ScheduleUser
@@ -26,8 +29,10 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @package App\Models
  */
-class ScheduleUser extends Model
+class ScheduleUser extends Model implements Auditable
 {
+	use \OwenIt\Auditing\Auditable;
+
 	protected $table = 'schedule_users';
 
 	protected $casts = [
@@ -53,5 +58,15 @@ class ScheduleUser extends Model
 		return $this->belongsTo(User::class);
 	}
 
-	
+	#API
+	public static function getValidationRules(): array
+    {
+        return [
+            'schedule_id' => 'required|exists:schedules,id',
+            'user_id' => 'required|exists:users,id',
+            'status' => ['required', Rule::enum(ScheduleStatus::class)],
+            'description' => 'nullable|string',
+        ];
+    }
 }
+

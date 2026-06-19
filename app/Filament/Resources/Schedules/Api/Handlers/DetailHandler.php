@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Schedules\Api\Handlers;
 
-use App\Filament\Resources\SettingResource;
 use App\Filament\Resources\Schedules\ScheduleResource;
 use Rupadana\ApiService\Http\Handlers;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -26,15 +25,16 @@ class DetailHandler extends Handlers
     {
         $id = $request->route('id');
         
-        $query = static::getEloquentQuery();
-
-        $query = QueryBuilder::for(
-            $query->where(static::getKeyName(), $id)
-        )
+        $model = QueryBuilder::for(static::getEloquentQuery())
+            ->where(static::getKeyName(), $id)
+            ->allowedFields($this->getAllowedFields() ?? [])
+            ->allowedIncludes($this->getAllowedIncludes() ?? [])
             ->first();
 
-        if (!$query) return static::sendNotFoundResponse();
+        if (!$model) return static::sendNotFoundResponse();
 
-        return new ScheduleTransformer($query);
+        $model->load('schedule_users');
+
+        return new ScheduleTransformer($model);
     }
 }

@@ -18,6 +18,16 @@ class ScheduleTransformer extends JsonResource
      */
     public function toArray($request)
     {
-        return $this->resource->toArray();
+        $data = $this->resource->toArray();
+        $data['schedule_users'] = $this->resource->schedule_users->map(function ($scheduleUser) {
+            return [
+                'id' => $scheduleUser->id,
+                'user_id' => $scheduleUser->user_id,
+                'status' => $scheduleUser->status,
+                'description' => $scheduleUser->description,
+            ];
+        });
+        return $data;
     }
+
 }

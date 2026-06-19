@@ -69,7 +69,7 @@ class ScheduleInfolist
                 Section::make('Participants')
                     ->columnSpanFull()
                     ->schema([
-                        RepeatableEntry::make('scheduleUsers')
+                        RepeatableEntry::make('schedule_users')
                             ->label('')
                             ->table([
                                 TableColumn::make('Name'),
@@ -88,7 +88,7 @@ class ScheduleInfolist
                                     ->placeholder('-'),
                             ])
 
-                    ])->visible(fn(Schedule $record) => $record->scheduleUsers()->exists()),
+                    ])->visible(fn(Schedule $record) => $record->schedule_users()->exists()),
             ]);
     }
 }
