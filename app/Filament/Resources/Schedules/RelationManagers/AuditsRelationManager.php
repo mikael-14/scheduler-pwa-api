@@ -15,11 +15,20 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class AuditsRelationManager extends RelationManager
 {
     protected static string $relationship = 'audits';
 
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        if ($pageClass === \App\Filament\Resources\Schedules\Pages\ViewSchedule::class) {
+            return auth()->user()->can('view_any_audit');
+        }
+        // Example 1: Using Spatie Permissions / Laravel Gates
+        return false;
+    }
     // 1. Infolist view structure (Triggers natively inside the modal/slide-over)
     public function infolist(Schema $schema): Schema
     {
@@ -86,7 +95,7 @@ class AuditsRelationManager extends RelationManager
                     ->weight('bold')
                     ->getStateUsing(function ($record) {
                         if ($record->auditable_type === ScheduleUser::class) {
-                            return "#{$record->auditable_id} ". User::where('id', $record->auditable?->user_id)->value('name');
+                            return "#{$record->auditable_id} " . User::where('id', $record->auditable?->user_id)->value('name');
                         }
                         return class_basename($record->auditable_type) . " #{$record->auditable_id}";
                     }),
