@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Schedules;
 
+use App\Filament\Resources\ScheduleResource\RelationManagers\AuditsRelationManager;
 use App\Filament\Resources\Schedules\Pages\CreateSchedule;
 use App\Filament\Resources\Schedules\Pages\EditSchedule;
 use App\Filament\Resources\Schedules\Pages\ListSchedules;
@@ -45,7 +46,8 @@ class ScheduleResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            //public static function getRelations(): array
+          AuditsRelationManager::class, // <-- Add this here
         ];
     }
 

@@ -29,15 +29,28 @@ return [
         //         'default' => 'N/A'
         //     ]
         // ],
+        'auditable_id' => [
+            'class' => \Filament\Tables\Columns\TextColumn::class, // The column class type
+            'methods' => [
+                'label' => 'Resource ID', // Pass 'Resource ID' as the argument to label()
+                'sortable',               // Call sortable() without arguments
+                'searchable',             // Call searchable() without arguments
+            ],
+        ],
+        'audit_context' => [
+            'class' => \App\Filament\Columns\AuditContextColumn::class,
+            'methods' => [
+                'label' => 'Resource Details',
+                // You can add more styling methods here if you like, e.g., 'badge'
+            ],
+        ],
     ],
 
     'custom_audits_view' => false,
 
-    'custom_view_parameters' => [
-    ],
+    'custom_view_parameters' => [],
 
-    'mapping' => [
-    ],
+    'mapping' => [],
 
     'resources' => [
         'AuditResource' => AuditResource::class,

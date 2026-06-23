@@ -60,13 +60,12 @@ class ScheduleUser extends Model implements Auditable
 
 	#API
 	public static function getValidationRules(): array
-    {
-        return [
-            'schedule_id' => 'required|exists:schedules,id',
-            'user_id' => 'required|exists:users,id',
-            'status' => ['required', Rule::enum(ScheduleStatus::class)],
-            'description' => 'nullable|string',
-        ];
-    }
+	{
+		return [
+			'schedule_id' => 'required|exists:schedules,id',
+			'user_id' => 'required|exists:users,id',
+			'status' => ['required', Rule::enum(ScheduleStatus::class)],
+			'description' => 'nullable|string',
+		];
+	}
 }
-
