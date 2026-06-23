@@ -23,9 +23,21 @@ class ScheduleTypeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Cog;
     
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduler';
-
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Scheduler');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Schedule Types');
+    }
+    public static function getModelLabel(): string
+    {
+        return __('Schedule Type');
+    }
 
     public static function form(Schema $schema): Schema
     {

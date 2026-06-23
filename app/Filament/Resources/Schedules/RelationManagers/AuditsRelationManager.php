@@ -51,6 +51,7 @@ class AuditsRelationManager extends RelationManager
 
                         TextEntry::make('event')
                             ->badge()
+                            ->label(__('Event'))
                             ->color(fn(string $state): string => match ($state) {
                                 'created' => 'success',
                                 'updated' => 'warning',
@@ -95,9 +96,9 @@ class AuditsRelationManager extends RelationManager
                     ->weight('bold')
                     ->getStateUsing(function ($record) {
                         if ($record->auditable_type === ScheduleUser::class) {
-                            return "#{$record->auditable_id} " . User::where('id', $record->auditable?->user_id)->value('name');
+                            return  " #{$record->auditable_id} " . __("Schedule User") . " " . User::where('id', $record->auditable?->user_id)->value('name');
                         }
-                        return class_basename($record->auditable_type) . " #{$record->auditable_id}";
+                        return "#{$record->auditable_id} " . __("Agenda");
                     }),
                 TextColumn::make('event')
                     ->badge()
@@ -116,7 +117,7 @@ class AuditsRelationManager extends RelationManager
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->modalHeading(__('Visualizar Audit Log'))
+                    ->modalHeading(__('View Audit Log'))
                     ->slideOver(), // Swaps standard modal out for a modern Filament slide-over panel
             ]);
     }

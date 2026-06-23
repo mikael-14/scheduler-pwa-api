@@ -22,49 +22,49 @@ class ScheduleTypeInfolist
                         Grid::make(3)
                             ->schema([
                                 TextEntry::make('name')
-                                    ->label('Basic Information'),
+                                    ->label(__('Basic Information')),
                                 ColorEntry::make('color')
-                                    ->label('Color'),
+                                    ->label(__('Color')),
                                 IconEntry::make('status')
-                                    ->label('Status')
+                                    ->label(__('Status'))
                                     ->boolean(),
                             ]),
                         Grid::make(2)
                             ->schema([
                                 IconEntry::make('range')
-                                    ->label('Range')
+                                    ->label(__('Range'))
                                     ->boolean()
-                                    ->tooltip('Indicates if this schedule type has to have specific times slots.'),
+                                    ->tooltip(__('Indicates if this schedule type has to have specific times slots.')),
                                 IconEntry::make('all_day')
-                                    ->label('All Day')
+                                    ->label(__('All Day'))
                                     ->boolean()
-                                    ->tooltip('Indicates if this schedule type is can have an all-day event.'),
+                                    ->tooltip(__('Indicates if this schedule type is can have an all-day event.')),
                             ]),
                         // Dates
                         TextEntry::make('start')
-                            ->label('Start')
-                            ->placeholder('Not defined')
+                            ->label(__('Start'))
+                            ->placeholder(__('Not defined'))
                             ->dateTime(config('app.date_time_format'))
-                            ->tooltip('Set a start date for this schedule type.'),
+                            ->tooltip(__('Set a start date for this schedule type.')),
                         TextEntry::make('end')
-                            ->label('End')
-                            ->placeholder('Not defined')
+                            ->label(__('End'))
+                            ->placeholder(__('Not defined'))
                             ->dateTime(config('app.date_time_format'))
-                            ->tooltip('Set an end date for this schedule type.'),
+                            ->tooltip(__('Set an end date for this schedule type.')),
                         // Times
                         TextEntry::make('min_time')
-                            ->label('Min time')
-                            ->placeholder('Not defined')
+                            ->label(__('Min time'))
+                            ->placeholder(__('Not defined'))
                             ->time(config('app.time_format'))
-                            ->tooltip('Set the minimum hour for schedule each day.'),
+                            ->tooltip(__('Set the minimum hour for schedule each day.')),
                         TextEntry::make('max_time')
-                            ->label('Max time')
-                            ->placeholder('Not defined')
+                            ->label(__('Max time'))
+                            ->placeholder(__('Not defined'))
                             ->time(config('app.time_format'))
-                            ->tooltip('Set the maximum hour for schedule each day.'),
+                            ->tooltip(__('Set the maximum hour for schedule each day.')),
                         // Description
                         TextEntry::make('description')
-                            ->label('Description')
+                            ->label(__('Description'))
                             ->columnSpanFull(),
                     ])
                     ->columns(2)

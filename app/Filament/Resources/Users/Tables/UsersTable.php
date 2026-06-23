@@ -30,48 +30,53 @@ class UsersTable
         return $table
             ->columns([
                 UserColumn::make('username')
-                    ->label('User')
+                    ->label(__('User'))
                     ->state(fn(User $record) => $record)
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email address')
+                    ->label(__('Email'))
                     ->searchable(),
                 TextColumn::make('roles.name')
-                    ->label('Roles')
+                    ->label(__('Roles'))
                     ->badge()
                     ->color('primary'),
                 IconColumn::make('status')
-                    ->label('Active')
+                    ->label(__('Active'))
                     ->sortable()
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('approved_at')
+                ->label(__('Approved At'))
                     ->dateTime(config('app.date_time_format'))
-                    ->placeholder('Not approved')
+                    ->placeholder(__('Not approved'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('locale')
+                ->label(__('Locale'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
+                ->label(__('Created At'))
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('updated_at')
+                ->label(__('Updated At'))
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('status')
+                ->label(__('Active'))
                     ->options([
-                        '1' => 'Active',
-                        '0' => 'Inactive',
+                        '1' => __('Active'),
+                        '0' => __('Inactive'),
                     ]),
                 TernaryFilter::make('approved')
-                    ->label('Approved')
-                    ->trueLabel('Approved')
-                    ->falseLabel('Not Approved')
+                    ->label(__('Approved'))
+                    ->trueLabel(__('Approved'))
+                    ->falseLabel(__('Not approved'))
                     ->queries(
                         true: fn($query) => $query->whereNotNull('approved_at'),
                         false: fn($query) => $query->whereNull('approved_at'),
@@ -87,7 +92,7 @@ class UsersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('approve')
-                        ->label('Approve selected')
+                        ->label(__('Approve selected'))
                         ->icon('heroicon-o-check')
                         ->requiresConfirmation()
                         ->action(function (Collection $records) {
@@ -98,7 +103,7 @@ class UsersTable
                             });
                         })
                         ->deselectRecordsAfterCompletion()
-                        ->successNotificationTitle('Users approved successfully'),
+                        ->successNotificationTitle(__('Users approved successfully')),
                     DeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),

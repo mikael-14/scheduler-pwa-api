@@ -29,7 +29,7 @@ class AuthController extends Controller
                 'email' => ['The provided credentials are incorrect.'],
             ]);
         }
-
+        $user->array_url = $user->getFilamentAvatarUrl();
         $token = $user->createToken('pwa-login')->plainTextToken;
 
         return response()->json([

@@ -24,14 +24,17 @@ class ListSchedules extends ListRecords
     {
         return [
             'upcoming' => Tab::make('Upcoming')
+                ->label(__('Upcoming'))
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('start', '>=', now()->startOfDay()))
                 ->icon('heroicon-m-calendar-days'),
 
             'past' => Tab::make('Past')
+                ->label(__('Past'))
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('start', '<', now()->startOfDay()))
                 ->icon('heroicon-m-clock'),
 
-            'all' => Tab::make('All History'),
+            'all' => Tab::make('All History')
+                ->label(__('All History')),
         ];
     }
 

@@ -26,8 +26,19 @@ class ScheduleResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::CalendarDays;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Scheduler';
+    public static function getNavigationGroup(): ?string
+    {
+        return __('Scheduler');
+    }
 
+    public static function getNavigationLabel(): string
+    {
+        return __('Schedules');
+    }
+    public static function getModelLabel(): string
+    {
+        return __('Schedule');
+    }
     public static function form(Schema $schema): Schema
     {
         return ScheduleForm::configure($schema);

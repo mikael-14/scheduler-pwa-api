@@ -23,24 +23,26 @@ class ScheduleTypeForm
                     ->schema([
                         FusedGroup::make([
                             TextInput::make('name')
-                                ->placeholder('name')
+                                ->label(__('Name'))
+                                ->placeholder(__('name'))
                                 ->columnSpan(2)
                                 ->required(),
                             ColorPicker::make('color')
-                                ->placeholder('Select a color')
+                                ->placeholder(__('Select a color'))
+                                ->label(__('Color'))
                                 ->default('#000000')
                         ])
-                            ->label('Basic Information')
+                            ->label(__('Basic Information'))
                             ->columns(3),
                         Toggle::make('status')
                             ->inline(false)
                             ->default(true)
-                            ->label('Status')
-                            ->helperText('Enable or disable this schedule type.'),
+                            ->label(__('Status'))
+                            ->helperText(__('Enable or disable this schedule type.')),
                         Flatpickr::make('start')
                             ->allowInput()
-                            ->placeholder('Start Date')
-                            ->helperText('Optional: Set a start date for this schedule type.')
+                            ->placeholder(__('Start Date'))
+                            ->helperText(__('Optional: Set a start date for this schedule type.'))
                             ->hourIncrement(1) // Intervals of incrementing hours in a time picker
                             ->minuteIncrement(5) // Intervals of minute increment in a time picker
                             ->seconds(false) // Enable seconds in a time picker
@@ -49,8 +51,8 @@ class ScheduleTypeForm
                             ->time24hr(true),
                         Flatpickr::make('end')
                             ->allowInput()
-                            ->placeholder('End Date')
-                            ->helperText('Optional: Set an end date for this schedule type.')
+                            ->placeholder(__('End Date'))
+                            ->helperText(__('Optional: Set an end date for this schedule type.'))
                             ->hourIncrement(1)
                             ->minuteIncrement(5)
                             ->seconds(false)
@@ -59,8 +61,8 @@ class ScheduleTypeForm
                             ->time24hr(true),
                         Flatpickr::make('min_time')
                             ->allowInput()
-                            ->placeholder('Min Time')
-                            ->helperText('Optional: Set the minimum hour for schedule each day.')
+                            ->placeholder(__('Min Time'))
+                            ->helperText(__('Optional: Set the minimum hour for schedule each day.'))
                             ->hourIncrement(1)
                             ->minuteIncrement(5)
                             ->seconds(false)
@@ -71,8 +73,8 @@ class ScheduleTypeForm
                             ->timePicker(),
                         Flatpickr::make('max_time')
                             ->allowInput()
-                            ->placeholder('Max Time')
-                            ->helperText('Optional: Set the maximum hour for schedule each day.')
+                            ->placeholder(__('Max Time'))
+                            ->helperText(__('Optional: Set the maximum hour for schedule each day.'))
                             ->hourIncrement(1)
                             ->minuteIncrement(5)
                             ->seconds(false)
@@ -82,18 +84,18 @@ class ScheduleTypeForm
                             ->time(true)
                             ->timePicker(),
                         Textarea::make('description')
-                            ->placeholder('Description'),
+                            ->placeholder(__('Description')),
                         Flex::make([
                             Checkbox::make('range')
                                 ->inline(false)
                                 ->default(false)
-                                ->label('Range')
-                                ->helperText('Indicates if this schedule type has to have specific times slots.'),
+                                ->label(__('Range'))
+                                ->helperText(__('Indicates if this schedule type has to have specific times slots.')),
                             Checkbox::make('all_day')
                                 ->inline(false)
                                 ->default(false)
-                                ->label('All Day')
-                                ->helperText('Indicates if this schedule type is can have an all-day event.'),
+                                ->label(__('All Day'))
+                                ->helperText(__('Indicates if this schedule type is can have an all-day event.')),
                         ])->columns(2)
                     ])
                     ->columns(2)

@@ -33,7 +33,7 @@ class CreateUser extends CreateRecord
                 Section::make()
                     ->schema([
                         FileUpload::make('avatar_url')
-                            ->label('Avatar')
+                            ->label(__('Avatar'))
                             ->image()
                             ->avatar()
                             ->disk('public') // Explicitly use the public disk
@@ -44,7 +44,7 @@ class CreateUser extends CreateRecord
                             ->label(__('Username'))
                             ->required(),
                         TextInput::make('email')
-                            ->translateLabel()
+                            ->label(__('Email'))
                             ->placeholder('email@example.com')
                             ->helperText(__('Make sure this email is valid and unique'))
                             ->unique(table: User::class, column: 'email', ignoreRecord: true)
@@ -57,7 +57,7 @@ class CreateUser extends CreateRecord
                             ->selectablePlaceholder(false)
                             ->native(false),
                         Select::make('role')
-                            ->translateLabel()
+                            ->label(__('Roles'))
                             ->options(
                                 Role::all()->pluck('name', 'id')
                                     ->toArray()
@@ -66,10 +66,12 @@ class CreateUser extends CreateRecord
                             ->native(false)
                             ->visible(Filament::auth()->user()->can('view_any_role')),
                         Toggle::make('status')
+                            ->label(__('Active'))
                             ->inline(false)
                             ->helperText(__('Access'))
                             ->default(1),
                         Toggle::make('aproved')
+                            ->label(__('Approved'))
                             ->inline(false)
                             ->helperText(__('Aprove account'))
                             ->default(0),

@@ -41,35 +41,40 @@ class SchedulesTable
                 ColumnGroup::make('Schedule Type')
                     ->columns([
                         ColorColumn::make('schedule_type.color')
-                            ->label('Color'),
+                            ->label(__('Color')),
                         TextColumn::make('schedule_type.name')
-                            ->label('Type')
+                            ->label(__('Type'))
                             ->searchable()
                             ->sortable(),
                     ])
                     ->alignLeft()
                     ->wrapHeader(),
                 UserColumn::make('user')
+                    ->label(__('Assigned To'))
                     ->wrapped(false)
                     ->tooltip(fn($record) => $record->description)
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('start')
+                    ->label(__('Start'))
                     ->date(fn($record) => $record->all_day ? config('app.date_format') : config('app.date_time_format'))
                     ->description(fn($record) => $record->all_day ? 'All Day' : null)
                     ->sortable(),
                 TextColumn::make('end')
+                    ->label(__('End'))
                     ->date(config('app.date_time_format'))
                     ->placeholder('-')
                     ->sortable(),
                 IconColumn::make('all_day')
                     ->boolean()
+                    ->label(__('All Day'))
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
                 TextColumn::make('status')
+                    ->label(__('Status'))
                     ->badge(),
                 TextColumn::make('schedule_users.user.name')
-                    ->label('Participants')
+                    ->label(__('Participants'))
                     ->badge()
                     ->color(function (string $state, $record) {
                         // Find the relation item matching the current badge's user name
@@ -91,20 +96,25 @@ class SchedulesTable
                     ->toggleable()
                     ->searchable(),
                 TextColumn::make('description')
+                    ->label(__('Description'))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('internal_note')
+                    ->label(__('Internal Note'))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
+                    ->label(__('Created At'))
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                    ->label(__('Updated At'))
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('deleted_at')
+                    ->label(__('Deleted At'))
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -122,12 +132,14 @@ class SchedulesTable
                         Grid::make(2)
                             ->schema([
                                 DateTimePicker::make('from')
+                                ->label(__('From'))
                                     ->native(false)
                                     ->hoursStep(1) // Intervals of incrementing hours in a time picker
                                     ->minutesStep(5) // Intervals of minute increment in a time picker
                                     ->seconds(false) // Enable seconds in a time picker
                                     ->displayFormat(config('app.date_time_format')),
                                 DateTimePicker::make('end')
+                                    ->label(__('End'))
                                     ->native(false)
                                     ->hoursStep(1) // Intervals of incrementing hours in a time picker
                                     ->minutesStep(5) // Intervals of minute increment in a time picker
@@ -148,15 +160,17 @@ class SchedulesTable
                     })
                     ->columnSpan(2),
                 SelectFilter::make('status')
+                    ->label(__('Status'))
                     ->options(ScheduleStatus::class),
                 UserSelectFilter::make('assigned_to')
+                    ->label(__('Assigned To'))
                     ->relationship('user', 'name')
                     ->searchable()
                     ->preload()
                     ->multiple()
                     ->columnSpan(3),
                 TernaryFilter::make('all_day')
-                    ->label('All day event?'),
+                    ->label(__('All Day')),
                 TrashedFilter::make(),
             ])
             ->filtersLayout(FiltersLayout::AboveContentCollapsible)

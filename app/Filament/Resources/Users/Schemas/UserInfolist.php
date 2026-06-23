@@ -24,25 +24,32 @@ class UserInfolist
                             ->visibility('public')
                             ->circular(),
                         TextEntry::make('roles.name')
-                            ->label('Assigned Roles')
+                            ->label(__('Assigned Roles'))
                             ->listWithLineBreaks()
                             ->badge()
-                            ->visible(Filament::auth()->user()->can('view_any_role')),
-                        TextEntry::make('name'),
+                            ->visible(auth()->user()->can('view_any_role')),
+                        TextEntry::make('name')
+                            ->label(__('Username')),
                         TextEntry::make('email')
-                            ->label('Email address'),
-                        TextEntry::make('locale'),
+                            ->label(__('Email'))
+                            ->placeholder('email@example.com'),
+                        TextEntry::make('locale')
+                            ->translateLabel(),
                         IconEntry::make('status')
-                            ->label('Active')
+                            ->label(__('Active'))
                             ->boolean(),
                         TextEntry::make('approved_at')
                             ->dateTime(config('app.date_time_format'))
+                            ->label(__('Approved At'))
                             ->icon(Heroicon::CheckBadge)
                             ->color('success')
                             ->placeholder(__('Not approved')),
                         TextEntry::make('created_at')
+                        ->label(__('Created At'))
+                        ->translateLabel()
                             ->dateTime(config('app.date_time_format')),
                         TextEntry::make('updated_at')
+                            ->label(__('Updated At'))
                             ->dateTime(config('app.date_time_format')),
                     ])
                     ->columns(2)

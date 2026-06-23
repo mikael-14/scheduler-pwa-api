@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\UserController;
 
 Route::prefix('auth')->group(function () {
     // Email + password
@@ -15,6 +16,9 @@ Route::prefix('auth')->group(function () {
 
     // Logout (requires auth)
     Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
+
+    Route::middleware('auth:sanctum')->put('user', [UserController::class, 'update']);
+    Route::middleware('auth:sanctum')->patch('user', [UserController::class, 'patch']);
 });
 
 Route::middleware('auth:sanctum')->post('/pwa/subscribe', function (Request $request) {

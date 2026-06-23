@@ -56,7 +56,7 @@ class EditUser extends EditRecord
                             ->heading(__('User data'))
                             ->schema([
                                 FileUpload::make('avatar_url')
-                                    ->label('Avatar')
+                                    ->label(__('Avatar'))
                                     ->image()
                                     ->avatar()
                                     ->disk('public')
