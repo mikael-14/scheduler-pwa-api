@@ -1,7 +1,7 @@
 <x-filament-widgets::widget>
     <x-filament::section>
         <x-slot name="heading">
-            Legend
+            {{ __('Legend') }}
         </x-slot>
         <form wire:submit.prevent="">
             {{ $this->form }}

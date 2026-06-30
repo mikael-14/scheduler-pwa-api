@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Log;
+use Laravel\Socialite\Two\GoogleProvider;
+use Laravel\Socialite\Two\FacebookProvider;
 
 class AuthController extends Controller
 {
@@ -26,10 +28,15 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => [__('The provided credentials are incorrect.')],
             ]);
         }
-        $user->array_url = $user->getFilamentAvatarUrl();
+        $avatar = $user->getFilamentAvatarUrl();
+        if ($avatar) {
+            $user->avatar_url = asset($avatar);
+        } else {
+            $user->avatar_url = null;
+        }
         $token = $user->createToken('pwa-login')->plainTextToken;
 
         return response()->json([
@@ -63,54 +70,66 @@ class AuthController extends Controller
         ], 201);
     }
 
-    /**
-     * Redirect to provider (facebook/google)
-     */
-    public function redirectToProvider(string $provider)
+
+    public function redirectToProvider(Request $request, string $provider)
     {
         $allowedProviders = ['facebook', 'google'];
 
         if (! in_array($provider, $allowedProviders)) {
-            return response()->json(['error' => 'Unsupported provider'], 400);
+            return response()->json(['error' => __('Unsupported provider')], 400);
         }
 
-        $redirectUrl = Socialite::driver($provider)
-            ->redirect()
-            ->getTargetUrl();
+        // 1. Grab the raw config from your services.php
+        $config = config("services.{$provider}");
+
+        // 2. Inject your PWA callback URL directly into this config instance
+        $config['redirect'] = url("/api/auth/{$provider}/callback");
+
+        // 3. Build a pure, unadulterated Socialite Provider (bypassing Filament completely)
+        $providerClass = $provider === 'google' ? GoogleProvider::class : FacebookProvider::class;
+        $driver = Socialite::buildProvider($providerClass, $config);
+
+        // 4. Since this is the raw driver, stateless() works perfectly!
+        $redirectUrl = $driver->stateless()->redirect()->getTargetUrl();
 
         return response()->json(['url' => $redirectUrl]);
     }
 
-    /**
-     * Handle provider callback (facebook/google)
-     */
     public function handleProviderCallback(Request $request, string $provider)
     {
         try {
-            $socialiteUser = Socialite::driver($provider)->user();
+            // 1. Rebuild the exact same raw config for the return trip
+            $config = config("services.{$provider}");
+            $config['redirect'] = url("/api/auth/{$provider}/callback");
 
+            // 2. Build the pure provider again
+            $providerClass = $provider === 'google' ? GoogleProvider::class : FacebookProvider::class;
+            $driver = Socialite::buildProvider($providerClass, $config);
+
+            // 3. Fetch the user statelessly!
+            $socialiteUser = $driver->stateless()->user();
+
+            // 4. Create your user & Sanctum token
             $user = User::findOrCreateFromSocialite($socialiteUser, $provider);
-
             $token = $user->createToken('pwa-login')->plainTextToken;
 
-            // Redirect the user back to your frontend app's login callback page
-            // Append the token so your PWA JavaScript can read it out of the URL
+            // 5. Send them back to the PWA
             $pwaUrl = config('app.pwa_url', 'http://localhost:3000');
-
             return redirect()->away("{$pwaUrl}/auth/callback?token={$token}");
         } catch (\Throwable $e) {
-            Log::error("{$provider} login error: " . $e->getMessage());
+            Log::error("PWA Social Login Error: " . $e->getMessage());
 
             $pwaUrl = config('app.pwa_url', 'http://localhost:3000');
             return redirect()->away("{$pwaUrl}/login?error=auth_failed");
         }
     }
+
     /**
      * Logout (revoke token)
      */
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Logged out']);
+        return response()->json(['message' => __('Logged out')]);
     }
 }

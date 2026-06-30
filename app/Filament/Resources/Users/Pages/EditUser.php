@@ -15,6 +15,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -34,7 +35,18 @@ class EditUser extends EditRecord
         return [
             CustomImpersonateAction::make('impersonate'),
             ViewAction::make(),
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->before(function ($record, $action) {
+                    if ($record->schedules()->exists()) {
+                        Notification::make()
+                            ->title(__('Cannot delete user'))
+                            ->body(__('This user has schedules and cannot be deleted.'))
+                            ->danger()
+                            ->send();
+
+                        $action->cancel();
+                    }
+                }),
             RestoreAction::make(),
         ];
     }

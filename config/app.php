@@ -134,4 +134,5 @@ return [
     'date_format' => env('APP_DATE_FORMAT', 'Y-m-d'),
     'time_format' => env('APP_TIME_FORMAT', 'H:i'),
     'date_time_format' => env('APP_DATE_TIME_FORMAT', 'Y-m-d H:i'),
+    'pwa_url' => env('PWA_URL', 'http://localhost:3000'),
 ];

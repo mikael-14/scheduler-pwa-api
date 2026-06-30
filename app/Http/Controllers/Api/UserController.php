@@ -19,7 +19,7 @@ class UserController extends Controller
         
         $user = $request->user();
         if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
+            return response()->json(['message' => __('User not found.')], 404);
         }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -40,7 +40,7 @@ class UserController extends Controller
 
         $user->update($data);
 
-        return response()->json(['message' => 'User updated successfully.', 'user' => $user]);
+        return response()->json(['message' => __('User updated successfully.'), 'user' => $user]);
     }
     public function patch(Request $request, User $user) {
         $data = $request->validate([
@@ -62,6 +62,6 @@ class UserController extends Controller
 
         $user->update($data);
 
-        return response()->json(['message' => 'User updated successfully.', 'user' => $user]);
+        return response()->json(['message' => __('User updated successfully.'), 'user' => $user]);
     }
 }

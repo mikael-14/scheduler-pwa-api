@@ -15,6 +15,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -46,29 +47,29 @@ class UsersTable
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('approved_at')
-                ->label(__('Approved At'))
+                    ->label(__('Approved At'))
                     ->dateTime(config('app.date_time_format'))
                     ->placeholder(__('Not approved'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('locale')
-                ->label(__('Locale'))
+                    ->label(__('Locale'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                ->label(__('Created At'))
+                    ->label(__('Created At'))
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('updated_at')
-                ->label(__('Updated At'))
+                    ->label(__('Updated At'))
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('status')
-                ->label(__('Active'))
+                    ->label(__('Active'))
                     ->options([
                         '1' => __('Active'),
                         '0' => __('Inactive'),
@@ -104,7 +105,23 @@ class UsersTable
                         })
                         ->deselectRecordsAfterCompletion()
                         ->successNotificationTitle(__('Users approved successfully')),
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->action(function (Collection $records) {
+                            $records->each(function ($record) {
+                                if ($record->schedules()->exists()) {
+                                    Notification::make()
+                                        ->title(__('Cannot delete user'))
+                                        ->body(__('This user has schedules and cannot be deleted.'))
+                                        ->danger()
+                                        ->send();
+                                } else {
+                                    $record->delete();
+                                }
+                            });
+                        })
+                        ->requiresConfirmation()
+                        ->deselectRecordsAfterCompletion()
+                        ->successNotificationTitle(__('Records deleted successfully')),
                     RestoreBulkAction::make(),
                 ]),
             ])->checkIfRecordIsSelectableUsing(

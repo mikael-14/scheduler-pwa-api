@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
+use Illuminate\Session\Middleware\StartSession; 
 
 Route::prefix('auth')->group(function () {
     // Email + password
@@ -11,8 +12,8 @@ Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
 
     // Socialite providers
-    Route::get('{provider}/redirect', [AuthController::class, 'redirectToProvider']);
-    Route::get('{provider}/callback', [AuthController::class, 'handleProviderCallback']);
+    Route::get('{provider}/redirect', [AuthController::class, 'redirectToProvider'])->middleware(StartSession::class);
+    Route::get('{provider}/callback', [AuthController::class, 'handleProviderCallback'])->middleware(StartSession::class);
 
     // Logout (requires auth)
     Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
