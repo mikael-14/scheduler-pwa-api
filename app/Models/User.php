@@ -137,7 +137,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
     {
         // 1. Check if the user already exists via email
         $user = self::where('email', $socialiteUser->getEmail())->first();
-
         if ($user) {
             // Optional: You could update the avatar or provider ID here if you wanted to
             return $user;

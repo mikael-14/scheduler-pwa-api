@@ -86,7 +86,11 @@ class AuthController extends Controller
         $config['redirect'] = url("/api/auth/{$provider}/callback");
 
         // 3. Build a pure, unadulterated Socialite Provider (bypassing Filament completely)
-        $providerClass = $provider === 'google' ? GoogleProvider::class : FacebookProvider::class;
+        $providerClass = match ($provider) {
+            'google' => GoogleProvider::class,
+            'facebook' => FacebookProvider::class,
+            default => throw new \InvalidArgumentException('Unsupported provider')
+        };
         $driver = Socialite::buildProvider($providerClass, $config);
 
         // 4. Since this is the raw driver, stateless() works perfectly!
@@ -103,7 +107,11 @@ class AuthController extends Controller
             $config['redirect'] = url("/api/auth/{$provider}/callback");
 
             // 2. Build the pure provider again
-            $providerClass = $provider === 'google' ? GoogleProvider::class : FacebookProvider::class;
+            $providerClass = match ($provider) {
+                'google' => GoogleProvider::class,
+                'facebook' => FacebookProvider::class,
+                default => throw new \InvalidArgumentException('Unsupported provider')
+            };
             $driver = Socialite::buildProvider($providerClass, $config);
 
             // 3. Fetch the user statelessly!
