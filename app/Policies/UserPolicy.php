@@ -37,6 +37,10 @@ class UserPolicy
 
     public function update(AuthUser $authUser): bool
     {
+        if ($authUser->can('update_any_user') && $authUser->can('update_owned_user')) {
+            return true;
+        }
+        
         return $authUser->can('update_user');
     }
 
@@ -84,5 +88,16 @@ class UserPolicy
     {
         return $authUser->can('impersonate_user');
     }
+    
+    public function updateOwned(AuthUser $authUser): bool
+    {
+        return $authUser->can('update_owned_user');
+    }
+
+    public function updateAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('update_any_user');
+    }
+
 
 }

@@ -183,12 +183,17 @@ return [
             ],
             App\Filament\Resources\Users\UserResource::class => [
                 'view_owned',
+                'update_owned',
+                'update_any',
                 'impersonate',
             ],
             App\Filament\Resources\Schedules\ScheduleResource::class => [
-                'edit_owned',
-                'delete_owned',
-                'edit_past',
+                'create_any',
+                'update_any',
+                'delete_any',
+                'update_past',
+                'participate',
+                'independent',
             ],
         ],
         'exclude' => [

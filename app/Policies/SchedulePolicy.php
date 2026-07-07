@@ -67,19 +67,34 @@ class SchedulePolicy
         return $authUser->can('reorder_schedule');
     }
 
-    public function editOwned(AuthUser $authUser, Schedule $schedule): bool
+    public function createAny(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('edit_owned_schedule');
+        return $authUser->can('create_any_schedule');
     }
 
-    public function deleteOwned(AuthUser $authUser, Schedule $schedule): bool
+    public function updateAny(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('delete_owned_schedule');
+        return $authUser->can('update_any_schedule');
     }
 
-    public function editPast(AuthUser $authUser, Schedule $schedule): bool
+    public function deleteAny(AuthUser $authUser): bool
     {
-        return $authUser->can('edit_past_schedule');
+        return $authUser->can('delete_any_schedule');
+    }
+
+    public function updatePast(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return $authUser->can('update_past_schedule');
+    }
+
+    public function participate(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return $authUser->can('participate_schedule');
+    }
+
+    public function independent(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return $authUser->can('independent_schedule');
     }
 
 }
