@@ -38,10 +38,11 @@ class AuthController extends Controller
             $user->avatar_url = null;
         }
         $token = $user->createToken('pwa-login')->plainTextToken;
-
+        $permissionsArray = $user->getPermissionNames()->toArray();
         return response()->json([
             'token' => $token,
             'user' => $user,
+            'permissions' => $permissionsArray
         ]);
     }
 
@@ -139,5 +140,21 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => __('Logged out')]);
+    }
+
+    public function user(Request $request)
+    {
+        $user = $request->user();
+        $avatar = $user->getFilamentAvatarUrl();
+        if ($avatar) {
+            $user->avatar_url = asset($avatar);
+        } else {
+            $user->avatar_url = null;
+        }
+        $permissionsArray = $user->getPermissionNames()->toArray();
+        return response()->json([
+            'user' => $user,
+            'permissions' => $permissionsArray
+        ]);
     }
 }

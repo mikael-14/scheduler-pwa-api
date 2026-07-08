@@ -186,6 +186,7 @@ return [
                 'update_owned',
                 'update_any',
                 'impersonate',
+                'approve',
             ],
             App\Filament\Resources\Schedules\ScheduleResource::class => [
                 'create_any',
@@ -194,6 +195,8 @@ return [
                 'update_past',
                 'participate',
                 'independent',
+                'update_status',
+                'approve',
             ],
         ],
         'exclude' => [
