@@ -10,6 +10,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\FusedGroup;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
 
@@ -34,11 +35,21 @@ class ScheduleTypeForm
                         ])
                             ->label(__('Basic Information'))
                             ->columns(3),
-                        Toggle::make('status')
-                            ->inline(false)
-                            ->default(true)
-                            ->label(__('Status'))
-                            ->helperText(__('Enable or disable this schedule type.')),
+                        Grid::make()
+                            ->columns(2)
+                            ->schema([
+                                Toggle::make('status')
+                                    ->inline(false)
+                                    ->default(true)
+                                    ->label(__('Status'))
+                                    ->helperText(__('Enable or disable this schedule type.')),
+                                Toggle::make('primary')
+                                    ->inline(false)
+                                    ->default(true)
+                                    ->label(__('Primary'))
+                                    ->helperText(__('Set this as the primary schedule type.'))
+                                    ->hintIcon('heroicon-m-question-mark-circle', tooltip: __('Only one schedule type can be primary at a time.'))
+                            ]),
                         Flatpickr::make('start')
                             ->allowInput()
                             ->placeholder(__('Start Date'))
