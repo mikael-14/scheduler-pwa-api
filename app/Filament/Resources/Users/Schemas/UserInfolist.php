@@ -33,11 +33,14 @@ class UserInfolist
                         TextEntry::make('email')
                             ->label(__('Email'))
                             ->placeholder('email@example.com'),
-                        TextEntry::make('locale')
-                            ->translateLabel(),
                         IconEntry::make('status')
                             ->label(__('Active'))
                             ->boolean(),
+                         IconEntry::make('building_key')
+                            ->label(__('Building Key'))
+                            ->boolean(),
+                        TextEntry::make('locale')
+                            ->translateLabel(),
                         TextEntry::make('approved_at')
                             ->dateTime(config('app.date_time_format'))
                             ->label(__('Approved At'))

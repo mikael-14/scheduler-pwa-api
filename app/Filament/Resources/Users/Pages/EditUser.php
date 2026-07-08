@@ -97,20 +97,24 @@ class EditUser extends EditRecord
                                     ->options(collect(config('app-locales.available'))->pluck('name', 'code')->toArray())
                                     ->translateLabel()
                                     ->selectablePlaceholder(false),
-                                Toggle::make('status')
-                                    ->label(__('Active'))
-                                    ->inline(false)
-                                    ->helperText(__('Admin panel access')),
-                                Toggle::make('approve')
-                                    ->label(__('Approved'))
-                                    ->inline(false)
-                                    ->helperText(__('Account approved'))
-                                    ->default(0),
-                                Toggle::make('building_key')
-                                    ->label(__('Building Key'))
-                                    ->inline(false)
-                                    ->helperText(__('User has a building key'))
-                                    ->default(0),
+                                Grid::make()
+                                    ->columns(3)
+                                    ->schema([
+                                        Toggle::make('status')
+                                            ->label(__('Active'))
+                                            ->inline(false)
+                                            ->helperText(__('Admin panel access')),
+                                        Toggle::make('approve')
+                                            ->label(__('Approved'))
+                                            ->inline(false)
+                                            ->helperText(__('Account approved'))
+                                            ->default(0),
+                                        Toggle::make('building_key')
+                                            ->label(__('Building Key'))
+                                            ->inline(false)
+                                            ->helperText(__('User has a building key'))
+                                            ->default(0),
+                                    ]),
                                 Select::make('role')
                                     ->options(Role::all()->pluck('name', 'id')->toArray())
                                     ->multiple()

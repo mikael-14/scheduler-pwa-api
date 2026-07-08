@@ -15,6 +15,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
@@ -56,6 +57,25 @@ class CreateUser extends CreateRecord
                         )->default('pt')
                             ->selectablePlaceholder(false)
                             ->native(false),
+                        Grid::make()
+                            ->columns(3)
+                            ->schema([
+                                Toggle::make('status')
+                                    ->label(__('Active'))
+                                    ->inline(false)
+                                    ->helperText(__('Access'))
+                                    ->default(1),
+                                Toggle::make('approved')
+                                    ->label(__('Approved'))
+                                    ->inline(false)
+                                    ->helperText(__('Approve account'))
+                                    ->default(0),
+                                Toggle::make('building_key')
+                                    ->label(__('Building Key'))
+                                    ->inline(false)
+                                    ->helperText(__('User has a building key'))
+                                    ->default(0),
+                            ]),
                         Select::make('role')
                             ->label(__('Roles'))
                             ->options(
@@ -65,21 +85,6 @@ class CreateUser extends CreateRecord
                             ->multiple()
                             ->native(false)
                             ->visible(Filament::auth()->user()->can('view_any_role')),
-                        Toggle::make('status')
-                            ->label(__('Active'))
-                            ->inline(false)
-                            ->helperText(__('Access'))
-                            ->default(1),
-                        Toggle::make('approved')
-                            ->label(__('Approved'))
-                            ->inline(false)
-                            ->helperText(__('Approve account'))
-                            ->default(0),
-                        Toggle::make('building_key')
-                            ->label(__('Building Key'))
-                            ->inline(false)
-                            ->helperText(__('User has a building key'))
-                            ->default(0),
                     ]),
                 Section::make()
                     ->schema([

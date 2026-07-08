@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->boolean('building_key')->default(false);
+            $table->boolean('push_notification')->default(true);
+            $table->boolean('email_notification')->default(false);
         });
     }
 
@@ -23,6 +25,8 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn('building_key');
+            $table->dropColumn('push_notification');
+            $table->dropColumn('email_notification');
         });
     }
 };

@@ -24,6 +24,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property string|null $description
  * @property Carbon|null $min_time
  * @property Carbon|null $max_time
+ * @property bool $primary
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * 
@@ -44,7 +45,8 @@ class ScheduleType extends Model implements Auditable
 		'start' => 'datetime',
 		'end' => 'datetime',
 		'min_time' => 'datetime',
-		'max_time' => 'datetime'
+		'max_time' => 'datetime',
+		'primary' => 'bool'
 	];
 
 	protected $fillable = [
@@ -57,7 +59,8 @@ class ScheduleType extends Model implements Auditable
 		'end',
 		'description',
 		'min_time',
-		'max_time'
+		'max_time',
+		'primary'
 	];
 
 	public function schedules()

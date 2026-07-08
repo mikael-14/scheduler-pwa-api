@@ -142,19 +142,4 @@ class AuthController extends Controller
         return response()->json(['message' => __('Logged out')]);
     }
 
-    public function user(Request $request)
-    {
-        $user = $request->user();
-        $avatar = $user->getFilamentAvatarUrl();
-        if ($avatar) {
-            $user->avatar_url = asset($avatar);
-        } else {
-            $user->avatar_url = null;
-        }
-        $permissionsArray = $user->getPermissionNames()->toArray();
-        return response()->json([
-            'user' => $user,
-            'permissions' => $permissionsArray
-        ]);
-    }
 }

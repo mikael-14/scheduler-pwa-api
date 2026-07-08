@@ -12,11 +12,27 @@ use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
+    public function user(Request $request)
+    {
+        $user = $request->user();
+        $avatar = $user->getFilamentAvatarUrl();
+        if ($avatar) {
+            $user->avatar_url = asset($avatar);
+        } else {
+            $user->avatar_url = null;
+        }
+        $permissionsArray = $user->getPermissionNames()->toArray();
+        return response()->json([
+            'user' => $user,
+            'permissions' => $permissionsArray
+        ]);
+    }
     /**
      * Update the authenticated user's information.
      */
-    public function update(Request $request, User $user) {
-        
+    public function update(Request $request, User $user)
+    {
+
         $user = $request->user();
         if (!$user) {
             return response()->json(['message' => __('User not found.')], 404);
@@ -42,7 +58,8 @@ class UserController extends Controller
 
         return response()->json(['message' => __('User updated successfully.'), 'user' => $user]);
     }
-    public function patch(Request $request, User $user) {
+    public function patch(Request $request, User $user)
+    {
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'email', 'unique:users,email,' . $user->id],

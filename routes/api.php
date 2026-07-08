@@ -14,7 +14,7 @@ Route::prefix('auth')->group(function () {
     // Socialite providers
     Route::get('{provider}/redirect', [AuthController::class, 'redirectToProvider'])->middleware(StartSession::class);
     Route::get('{provider}/callback', [AuthController::class, 'handleProviderCallback'])->middleware(StartSession::class);
-    Route::middleware('auth:sanctum')->get('user', [AuthController::class, 'user']);
+   
     // Logout (requires auth)
     Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
 
@@ -36,6 +36,6 @@ Route::middleware('auth:sanctum')->post('/pwa/subscribe', function (Request $req
 
     return response()->json(['success' => true]);
 });
-
+ Route::middleware('auth:sanctum')->get('user', [UserController::class, 'user']);
 Route::middleware('auth:sanctum')->put('user', [UserController::class, 'update']);
 Route::middleware('auth:sanctum')->patch('user', [UserController::class, 'patch']);
