@@ -70,10 +70,15 @@ class CreateUser extends CreateRecord
                             ->inline(false)
                             ->helperText(__('Access'))
                             ->default(1),
-                        Toggle::make('aproved')
+                        Toggle::make('approved')
                             ->label(__('Approved'))
                             ->inline(false)
-                            ->helperText(__('Aprove account'))
+                            ->helperText(__('Approve account'))
+                            ->default(0),
+                        Toggle::make('building_key')
+                            ->label(__('Building Key'))
+                            ->inline(false)
+                            ->helperText(__('User has a building key'))
                             ->default(0),
                     ]),
                 Section::make()
@@ -96,11 +101,12 @@ class CreateUser extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         // Set the "approved_at" field based on the "approved" toggle value
-        $data['approved_at'] = $data['aproved'] ? now() : null;
+        $data['approved_at'] = $data['approved'] ? now() : null;
 
         // Update the form state with the modified values
         return $data;
     }
+
     protected function afterCreate(): void
     {
         // Runs after the form fields are saved to the database.

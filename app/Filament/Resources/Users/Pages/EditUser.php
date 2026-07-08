@@ -51,9 +51,18 @@ class EditUser extends EditRecord
         ];
     }
 
-    public function mutateFormDataBeforeFill(array $data): array
+    protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['role'] = ModelHasRole::where('model_id', $data['id'])->pluck('role_id')->toArray();
+        $data['approved'] = $data['approved_at'] ? 1 : 0;
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (isset($data['approved'])) {
+            $data['approved_at'] = $data['approved'] ? now() : null;
+        }
         return $data;
     }
 
@@ -92,6 +101,16 @@ class EditUser extends EditRecord
                                     ->label(__('Active'))
                                     ->inline(false)
                                     ->helperText(__('Admin panel access')),
+                                Toggle::make('approve')
+                                    ->label(__('Approved'))
+                                    ->inline(false)
+                                    ->helperText(__('Account approved'))
+                                    ->default(0),
+                                Toggle::make('building_key')
+                                    ->label(__('Building Key'))
+                                    ->inline(false)
+                                    ->helperText(__('User has a building key'))
+                                    ->default(0),
                                 Select::make('role')
                                     ->options(Role::all()->pluck('name', 'id')->toArray())
                                     ->multiple()

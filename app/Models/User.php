@@ -41,6 +41,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         'locale',
         'approved_at',
         'avatar_url',
+        'building_key'
     ];
 
     /**
@@ -64,6 +65,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
             'password' => 'hashed',
+            'building_key' => 'boolean',
         ];
     }
 
