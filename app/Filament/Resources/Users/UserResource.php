@@ -38,7 +38,10 @@ class UserResource extends Resource
     {
         return __('User');
     }
-
+    public static function getPluralModelLabel(): string
+    {
+        return __('Users');
+    }
     public static function form(Schema $schema): Schema
     {
         return UserForm::configure($schema);

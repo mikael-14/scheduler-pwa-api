@@ -91,13 +91,15 @@ class UsersTable
                 Action::make('approve')
                     ->label(__('Approve'))
                     ->icon('heroicon-o-check')
+                    ->iconButton()
                     ->requiresConfirmation()
+                    ->color('success')
                     ->action(function (User $record) {
                         $record->update([
                             'approved_at' => now(),
                         ]);
                     })
-                    ->visible(fn(User $record): bool => is_null($record->approved_at) && Filament::auth()->user()->can(('approve users'))),
+                    ->visible(fn(User $record): bool => is_null($record->approved_at) && Filament::auth()->user()->can(('approve_user'))),
                 ViewAction::make()->iconButton(),
                 EditAction::make(),
                 RestoreAction::make(),

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -27,10 +29,15 @@ class AuthController extends Controller
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            event(new Failed('sanctum', $user, $credentials));
+
             throw ValidationException::withMessages([
                 'email' => [__('The provided credentials are incorrect.')],
             ]);
         }
+
+        event(new Login('sanctum', $user, false));
+
         $avatar = $user->getFilamentAvatarUrl();
         if ($avatar) {
             $user->avatar_url = asset($avatar);
@@ -62,6 +69,8 @@ class AuthController extends Controller
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
         ]);
+
+        event(new Login('sanctum', $user, false));
 
         $token = $user->createToken('pwa-login')->plainTextToken;
 
@@ -120,6 +129,9 @@ class AuthController extends Controller
 
             // 4. Create your user & Sanctum token
             $user = User::findOrCreateFromSocialite($socialiteUser, $provider);
+
+            event(new Login('sanctum', $user, false));
+
             $token = $user->createToken('pwa-login')->plainTextToken;
 
             // 5. Send them back to the PWA

@@ -54,7 +54,7 @@ class EditUser extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['role'] = ModelHasRole::where('model_id', $data['id'])->pluck('role_id')->toArray();
-        $data['approved'] = $data['approved_at'] ? 1 : 0;
+        $data['approved'] = isset($data['approved_at']) ? 1 : 0;
         return $data;
     }
 
@@ -104,16 +104,14 @@ class EditUser extends EditRecord
                                             ->label(__('Active'))
                                             ->inline(false)
                                             ->helperText(__('Admin panel access')),
-                                        Toggle::make('approve')
+                                        Toggle::make('approved')
                                             ->label(__('Approved'))
                                             ->inline(false)
-                                            ->helperText(__('Account approved'))
-                                            ->default(0),
+                                            ->helperText(fn($record) => __('Account approved') . ' ' . $record->approved_at),
                                         Toggle::make('building_key')
                                             ->label(__('Building Key'))
                                             ->inline(false)
-                                            ->helperText(__('User has a building key'))
-                                            ->default(0),
+                                            ->helperText(__('User has a building key')),
                                     ]),
                                 Select::make('role')
                                     ->options(Role::all()->pluck('name', 'id')->toArray())
