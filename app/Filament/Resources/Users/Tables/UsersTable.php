@@ -11,10 +11,12 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Table;
 use App\Filament\Actions\CustomImpersonateAction;
 use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -86,6 +88,16 @@ class UsersTable
             ])
             ->recordActions([
                 CustomImpersonateAction::make('impersonate'),
+                Action::make('approve')
+                    ->label(__('Approve'))
+                    ->icon('heroicon-o-check')
+                    ->requiresConfirmation()
+                    ->action(function (User $record) {
+                        $record->update([
+                            'approved_at' => now(),
+                        ]);
+                    })
+                    ->visible(fn(User $record): bool => is_null($record->approved_at) && Filament::auth()->user()->can(('approve users'))),
                 ViewAction::make()->iconButton(),
                 EditAction::make(),
                 RestoreAction::make(),

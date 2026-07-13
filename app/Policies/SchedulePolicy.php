@@ -97,4 +97,14 @@ class SchedulePolicy
         return $authUser->can('independent_schedule');
     }
 
+    public function updateStatus(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return $authUser->can('update_status_schedule');
+    }
+
+    public function approve(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return $authUser->can('approve_schedule');
+    }
+
 }

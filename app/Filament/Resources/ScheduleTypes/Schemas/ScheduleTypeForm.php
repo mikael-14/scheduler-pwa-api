@@ -45,7 +45,7 @@ class ScheduleTypeForm
                                     ->helperText(__('Enable or disable this schedule type.')),
                                 Toggle::make('primary')
                                     ->inline(false)
-                                    ->default(true)
+                                    ->default(false)
                                     ->label(__('Primary'))
                                     ->helperText(__('Set this as the primary schedule type.'))
                                     ->hintIcon('heroicon-m-question-mark-circle', tooltip: __('Only one schedule type can be primary at a time.'))

@@ -35,13 +35,16 @@ class UserPolicy
         return $authUser->can('create_user');
     }
 
-    public function update(AuthUser $authUser): bool
+    public function update(AuthUser $authUser, User $user): bool
     {
-        if ($authUser->can('update_any_user') && $authUser->can('update_owned_user')) {
+        if ($authUser->can('update_user') || $authUser->can('update_any_user'))
+            {
             return true;
         }
-        
-        return $authUser->can('update_user');
+        if ($authUser->can('update_owned_user')) {
+            return $authUser->id === $user->id;
+        }
+        return false;
     }
 
     public function delete(AuthUser $authUser): bool
@@ -83,11 +86,6 @@ class UserPolicy
     {
         return $authUser->can('view_owned_user');
     }
-
-    public function impersonate(AuthUser $authUser): bool
-    {
-        return $authUser->can('impersonate_user');
-    }
     
     public function updateOwned(AuthUser $authUser): bool
     {
@@ -99,5 +97,14 @@ class UserPolicy
         return $authUser->can('update_any_user');
     }
 
+    public function impersonate(AuthUser $authUser): bool
+    {
+        return $authUser->can('impersonate_user');
+    }
+
+    public function approve(AuthUser $authUser): bool
+    {
+        return $authUser->can('approve_user');
+    }
 
 }
