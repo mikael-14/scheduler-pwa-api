@@ -40,5 +40,21 @@ class AppServiceProvider extends ServiceProvider
                 ]);
             }
         });
+        // Wait until all third-party packages are fully loaded...
+        $this->app->booted(function () {
+            // Overwrite the package's broken gate definitions
+            Gate::define('restoreAudit', function ($user, $audit = null) {
+                // 1. When Filament does its structural check, $audit is null.
+                // We return true here so the button can safely render without crashing.
+                if ($audit === null) {
+                    return true; 
+                }
+
+                // 2. When a user actually clicks 'Restore' on a specific row, $audit is passed.
+                // We forward the check directly to your Shield permission!
+                return $user->can('restore_audit');
+            });
+
+        });
     }
 }

@@ -198,9 +198,13 @@ return [
                 'update_status',
                 'approve',
             ],
+            Tapp\FilamentAuditing\Filament\Resources\Audits\AuditResource::class =>[
+                'restore_audit',
+            ]
         ],
         'exclude' => [
             Tapp\FilamentAuthenticationLog\Resources\AuthenticationLogResource::class,
+           // Tapp\FilamentAuditing\Filament\Resources\Audits\AuditResource::class,
         ],
     ],
 

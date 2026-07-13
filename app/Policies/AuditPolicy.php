@@ -67,4 +67,9 @@ class AuditPolicy
         return $authUser->can('reorder_audit');
     }
 
+    public function restoreAudit(AuthUser $authUser, Audit $audit): bool
+    {
+        return $authUser->can('restore_audit_audit');
+    }
+
 }

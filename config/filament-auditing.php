@@ -55,7 +55,11 @@ return [
     'resources' => [
         'AuditResource' => AuditResource::class,
     ],
-
+/*
+    'policies' => [
+        'audit' => false,
+    ],
+*/
     'tenancy' => [
         // Enable tenancy support
         'enabled' => false,
