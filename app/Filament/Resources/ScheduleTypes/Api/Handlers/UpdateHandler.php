@@ -9,7 +9,7 @@ use App\Filament\Resources\ScheduleTypes\Api\Requests\UpdateScheduleTypeRequest;
 class UpdateHandler extends Handlers {
     public static string | null $uri = '/{id}';
     public static string | null $resource = ScheduleTypeResource::class;
-    protected static string $permission = 'Update:ScheduleType';
+    protected static string $permission = 'update_schedule_type';
 
     public static function getMethod()
     {

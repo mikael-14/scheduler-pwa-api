@@ -9,7 +9,7 @@ use App\Filament\Resources\ScheduleTypes\Api\Requests\CreateScheduleTypeRequest;
 class CreateHandler extends Handlers {
     public static string | null $uri = '/';
     public static string | null $resource = ScheduleTypeResource::class;
-    protected static string $permission = 'Create:ScheduleType';
+    protected static string $permission = 'create_schedule_type';
 
     public static function getMethod()
     {

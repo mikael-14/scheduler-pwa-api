@@ -11,7 +11,7 @@ use App\Models\ScheduleUser;
 class UpdateHandler extends Handlers {
     public static string | null $uri = '/{id}';
     public static string | null $resource = ScheduleResource::class;
-    protected static string $permission = 'Update:Schedule';
+    protected static string $permission = 'update_schedule';
 
     public static function getMethod()
     {

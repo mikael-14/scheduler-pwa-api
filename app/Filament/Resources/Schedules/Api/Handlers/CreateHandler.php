@@ -13,7 +13,7 @@ class CreateHandler extends Handlers
 {
     public static string | null $uri = '/';
     public static string | null $resource = ScheduleResource::class;
-    protected static string $permission = 'Create:Schedule';
+    protected static string $permission = 'create_schedule';
 
     public static function getMethod()
     {

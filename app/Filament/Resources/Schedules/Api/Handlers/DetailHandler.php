@@ -12,7 +12,7 @@ class DetailHandler extends Handlers
 {
     public static string | null $uri = '/{id}';
     public static string | null $resource = ScheduleResource::class;
-    protected static string $permission = 'View:Schedule';
+    protected static string $permission = 'view_schedule';
 
 
     /**

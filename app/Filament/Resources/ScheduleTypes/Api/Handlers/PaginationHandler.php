@@ -10,7 +10,7 @@ use App\Filament\Resources\ScheduleTypes\Api\Transformers\ScheduleTypeTransforme
 class PaginationHandler extends Handlers {
     public static string | null $uri = '/';
     public static string | null $resource = ScheduleTypeResource::class;
-    protected static string $permission = 'ViewAny:ScheduleType';
+    protected static string $permission = 'view_any_schedule_type';
 
 
     /**
