@@ -43,17 +43,17 @@ class SchedulesTable
     {
         return $table
             ->columns([
-                ColumnGroup::make('Schedule Type')
-                    ->columns([
-                        ColorColumn::make('schedule_type.color')
-                            ->label(__('Color')),
-                        TextColumn::make('schedule_type.name')
-                            ->label(__('Type'))
-                            ->searchable()
-                            ->sortable(),
-                    ])
-                    ->alignLeft()
-                    ->wrapHeader(),
+                TextColumn::make('schedule_type.name')
+                    ->extraCellAttributes(['class' => 'flex items-center gap-2'])
+                    ->formatStateUsing(fn($state, Schedule $record) =>
+                    '<div class="flex items-center gap-2">
+                    <div class="fi-avatar fi-size-sm fi-user-avatar" style="display:flex;background-color: ' . $record->schedule_type->color . ';"> </div>
+                    <span class="text-sm font-medium">' . $state . '</span>
+                    </div>')
+                    ->label(__('Type'))
+                    ->html()
+                    ->searchable()
+                    ->sortable(),
                 UserColumn::make('user')
                     ->label(__('Assigned To'))
                     ->wrapped(false)
