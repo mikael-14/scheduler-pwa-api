@@ -88,7 +88,8 @@ class UsersTable
             ])
             ->recordActions([
                 CustomImpersonateAction::make('impersonate'),
-                Action::make('approve')
+                ViewAction::make()->iconButton(),
+                 Action::make('approve')
                     ->label(__('Approve'))
                     ->icon('heroicon-o-check')
                     ->iconButton()
@@ -100,9 +101,8 @@ class UsersTable
                         ]);
                     })
                     ->visible(fn(User $record): bool => is_null($record->approved_at) && Filament::auth()->user()->can(('approve_user'))),
-                ViewAction::make()->iconButton(),
-                EditAction::make(),
-                RestoreAction::make(),
+                EditAction::make()->iconButton(),
+                RestoreAction::make()->iconButton(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

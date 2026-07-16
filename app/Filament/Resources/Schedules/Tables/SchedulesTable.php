@@ -4,15 +4,19 @@ namespace App\Filament\Resources\Schedules\Tables;
 
 use App\Enums\ScheduleStatus;
 use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
+use App\Models\Schedule;
 use App\Models\ScheduleType;
 use Coolsam\Flatpickr\Forms\Components\Flatpickr;
 use Dom\Text;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Facades\Filament;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -29,6 +33,7 @@ use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Zvizvi\UserFields\Components\UserColumn;
 use Zvizvi\UserFields\Components\UserSelectFilter;
 
@@ -132,7 +137,7 @@ class SchedulesTable
                         Grid::make(2)
                             ->schema([
                                 DateTimePicker::make('from')
-                                ->label(__('From'))
+                                    ->label(__('From'))
                                     ->native(false)
                                     ->hoursStep(1) // Intervals of incrementing hours in a time picker
                                     ->minutesStep(5) // Intervals of minute increment in a time picker
@@ -177,7 +182,29 @@ class SchedulesTable
             ->persistFiltersInSession()
             ->recordActions([
                 ViewAction::make(),
-                EditAction::make(),
+                Action::make('approve')
+                    ->label(__('Approve'))
+                    ->icon('heroicon-o-check')
+                    ->iconButton()
+                    ->requiresConfirmation()
+                    ->color('success')
+                    ->action(function (Schedule $record) {
+                        $record->update([
+                            'status' => ScheduleStatus::Approved,
+                        ]);
+                        $record->participants()->each(function ($participant) {
+                            if ($participant->status === ScheduleStatus::Pending) {
+                                $participant->update([
+                                    'status' => ScheduleStatus::Approved,
+                                ]);
+                            }
+                        });
+                    })
+                    ->visible(
+                        fn(Schedule $record): bool => ($record->status === ScheduleStatus::Pending && Filament::auth()->user()->can(('approve_schedule'))) ||
+                            (Filament::auth()->user()->can(('update_status_schedule')))
+                    ),
+                EditAction::make()->iconButton(),
             ])
             ->columnManagerColumns(2)
             ->toolbarActions([
@@ -185,6 +212,32 @@ class SchedulesTable
                     DeleteBulkAction::make(),
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
+                    BulkAction::make('approve')
+                        ->label(__('Approve selected'))
+                        ->icon('heroicon-o-check')
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records) {
+                            $records->each(function ($record) {
+                                if ($record->status === ScheduleStatus::Pending) {
+                                    $record->update([
+                                        'status' => ScheduleStatus::Approved,
+                                    ]);
+                                    $record->participants()->each(function ($participant) {
+                                        if ($participant->status === ScheduleStatus::Pending) {
+                                            $participant->update([
+                                                'status' => ScheduleStatus::Approved,
+                                            ]);
+                                        }
+                                    });
+                                }
+                            });
+                        })
+                        ->deselectRecordsAfterCompletion()
+                        ->successNotificationTitle(__('Records approved successfully'))
+                        ->visible(
+                            fn(): bool => (Filament::auth()->user()->can(('approve_schedule'))) ||
+                                (Filament::auth()->user()->can(('update_status_schedule')))
+                        ),
                 ]),
             ]);
     }
