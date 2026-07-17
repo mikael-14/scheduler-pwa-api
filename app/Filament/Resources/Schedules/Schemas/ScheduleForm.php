@@ -11,6 +11,7 @@ use Filament\Schemas\Components\Section;
 use App\Models\ScheduleUser; // Import the new pivot model
 use Filament\Schemas\Schema;
 use Coolsam\Flatpickr\Forms\Components\Flatpickr;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\ToggleButtons;
@@ -128,6 +129,16 @@ class ScheduleForm
                     ->default(ScheduleStatus::Pending->value)
                     ->options(ScheduleStatus::class)
                     ->required()
+                    ->disableOptionWhen(function ($value, Get $get) {
+                        if (Filament::auth()->user()->can('update_status_schedule')) return false;
+                        if (Filament::auth()->user()->can('approve_schedule')) {
+                            if ($value === ScheduleStatus::Approved->value || $value === ScheduleStatus::Rejected->value) {
+                                return false;
+                            } else {
+                                return true;
+                            }
+                        }
+                    }, merge: true)
                     ->columnSpanFull(),
                 Repeater::make('schedules')
                     ->relationship('schedule_users') // Use the new hasMany relationship to the pivot model
@@ -138,23 +149,23 @@ class ScheduleForm
                             ->relationship('user', 'name') // Relationship from ScheduleUser to User
                             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                             ->disableOptionWhen(function ($value, Get $get) {
-                                $mainUserId = $get('../../user_id');
+                                $mainUserId = $get('../../user_id', false);
                                 return $value && $mainUserId && (string) $value === (string) $mainUserId;
                             }, merge: true)
                             ->searchable()
+                            ->required()
                             ->preload(true),
-                         Select::make('status')
+                        Select::make('status')
                             ->searchable()
                             ->default(ScheduleStatus::Pending->value)
                             ->selectablePlaceholder(false)
                             ->native(false)
                             ->live()
                             ->options(ScheduleStatus::class)
-                            ->suffixIcon(fn ($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getIcon() ?? Heroicon::QuestionMarkCircle)
-                            ->suffixIconColor(fn ($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getColor() ?? 'gray')
+                            ->suffixIcon(fn($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getIcon() ?? Heroicon::QuestionMarkCircle)
+                            ->suffixIconColor(fn($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getColor() ?? 'gray')
                             ->required(),
                         Textarea::make('description')->autosize()->rows(1),
-                       
                     ])
                     ->mutateRelationshipDataBeforeCreateUsing(function (array $data, Get $get): ?array {
                         $mainUserId = $get('user_id');
@@ -172,11 +183,14 @@ class ScheduleForm
                         }
                         return $data;
                     })
+                    ->defaultItems(0)
+                    ->addActionLabel(__('Add Participant'))
                     ->columns(3)
                     ->columnSpanFull()
 
             ];
     }
+
     public static function getOptionWithColor(\Illuminate\Database\Eloquent\Collection $model)
     {
         return $model->mapWithKeys(function ($item) {

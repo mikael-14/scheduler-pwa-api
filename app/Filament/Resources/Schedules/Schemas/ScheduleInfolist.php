@@ -82,9 +82,9 @@ class ScheduleInfolist
                         RepeatableEntry::make('schedule_users')
                             ->label(__('Participants'))
                             ->table([
-                                TableColumn::make('Name')->label(__('Name')),
-                                TableColumn::make('Status')->label(__('Status')),
-                                TableColumn::make('Description')->label(__('Description')),
+                                TableColumn::make('Name'),
+                                TableColumn::make('Status'),
+                                TableColumn::make('Description'),
                             ])
                             ->schema([
                                 TextEntry::make('user.name')

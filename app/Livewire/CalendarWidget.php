@@ -142,15 +142,17 @@ class CalendarWidget extends FullCalendarWidget
             EditAction::make('edit')
                 ->record(fn(array $arguments) => Schedule::find($arguments['event'])) // Fetch the right model
                 ->mountUsing(function (Schedule $record, Schema $form) {
+                    $record->load('schedule_users');
                     return $form->fill([
                         'schedule_type_id' => $record->schedule_type_id,
                         'user_id' => $record->user_id,
-                        'start'   => $record->start,
-                        'end'     => $record->end,
+                        'start' => $record->start,
+                        'end' => $record->end,
                         'all_day' => $record->all_day,
                         'description' => $record->description,
                         'internal_note' => $record->internal_note,
                         'status' => $record->status,
+                        'schedules' => $record->schedule_users->toArray(),
                     ]);
                 }),
         ];

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Schedules\Tables;
 
 use App\Enums\ScheduleStatus;
+use App\Filament\Resources\Schedules\Pages\ViewSchedule;
+use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use App\Models\Schedule;
 use App\Models\ScheduleType;
@@ -48,7 +50,7 @@ class SchedulesTable
                     ->formatStateUsing(fn($state, Schedule $record) =>
                     '<div class="flex items-center gap-2">
                     <div class="fi-avatar fi-size-sm fi-user-avatar" style="display:flex;background-color: ' . $record->schedule_type->color . ';"> </div>
-                    <span class="text-sm font-medium">' . $state . '</span>
+                    <span class="text-sm font-medium ml-1">' . $state . '</span>
                     </div>')
                     ->label(__('Type'))
                     ->html()
@@ -192,7 +194,7 @@ class SchedulesTable
                         $record->update([
                             'status' => ScheduleStatus::Approved,
                         ]);
-                        $record->participants()->each(function ($participant) {
+                        $record->schedule_users()->each(function ($participant) {
                             if ($participant->status === ScheduleStatus::Pending) {
                                 $participant->update([
                                     'status' => ScheduleStatus::Approved,
@@ -201,9 +203,10 @@ class SchedulesTable
                         });
                     })
                     ->visible(
-                        fn(Schedule $record): bool => ($record->status === ScheduleStatus::Pending && Filament::auth()->user()->can(('approve_schedule'))) ||
-                            (Filament::auth()->user()->can(('update_status_schedule')))
+                        fn(Schedule $record): bool => $record->status === ScheduleStatus::Pending && 
+                        (Filament::auth()->user()->can(('approve_schedule')) ||Filament::auth()->user()->can(('update_status_schedule')))
                     ),
+                Action::make('infolist')->label(__('View'))->url(fn ($record) => ScheduleResource::getUrl('infolist', ['record' => $record,]))->icon('heroicon-o-eye')->iconButton(),
                 EditAction::make()->iconButton(),
             ])
             ->columnManagerColumns(2)
@@ -222,7 +225,7 @@ class SchedulesTable
                                     $record->update([
                                         'status' => ScheduleStatus::Approved,
                                     ]);
-                                    $record->participants()->each(function ($participant) {
+                                    $record->schedule_users()->each(function ($participant) {
                                         if ($participant->status === ScheduleStatus::Pending) {
                                             $participant->update([
                                                 'status' => ScheduleStatus::Approved,

@@ -67,8 +67,9 @@ class ScheduleResource extends Resource
         return [
             'index' => ListSchedules::route('/'),
             'create' => CreateSchedule::route('/create'),
-            'view' => ViewSchedule::route('/{record}'),
+            //'view' => ViewSchedule::route('/{record}'),
             'edit' => EditSchedule::route('/{record}/edit'),
+            'infolist' => ViewSchedule::route('/{record}'),
         ];
     }
 
