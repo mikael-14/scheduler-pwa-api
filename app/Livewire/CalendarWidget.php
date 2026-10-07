@@ -5,19 +5,18 @@ namespace App\Livewire;
 use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Schedule;
-use Livewire\Attributes\On;
 use Filament\Schemas\Components\Grid;
+use Livewire\Attributes\On;
 use Filament\Schemas\Schema;
-use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Model;
+use Saade\FilamentFullCalendar\Actions\CreateAction;
 use Saade\FilamentFullCalendar\Actions\EditAction;
 
 class CalendarWidget extends FullCalendarWidget
 {
+    public Model|int|string|null $record = null; // Holds the ScheduleType model from the page
 
-    public Model|int|string|null $record = null;
-
-    protected int | string | array $columnSpan = 'full'; // can be set to 'full' or a specific number of columns;
+    protected int | string | array $columnSpan = 'full';
 
     public array $filterStatus = [];
     public array $filterUserIds = [];
@@ -30,15 +29,51 @@ class CalendarWidget extends FullCalendarWidget
     protected function headerActions(): array
     {
         return [
-            \Saade\FilamentFullCalendar\Actions\CreateAction::make()
-                ->model(Schedule::class) // Explicitly set the model here
+            CreateAction::make()
+                ->model(Schedule::class)
+                ->schema([
+                    Grid::make(2)
+                        ->schema(ScheduleForm::formSchema())
+                ])
                 ->mountUsing(function (Schema $form) {
-                    // Pre-fill fields if needed, e.g., the schedule type
-                    return $form->fill([
-                        'schedule_type_id' => $this->record->id,
+                    $form->model(new Schedule());
+                    $form->fill([
+                        'schedule_type_id' => $this->record?->id,
                     ]);
                 }),
         ];
+    }
+
+    protected function modalActions(): array
+    {
+        return [
+            EditAction::make('edit')
+                ->model(Schedule::class)
+                ->record(fn(array $arguments) => Schedule::with('schedule_users')->find($arguments['event']))
+                ->schema([
+                    Grid::make(2)
+                        ->schema(ScheduleForm::formSchema())
+                ])
+                ->mountUsing(function (Schedule $record, Schema $form) {
+                    $form->model($record);
+                    $form->fill([
+                        'schedule_type_id' => $record->schedule_type_id,
+                        'user_id'          => $record->user_id,
+                        'start'            => $record->start,
+                        'end'              => $record->end,
+                        'all_day'          => $record->all_day,
+                        'description'      => $record->description,
+                        'internal_note'    => $record->internal_note,
+                        'status'           => $record->status,
+                    ]);
+                }),
+        ];
+    }
+
+    public function getFormSchema(): array
+    {
+        // Left empty so the root widget doesn't evaluate ScheduleForm against ScheduleType ($this->record)
+        return [];
     }
 
     #[On('filterCalendar')]
@@ -87,13 +122,6 @@ class CalendarWidget extends FullCalendarWidget
             ->toArray();
     }
 
-    public function getFormSchema(): array
-    {
-        return [
-            Grid::make()
-                ->schema(ScheduleForm::formSchema()),
-        ];
-    }
     public function config(): array
     {
         $allConfig = [
@@ -114,48 +142,27 @@ class CalendarWidget extends FullCalendarWidget
             ],
         ];
 
-        if ($this->record->min_time) {
+        if ($this->record?->min_time) {
             $allConfig['slotMinTime'] = $this->record->min_time->format('H:i:s');
         }
-        if ($this->record->max_time) {
+        if ($this->record?->max_time) {
             $allConfig['slotMaxTime'] = $this->record->max_time->format('H:i:s');
         }
         return $allConfig;
     }
+
     public function eventDidMount(): string
     {
         return <<<JS
         function({ event, timeText, isStart, isEnd, isMirror, isPast, isFuture, isToday, el, view }){
-              const description = event.extendedProps.description;
+            const description = event.extendedProps.description;
 
             if (description) {
                 el.setAttribute("x-tooltip", "tooltip");
-                // Safely handle quotes and newlines by using JSON.stringify
                 el.setAttribute("x-data", "{ tooltip: " + JSON.stringify(description) + " }");
             }
         }
-    JS;
-    }
-    protected function modalActions(): array
-    {
-        return [
-            EditAction::make('edit')
-                ->record(fn(array $arguments) => Schedule::find($arguments['event'])) // Fetch the right model
-                ->mountUsing(function (Schedule $record, Schema $form) {
-                    $record->load('schedule_users');
-                    return $form->fill([
-                        'schedule_type_id' => $record->schedule_type_id,
-                        'user_id' => $record->user_id,
-                        'start' => $record->start,
-                        'end' => $record->end,
-                        'all_day' => $record->all_day,
-                        'description' => $record->description,
-                        'internal_note' => $record->internal_note,
-                        'status' => $record->status,
-                        'schedules' => $record->schedule_users->toArray(),
-                    ]);
-                }),
-        ];
+        JS;
     }
 
     public function onEventClick(array $info): void

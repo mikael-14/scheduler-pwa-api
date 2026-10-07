@@ -19,7 +19,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Zvizvi\UserFields\Components\UserSelect;
 
-use function Symfony\Component\Clock\now;
 
 class ScheduleForm
 {
@@ -141,6 +140,7 @@ class ScheduleForm
                     }, merge: true)
                     ->columnSpanFull(),
                 Repeater::make('schedules')
+                    ->defaultItems(0)
                     ->relationship('schedule_users') // Use the new hasMany relationship to the pivot model
                     ->reorderable(false)
                     ->schema([
@@ -168,19 +168,21 @@ class ScheduleForm
                         Textarea::make('description')->autosize()->rows(1),
                     ])
                     ->mutateRelationshipDataBeforeCreateUsing(function (array $data, Get $get): ?array {
-                        $mainUserId = $get('user_id');
-                        // If the user selected in the repeater item is the same as the main user, return null to exclude it
+                        $mainUserId = $get('../../user_id');
+
                         if ($mainUserId && isset($data['user_id']) && (string) $data['user_id'] === (string) $mainUserId) {
                             return null;
                         }
+
                         return $data;
                     })
                     ->mutateRelationshipDataBeforeSaveUsing(function (array $data, Get $get): ?array {
-                        $mainUserId = $get('user_id');
-                        // Prevent saving an existing item if it now matches the main user ID
+                        $mainUserId = $get('../../user_id');
+
                         if ($mainUserId && isset($data['user_id']) && (string) $data['user_id'] === (string) $mainUserId) {
                             return null;
                         }
+
                         return $data;
                     })
                     ->defaultItems(0)
