@@ -3,7 +3,9 @@
 namespace App\Livewire;
 
 use App\Enums\ScheduleStatus;
+use App\Models\ScheduleType;
 use App\Models\User;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\Concerns\InteractsWithActions; // Add this
@@ -27,6 +29,9 @@ class CalendarLegendWidget extends Widget implements HasForms, HasActions
 
     public ?array $data = [];
 
+    // Type filter and "color by" toggle only make sense on the central calendar
+    public bool $showTypeFilter = false;
+
     public function mount(): void
     {
         $this->form->fill();
@@ -37,6 +42,14 @@ class CalendarLegendWidget extends Widget implements HasForms, HasActions
         return $form
             ->schema([
                 Flex::make([
+                    Select::make('schedule_type_id')
+                        ->label(__('Type'))
+                        ->multiple()
+                        ->options(ScheduleType::orderBy('name')->pluck('name', 'id'))
+                        ->preload()
+                        ->placeholder(__('All Types'))
+                        ->visible(fn() => $this->showTypeFilter)
+                        ->columnSpan(2),
                     Select::make('status')
                         ->multiple() // Enable multiple selection
                         ->options(ScheduleStatus::class)
@@ -51,6 +64,14 @@ class CalendarLegendWidget extends Widget implements HasForms, HasActions
                         ->searchable()
                         ->placeholder('All Users')
                         ->columnSpan(2),
+                    ToggleButtons::make('color_by')
+                        ->label(__('Color by'))
+                        ->options(['status' => __('Status'), 'type' => __('Type')])
+                        ->default('status')
+                        ->inline()
+                        ->live()
+                        ->afterStateUpdated(fn() => $this->submit())
+                        ->visible(fn() => $this->showTypeFilter),
                     ActionGroup::make([
                         Action::make('apply')
                             ->label('Apply Filters')
@@ -82,7 +103,9 @@ class CalendarLegendWidget extends Widget implements HasForms, HasActions
         $this->dispatch(
             'filterCalendar',
             status: $this->data['status'] ?? [],
-            userIds: $this->data['user_id'] ?? []
+            userIds: $this->data['user_id'] ?? [],
+            typeIds: $this->data['schedule_type_id'] ?? [],
+            colorBy: $this->data['color_by'] ?? 'status'
         );
     }
     // If you want the widget to span the full width
@@ -92,6 +115,9 @@ class CalendarLegendWidget extends Widget implements HasForms, HasActions
     {
 
         return [
+            'types' => $this->showTypeFilter
+                ? ScheduleType::orderBy('name')->get(['name', 'color'])
+                : collect(),
             'items' => collect(ScheduleStatus::cases())->map(fn($status) => [
                 'label' => $status->getLabel(),
                 'color' => $status->getColor(), //var(--danger-400)

@@ -29,6 +29,17 @@
             @endforeach
         </div>
 
+        @if($types->isNotEmpty())
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px;">
+                @foreach($types as $type)
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 12px; height: 12px; border-radius: 4px; margin-right: 8px; flex-shrink: 0; background-color: {{ $type->color ?? '#cccccc' }};"></div>
+                        <span style="font-size: 0.875rem; font-weight: 500; white-space: nowrap;" class="text-gray-600 dark:text-gray-300">{{ $type->name }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         {{-- This hidden block ensures Filament loads the necessary CSS variables --}}
         <div class="hidden text-primary-500 text-success-500 text-warning-500 text-danger-500 text-info-500 text-gray-500"></div>
     </x-filament::section>

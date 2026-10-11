@@ -6,6 +6,7 @@ use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Schedule;
 use Filament\Schemas\Components\Grid;
+use Carbon\Carbon;
 use Livewire\Attributes\On;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
@@ -14,12 +15,15 @@ use Saade\FilamentFullCalendar\Actions\EditAction;
 
 class CalendarWidget extends FullCalendarWidget
 {
-    public Model|int|string|null $record = null; // Holds the ScheduleType model from the page
+    // Holds the ScheduleType model on a type page; null on the central calendar
+    public Model|int|string|null $record = null;
 
     protected int | string | array $columnSpan = 'full';
 
     public array $filterStatus = [];
     public array $filterUserIds = [];
+    public array $filterTypeIds = [];
+    public string $colorBy = 'status'; // 'status' | 'type'
 
     public function getModel(): string
     {
@@ -77,10 +81,12 @@ class CalendarWidget extends FullCalendarWidget
     }
 
     #[On('filterCalendar')]
-    public function updateFilter($status = [], $userIds = []): void
+    public function updateFilter($status = [], $userIds = [], $typeIds = [], $colorBy = 'status'): void
     {
-        $this->filterStatus = $status;
-        $this->filterUserIds = $userIds;
+        $this->filterStatus = $status ?? [];
+        $this->filterUserIds = $userIds ?? [];
+        $this->filterTypeIds = $typeIds ?? [];
+        $this->colorBy = in_array($colorBy, ['status', 'type'], true) ? $colorBy : 'status';
 
         // This tells the frontend JS: "Go call the fetchEvents method again"
         $this->dispatch('filament-fullcalendar--refresh');
@@ -88,24 +94,52 @@ class CalendarWidget extends FullCalendarWidget
 
     public function fetchEvents(array $fetchInfo): array
     {
+        $tz = config('app.timezone');
+        $from = Carbon::parse($fetchInfo['start'])->setTimezone($tz);
+        $to = Carbon::parse($fetchInfo['end'])->setTimezone($tz);
+        $typeId = $this->record?->id;
+
         return Schedule::query()
-            ->where('schedule_type_id', $this->record->id)
+            ->with(['user', 'schedule_type', 'schedule_users.user'])
+            ->when($typeId, fn($query) => $query->where('schedule_type_id', $typeId))
+            ->when(!$typeId && !empty($this->filterTypeIds), fn($query) => $query->whereIn('schedule_type_id', $this->filterTypeIds))
             ->when(!empty($this->filterStatus), fn($query) => $query->whereIn('status', $this->filterStatus))
-            ->when(!empty($this->filterUserIds), fn($query) => $query->whereIn('user_id', $this->filterUserIds))
-            ->whereBetween('start', [
-                $fetchInfo['start'],
-                $fetchInfo['end'],
-            ])
+            ->when(!empty($this->filterUserIds), fn($query) => $query->where(function ($q) {
+                $q->whereIn('user_id', $this->filterUserIds)
+                    ->orWhereHas('schedule_users', fn($su) => $su->whereIn('user_id', $this->filterUserIds));
+            }))
+            // Overlap, not just "starts inside": includes multi-day schedules that began before the window
+            ->where('start', '<', $to)
+            ->whereRaw('COALESCE(`end`, `start`) >= ?', [$from])
             ->get()
-            ->map(function ($event) {
-                $colorKey = $event->status->getColor();
-                $backgroundColor = "var(--{$colorKey}-600)";
+            ->map(function (Schedule $event) {
+                $type = $event->schedule_type;
 
-                $hasComment = !empty($event->description);
+                if ($this->colorBy === 'type' && $type?->color) {
+                    $backgroundColor = $type->color;
+                } else {
+                    $backgroundColor = 'var(--' . ($event->status?->getColor() ?? 'gray') . '-600)';
+                }
 
-                $title = ($event->all_day ? '⌛ ' : '') . $event->user->name;
-                if ($hasComment) {
-                    $title = $title . ' 💬';
+                $names = collect([$event->user?->name])
+                    ->merge($event->schedule_users->map(fn($su) => $su->user?->name))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                $title = $names->first() ?? __('No user');
+                if ($names->count() > 1) {
+                    $title .= ' +' . ($names->count() - 1);
+                }
+                if ($event->all_day) {
+                    $title = '⌛ ' . $title;
+                }
+                if (!empty($event->description)) {
+                    $title .= ' 💬';
+                }
+                // On the central calendar, say which type each event belongs to
+                if (!$this->record && $type) {
+                    $title .= ' · ' . $type->name;
                 }
 
                 return [

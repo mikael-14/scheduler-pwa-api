@@ -114,5 +114,9 @@
     "Legend": "Legenda",
     "Cannot delete user": "Não é possível eliminar o utilizador",
     "This user has schedules and cannot be deleted.": "Este utilizador tem agendamentos e não pode ser eliminado.",
-    "Records deleted successfully": "Registos eliminados com sucesso"
+    "Records deleted successfully": "Registos eliminados com sucesso",
+    "Calendar": "Calendário",
+    "All Types": "Todos os tipos",
+    "Color by": "Cor por",
+    "No user": "Sem utilizador"
 }
