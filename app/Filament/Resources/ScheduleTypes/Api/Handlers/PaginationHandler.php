@@ -7,7 +7,8 @@ use Spatie\QueryBuilder\QueryBuilder;
 use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
 use App\Filament\Resources\ScheduleTypes\Api\Transformers\ScheduleTypeTransformer;
 
-class PaginationHandler extends Handlers {
+class PaginationHandler extends \App\Http\Handlers\ApprovedHandler
+{
     public static string | null $uri = '/';
     public static string | null $resource = ScheduleTypeResource::class;
     protected static string $permission = 'view_any_schedule_type';

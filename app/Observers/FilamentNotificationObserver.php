@@ -1,24 +1,29 @@
-<?php 
+<?php
 
 namespace App\Observers;
 
-// 1. Change this namespace to use standard Laravel model
-use Illuminate\Notifications\DatabaseNotification; 
+use App\Models\User;
 use App\Notifications\PwaWebPushNotification;
+use Illuminate\Notifications\DatabaseNotification;
 
+/**
+ * Every notification stored for a user (the app's own and Filament's) is also sent as web push
+ * to the PWA, but only when the user has push enabled and has a device subscribed.
+ */
 class FilamentNotificationObserver
 {
-    /**
-     * Handle the DatabaseNotification "created" event.
-     */
     public function created(DatabaseNotification $notification): void
     {
-        // 2. Fetch the user model attached to this notification
         $user = $notification->notifiable;
 
-        if ($user) {
-            // Forward it straight to your PWA push notification channel!
+        if (! $user instanceof User || ! $user->push_notification || ! $user->pushSubscriptions()->exists()) {
+            return;
+        }
+
+        try {
             $user->notify(new PwaWebPushNotification($notification));
+        } catch (\Throwable $e) {
+            report($e);
         }
     }
 }

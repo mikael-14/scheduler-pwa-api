@@ -13,7 +13,7 @@ class CustomImpersonateAction extends ImpersonateAction
         //Button styling
         //$this->button();
 
-        $this->label('Impersonate');
+        $this->label(__('Impersonate'));
 
     }
 }

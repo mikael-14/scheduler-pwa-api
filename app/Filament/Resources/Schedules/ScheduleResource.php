@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Schedules;
 
-use App\Filament\Resources\ScheduleResource\RelationManagers\AuditsRelationManager;
+use App\Filament\Resources\Schedules\RelationManagers\AuditsRelationManager;
 use App\Filament\Resources\Schedules\Pages\CreateSchedule;
 use App\Filament\Resources\Schedules\Pages\EditSchedule;
 use App\Filament\Resources\Schedules\Pages\ListSchedules;
@@ -38,6 +38,11 @@ class ScheduleResource extends Resource
     public static function getModelLabel(): string
     {
         return __('Schedule');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('Schedules');
     }
     public static function form(Schema $schema): Schema
     {

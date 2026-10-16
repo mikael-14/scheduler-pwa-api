@@ -39,6 +39,11 @@ class ScheduleTypeResource extends Resource
         return __('Schedule Type');
     }
 
+    public static function getPluralModelLabel(): string
+    {
+        return __('Schedule Types');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return ScheduleTypeForm::configure($schema);

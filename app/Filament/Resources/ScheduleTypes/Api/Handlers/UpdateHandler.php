@@ -6,7 +6,8 @@ use Rupadana\ApiService\Http\Handlers;
 use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
 use App\Filament\Resources\ScheduleTypes\Api\Requests\UpdateScheduleTypeRequest;
 
-class UpdateHandler extends Handlers {
+class UpdateHandler extends \App\Http\Handlers\ApprovedHandler
+{
     public static string | null $uri = '/{id}';
     public static string | null $resource = ScheduleTypeResource::class;
     protected static string $permission = 'update_schedule_type';

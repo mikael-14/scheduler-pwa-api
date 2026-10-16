@@ -8,7 +8,7 @@ use Spatie\QueryBuilder\QueryBuilder;
 use Illuminate\Http\Request;
 use App\Filament\Resources\Schedules\Api\Transformers\ScheduleTransformer;
 
-class DetailHandler extends Handlers
+class DetailHandler extends \App\Http\Handlers\ApprovedHandler
 {
     public static string | null $uri = '/{id}';
     public static string | null $resource = ScheduleResource::class;

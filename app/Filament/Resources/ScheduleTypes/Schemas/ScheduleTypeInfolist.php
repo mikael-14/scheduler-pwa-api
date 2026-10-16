@@ -15,7 +15,7 @@ class ScheduleTypeInfolist
     {
         return $schema
             ->components([
-                Section::make('Details')
+                Section::make(__('Details'))
                     ->collapsible()
                     ->collapsed(true)
                     ->schema([

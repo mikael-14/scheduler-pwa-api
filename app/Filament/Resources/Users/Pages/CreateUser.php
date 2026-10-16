@@ -76,6 +76,20 @@ class CreateUser extends CreateRecord
                                     ->helperText(__('User has a building key'))
                                     ->default(0),
                             ]),
+                        Grid::make()
+                            ->columns(2)
+                            ->schema([
+                                Toggle::make('email_notification')
+                                    ->label(__('Email notifications'))
+                                    ->inline(false)
+                                    ->default(false)
+                                    ->helperText(__('Receive an email when a schedule is approved, rejected or cancelled.')),
+                                Toggle::make('push_notification')
+                                    ->label(__('Push notifications'))
+                                    ->inline(false)
+                                    ->default(true)
+                                    ->helperText(__('Receive push notifications on the devices where you enabled them in the app.')),
+                            ]),
                         Select::make('role')
                             ->label(__('Roles'))
                             ->options(

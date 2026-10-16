@@ -23,17 +23,17 @@ class ListSchedules extends ListRecords
     public function getTabs(): array
     {
         return [
-            'upcoming' => Tab::make('Upcoming')
+            'upcoming' => Tab::make(__('Upcoming'))
                 ->label(__('Upcoming'))
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('start', '>=', now()->startOfDay()))
                 ->icon('heroicon-m-calendar-days'),
 
-            'past' => Tab::make('Past')
+            'past' => Tab::make(__('Past'))
                 ->label(__('Past'))
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('start', '<', now()->startOfDay()))
                 ->icon('heroicon-m-clock'),
 
-            'all' => Tab::make('All History')
+            'all' => Tab::make(__('All History'))
                 ->label(__('All History')),
         ];
     }

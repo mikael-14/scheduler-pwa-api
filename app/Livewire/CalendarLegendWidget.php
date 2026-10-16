@@ -54,15 +54,15 @@ class CalendarLegendWidget extends Widget implements HasForms, HasActions
                         ->multiple() // Enable multiple selection
                         ->options(ScheduleStatus::class)
                         ->preload()
-                        ->placeholder('All Statuses')
+                        ->placeholder(__('All Statuses'))
                         ->columnSpan(2),
                     Select::make('user_id')
-                        ->label('Users')
+                        ->label(__('Users'))
                         ->searchable()
                         ->multiple() // Enable multiple selection
                         ->options(User::pluck('name', 'id'))
                         ->searchable()
-                        ->placeholder('All Users')
+                        ->placeholder(__('All Users'))
                         ->columnSpan(2),
                     ToggleButtons::make('color_by')
                         ->label(__('Color by'))
@@ -74,12 +74,12 @@ class CalendarLegendWidget extends Widget implements HasForms, HasActions
                         ->visible(fn() => $this->showTypeFilter),
                     ActionGroup::make([
                         Action::make('apply')
-                            ->label('Apply Filters')
+                            ->label(__('Apply Filters'))
                             ->color('primary')
                             ->icon('heroicon-m-funnel')
                             ->action(fn() => $this->submit()),
                         Action::make('clear')
-                            ->label('Clear')
+                            ->label(__('Clear'))
                             ->icon('heroicon-m-x-mark')
                             ->color('gray')
                             ->action(function () {

@@ -26,7 +26,7 @@ class ScheduleForm
     {
         return $schema
             ->components([
-                Section::make('Schedule Information')
+                Section::make(__('Schedule Information'))
                     ->schema(self::formSchema())->columns(2)
                     ->columnSpan('full'),
             ]);
@@ -45,7 +45,7 @@ class ScheduleForm
                     ->preload(true)
                     ->required(),
                 UserSelect::make('user_id')
-                    ->label('Select User')
+                    ->label(__('Select User'))
                     ->relationship('user', 'name')
                     ->live()
                     ->searchable()
@@ -145,7 +145,7 @@ class ScheduleForm
                     ->reorderable(false)
                     ->schema([
                         UserSelect::make('user_id')
-                            ->label('Select User')
+                            ->label(__('Select User'))
                             ->relationship('user', 'name') // Relationship from ScheduleUser to User
                             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                             ->disableOptionWhen(function ($value, Get $get) {

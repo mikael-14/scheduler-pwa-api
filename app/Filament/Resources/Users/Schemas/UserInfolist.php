@@ -16,7 +16,7 @@ class UserInfolist
     {
         return $schema
             ->components([
-                Section::make('User information')
+                Section::make(__('User information'))
                     ->schema([
                         ImageEntry::make('avatar_url')
                             ->imageHeight(100)
@@ -41,6 +41,12 @@ class UserInfolist
                             ->boolean(),
                         TextEntry::make('locale')
                             ->translateLabel(),
+                        IconEntry::make('email_notification')
+                            ->label(__('Email notifications'))
+                            ->boolean(),
+                        IconEntry::make('push_notification')
+                            ->label(__('Push notifications'))
+                            ->boolean(),
                         TextEntry::make('approved_at')
                             ->dateTime(config('app.date_time_format'))
                             ->label(__('Approved At'))

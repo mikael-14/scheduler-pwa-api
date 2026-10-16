@@ -225,6 +225,8 @@ return [
         'exclude' => [
             \Filament\Pages\Dashboard::class,
             \App\Filament\Pages\PendingApproval::class,
+            // Access is `view_any_schedule`, checked in the page itself
+            \App\Filament\Pages\ScheduleCalendar::class,
         ],
     ],
 
@@ -246,6 +248,13 @@ return [
             \Filament\Widgets\AccountWidget::class,
             \Filament\Widgets\FilamentInfoWidget::class,
             \App\Filament\Widgets\UserWelcomeWidget::class,
+            // Dashboard widgets decide their own visibility in canView() from the schedule/user permissions
+            \App\Filament\Widgets\TodaySchedulesWidget::class,
+            \App\Filament\Widgets\ScheduleHeadcountChart::class,
+            \App\Filament\Widgets\SchedulesByTypeChart::class,
+            \App\Filament\Widgets\PendingSchedulesWidget::class,
+            \App\Filament\Widgets\SchedulePendingWidget::class,
+            \App\Filament\Widgets\UserPendingCounterWidget::class,
         ],
     ],
 

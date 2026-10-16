@@ -14,8 +14,13 @@ class ScheduleApiService extends ApiService
         return [
             Handlers\CreateHandler::class,
             Handlers\UpdateHandler::class,
+            Handlers\PatchHandler::class,
+            Handlers\ApproveHandler::class,
+            Handlers\RejectHandler::class,
             Handlers\DeleteHandler::class,
             Handlers\PaginationHandler::class,
+            // before DetailHandler, whose `/{id}` would otherwise swallow `/pending`
+            Handlers\PendingHandler::class,
             Handlers\DetailHandler::class
         ];
 

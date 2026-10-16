@@ -3,12 +3,15 @@
 namespace App\Providers;
 
 use App\Policies\AuditPolicy;
+use Coolsam\Flatpickr\Forms\Components\Flatpickr;
+use Filament\Forms\Components\Field;
+use Filament\Infolists\Components\Entry;
+use Filament\Tables\Columns\Column;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use CraftForge\FilamentLanguageSwitcher\Events\LocaleChanged;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Tapp\FilamentAuditing\Filament\Resources\Audits\AuditResource;
 use Tapp\FilamentAuditing\Models\Audit;
 use Illuminate\Notifications\DatabaseNotification;
 use App\Observers\FilamentNotificationObserver;
@@ -28,18 +31,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //use Tapp\FilamentAuditing\Resources\AuditResource;
         DatabaseNotification::observe(FilamentNotificationObserver::class);
-        AuditResource::navigationGroup('Filament Shield'); // Change 'Settings' to your desired group name
         Gate::policy(Audit::class, AuditPolicy::class);
-        //AuditResource::navigationIcon('heroicon-o-clipboard-document-check');
-        Event::listen(LocaleChanged::class, function (LocaleChanged $event) {
-            if (Auth::check()) {
-                Auth::user()->update([
-                    'locale' => $event->newLocale,
-                ]);
-            }
-        });
+        // Saving the language chosen in the panel's switcher is done by the
+        // App\Listeners\PersistUserLocale listener (auto-discovered); it used to be duplicated here.
+
+        // Generated labels ("Schedule type id", "Internal note", ...) are looked up in lang/pt.json
+        Field::configureUsing(fn(Field $component) => $component->translateLabel());
+        Column::configureUsing(fn(Column $column) => $column->translateLabel());
+        Entry::configureUsing(fn(Entry $entry) => $entry->translateLabel());
+
+        // Date pickers follow the language of the signed-in user (they are English otherwise)
+        Flatpickr::configureUsing(fn(Flatpickr $picker) => $picker->locale(fn() => app()->getLocale()));
         // Wait until all third-party packages are fully loaded...
         $this->app->booted(function () {
             // Overwrite the package's broken gate definitions

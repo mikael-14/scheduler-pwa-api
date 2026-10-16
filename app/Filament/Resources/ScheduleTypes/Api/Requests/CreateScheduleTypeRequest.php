@@ -21,17 +21,18 @@ class CreateScheduleTypeRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-			'name' => 'required',
-			'color' => 'required',
-			'status' => 'required',
-			'range' => 'required',
-			'all_day' => 'required',
-			'start' => 'required',
-			'end' => 'required',
-			'description' => 'required',
-			'min_time' => 'required',
-			'max_time' => 'required'
-		];
+                return [
+            'name' => 'required|string|max:50',
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'status' => 'required|boolean',
+            'primary' => 'sometimes|boolean',
+            'range' => 'required|boolean',
+            'all_day' => 'required|boolean',
+            'start' => 'nullable|date',
+            'end' => 'nullable|date|after_or_equal:start',
+            'description' => 'nullable|string|max:255',
+            'min_time' => 'nullable|date_format:H:i',
+            'max_time' => 'nullable|date_format:H:i',
+        ];
     }
 }

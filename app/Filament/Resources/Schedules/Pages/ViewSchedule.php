@@ -35,8 +35,8 @@ class ViewSchedule extends ViewRecord
                     });
                 })
                 ->visible(
-                    fn(Schedule $record): bool => ($record->status === ScheduleStatus::Pending && Filament::auth()->user()->can(('approve_schedule'))) ||
-                        (Filament::auth()->user()->can(('update_status_schedule')))
+                    fn(Schedule $record): bool => $record->status === ScheduleStatus::Pending
+                        && (Filament::auth()->user()->can('approve_schedule') || Filament::auth()->user()->can('update_status_schedule'))
                 ),
             Action::make('reject')
                 ->label(__('Reject'))
@@ -54,8 +54,8 @@ class ViewSchedule extends ViewRecord
                     });
                 })
                 ->visible(
-                    fn(Schedule $record): bool => ($record->status === ScheduleStatus::Pending && Filament::auth()->user()->can(('approve_schedule'))) ||
-                        (Filament::auth()->user()->can(('update_status_schedule')))
+                    fn(Schedule $record): bool => $record->status === ScheduleStatus::Pending
+                        && (Filament::auth()->user()->can('approve_schedule') || Filament::auth()->user()->can('update_status_schedule'))
                 ),
             EditAction::make(),
         ];

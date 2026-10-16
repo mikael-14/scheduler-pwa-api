@@ -2,15 +2,21 @@
 
 namespace App\Filament\Resources\Schedules\Api\Handlers;
 
+use App\Filament\Resources\Schedules\Api\Transformers\ScheduleTransformer;
+use App\Filament\Resources\Schedules\ScheduleResource;
+use App\Http\Handlers\ApprovedHandler;
+use App\Http\Handlers\Concerns\WritesSchedules;
+use App\Models\Schedule;
+use App\Services\ScheduleAccess;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Rupadana\ApiService\Http\Handlers;
-use App\Filament\Resources\Schedules\ScheduleResource;
-use App\Filament\Resources\Schedules\Api\Requests\CreateScheduleRequest;
-use App\Models\ScheduleUser;
 
-class CreateHandler extends Handlers
+class CreateHandler extends ApprovedHandler
 {
+    use WritesSchedules;
+
     public static string | null $uri = '/';
     public static string | null $resource = ScheduleResource::class;
     protected static string $permission = 'create_schedule';
@@ -28,34 +34,37 @@ class CreateHandler extends Handlers
     /**
      * Create Schedule
      *
-     * @param CreateScheduleRequest $request
+     * The owner is the authenticated user and the status starts as `pending`,
+     * unless the caller has the permissions to book for others / set a status.
+     *
+     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function handler(CreateScheduleRequest $request)
+    public function handler(Request $request)
     {
-        $request->validate($this->rules());
+        $data = $request->validate($this->scheduleRules());
+        $actor = $request->user();
 
-        return DB::transaction(function () use ($request) {
-            $model = new (static::getModel());
+        return DB::transaction(function () use ($data, $actor) {
+            $schedule = new Schedule();
+            $schedule->fill(Arr::only($data, ['start', 'end', 'all_day', 'description', 'schedule_type_id']));
+            $schedule->user_id = ScheduleAccess::ownerForCreate($actor, $data['user_id'] ?? null);
+            $schedule->status = ScheduleAccess::resolveStatus($actor, $data['status'] ?? null);
 
-            $model->fill($request->all());
-
-            $model->save();
-
-            if ($request->has('schedule_users')) {
-                $model->schedule_users()->createMany($request->input('schedule_users'));
+            if (ScheduleAccess::isStaff($actor) && array_key_exists('internal_note', $data)) {
+                $schedule->internal_note = $data['internal_note'];
             }
 
-            return static::sendSuccessResponse($model->load('schedule_users'), "Successfully Create Resource");
+            $schedule->save();
+
+            if (! empty($data['schedule_users'])) {
+                $this->syncParticipants($schedule, $data['schedule_users'], $actor, false);
+            }
+
+            return static::sendSuccessResponse(
+                new ScheduleTransformer($schedule->load('schedule_users')),
+                'Successfully Create Resource'
+            );
         });
-    }
-    public function rules(): array
-    {
-        $rules = static::getModel()::getValidationRules();
-        $rules['schedule_users'] = 'nullable|array';
-        foreach (ScheduleUser::getValidationRules() as $key => $rule) {
-            $rules["schedule_users.*.$key"] = $rule;
-        }
-        return $rules;
     }
 }

@@ -9,6 +9,7 @@ use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Table;
+use App\Filament\Actions\ApproveUserAction;
 use App\Filament\Actions\CustomImpersonateAction;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -54,6 +55,14 @@ class UsersTable
                     ->placeholder(__('Not approved'))
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                IconColumn::make('email_notification')
+                    ->label(__('Email notifications'))
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('push_notification')
+                    ->label(__('Push notifications'))
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('locale')
                     ->label(__('Locale'))
                     ->sortable()
@@ -89,36 +98,13 @@ class UsersTable
             ->recordActions([
                 CustomImpersonateAction::make('impersonate'),
                 ViewAction::make()->iconButton(),
-                 Action::make('approve')
-                    ->label(__('Approve'))
-                    ->icon('heroicon-o-check')
-                    ->iconButton()
-                    ->requiresConfirmation()
-                    ->color('success')
-                    ->action(function (User $record) {
-                        $record->update([
-                            'approved_at' => now(),
-                        ]);
-                    })
-                    ->visible(fn(User $record): bool => is_null($record->approved_at) && Filament::auth()->user()->can(('approve_user'))),
+                ApproveUserAction::make(),
                 EditAction::make()->iconButton(),
                 RestoreAction::make()->iconButton(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    BulkAction::make('approve')
-                        ->label(__('Approve selected'))
-                        ->icon('heroicon-o-check')
-                        ->requiresConfirmation()
-                        ->action(function (Collection $records) {
-                            $records->each(function ($record) {
-                                $record->update([
-                                    'approved_at' => now(),
-                                ]);
-                            });
-                        })
-                        ->deselectRecordsAfterCompletion()
-                        ->successNotificationTitle(__('Users approved successfully')),
+                    ApproveUserAction::bulk(),
                     DeleteBulkAction::make()
                         ->action(function (Collection $records) {
                             $records->each(function ($record) {

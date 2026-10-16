@@ -12,7 +12,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // The language switcher's route accepts any {code}; this keeps it to the supported languages
+        $middleware->web(append: [
+            \App\Http\Middleware\EnsureSupportedLocale::class,
+        ]);
+
+        $middleware->api(append: [
+            \App\Http\Middleware\SetApiLocale::class,
+        ]);
+
+        $middleware->alias([
+            'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'approved' => \App\Http\Middleware\EnsureUserIsApproved::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

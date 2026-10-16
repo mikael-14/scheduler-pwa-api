@@ -6,7 +6,8 @@ use Rupadana\ApiService\Http\Handlers;
 use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
 use App\Filament\Resources\ScheduleTypes\Api\Requests\CreateScheduleTypeRequest;
 
-class CreateHandler extends Handlers {
+class CreateHandler extends \App\Http\Handlers\ApprovedHandler
+{
     public static string | null $uri = '/';
     public static string | null $resource = ScheduleTypeResource::class;
     protected static string $permission = 'create_schedule_type';

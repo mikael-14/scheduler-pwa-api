@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\ScheduleResource\RelationManagers;
+namespace App\Filament\Resources\Schedules\RelationManagers;
 
 use App\Models\Schedule;
 use App\Models\ScheduleUser;

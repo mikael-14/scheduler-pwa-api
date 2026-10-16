@@ -75,7 +75,7 @@ class ScheduleInfolist
 
                     ])->columnSpan('full')
                     ->columns(2),
-                Section::make('Participants')
+                Section::make(__('Participants'))
                     ->heading(__('Participants'))
                     ->columnSpanFull()
                     ->schema([

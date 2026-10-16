@@ -28,6 +28,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Tapp\FilamentAuthenticationLog\FilamentAuthenticationLogPlugin;
+use App\Http\Middleware\ApplyUserLocale;
 use App\Http\Middleware\CheckPendingApproval;
 use App\Filament\Pages\PendingApproval;
 use Filament\Enums\DatabaseNotificationsPosition;
@@ -62,7 +63,7 @@ class AdminPanelProvider extends PanelProvider
                 //FilamentInfoWidget::class,
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
-            ->profile()
+            ->profile(\App\Filament\Pages\Auth\EditProfile::class)
             ->databaseNotifications()
             ->databaseNotificationsPolling(interval: 30)
             ->databaseNotifications(position: DatabaseNotificationsPosition::Topbar)
@@ -89,6 +90,8 @@ class AdminPanelProvider extends PanelProvider
                     ->locales(config('app-locales.available'))
                     ->renderHook(PanelsRenderHook::USER_MENU_BEFORE)
                     ->showOnAuthPages()
+                    // Visitors keep their choice on the login page across sessions (one year)
+                    ->rememberLocale(365)
                     ->showFlags(false),
                 FilamentSocialitePlugin::make()
                     ->providers([
@@ -111,7 +114,14 @@ class AdminPanelProvider extends PanelProvider
                             string $provider,
                             SocialiteUserContract $oauthUser
                         ): ?Authenticatable {
-                            return User::where('email', $oauthUser->getEmail())->first();
+                            $user = User::where('email', $oauthUser->getEmail())->first();
+
+                            // Never log into an existing account on the strength of an unverified email
+                            if ($user && ! User::providerVerifiesEmail($oauthUser, $provider)) {
+                                abort(403, __('The email address from this provider is not verified.'));
+                            }
+
+                            return $user;
                         }
                     )
                     ->createUserUsing(
@@ -124,7 +134,7 @@ class AdminPanelProvider extends PanelProvider
                                     ?? $oauthUser->getNickname()
                                     ?? 'User',
                                 'email' => $oauthUser->getEmail(),
-                                'avatar' => $this->downloadAndStoreAvatar($oauthUser->getAvatar()),
+                                'avatar_url' => $this->downloadAndStoreAvatar($oauthUser->getAvatar()),
                                 'locale' => app()->getLocale(),
                                 'password' => null,
                             ]);
@@ -132,39 +142,32 @@ class AdminPanelProvider extends PanelProvider
                     ),
                 FilamentAuthenticationLogPlugin::make(),
                 FilamentFullCalendarPlugin::make(),
-            ])->bootUsing(function () {
-                $user = Auth::user();
-
-                if (!$user) {
-                    return;
-                }
-
-                // Skip background Livewire requests
-                if (request()->header('X-Livewire')) {
-                    return;
-                }
-
-                $currentLocale = app()->getLocale();
-                if ($user->locale && $user->locale !== $currentLocale) {
-                    app()->setLocale($user->locale);
-                    return;
-                }
-
-                if ($user->locale !== $currentLocale) {
-                    $user->update([
-                        'locale' => $currentLocale,
-                    ]);
-                }
-            });
+            ])
+            // Must come after the plugins so it runs after the language switcher's SetLocale:
+            // a signed-in user's `locale` column wins, on page loads and on Livewire updates.
+            ->middleware([ApplyUserLocale::class], isPersistent: true);
     }
-    private function downloadAndStoreAvatar(string $avatarUrl): string|null
+    private function downloadAndStoreAvatar(?string $avatarUrl): ?string
     {
         if (empty($avatarUrl)) {
             return null;
         }
-        $response = Http::get($avatarUrl);
-        $filename = 'avatars/' . uniqid() . '.jpg';
-        Storage::disk('public')->put($filename, $response->body());
-        return $filename;
+
+        try {
+            $response = Http::timeout(10)->get($avatarUrl);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $filename = 'avatars/' . uniqid() . '.jpg';
+            Storage::disk('public')->put($filename, $response->body());
+
+            return $filename;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
     }
 }

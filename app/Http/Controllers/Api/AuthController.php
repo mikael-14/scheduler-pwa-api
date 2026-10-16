@@ -36,6 +36,14 @@ class AuthController extends Controller
             ]);
         }
 
+        // Checked after the password so this cannot be used to probe which emails exist
+        if (! $user->status) {
+            return response()->json([
+                'message' => __('Your account is inactive.'),
+                'code' => 'account_inactive',
+            ], 403);
+        }
+
         event(new Login('sanctum', $user, false));
 
         $avatar = $user->getFilamentAvatarUrl();
@@ -61,13 +69,18 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'min:6', 'confirmed'],
+            'password' => ['required', 'min:8', 'confirmed'],
+            // The PWA sends the language the visitor was using; otherwise the app default (pt)
+            'locale' => ['nullable', 'string', \Illuminate\Validation\Rule::in(collect(config('app-locales.available'))->pluck('code')->all())],
         ]);
 
+        // New accounts start with approved_at = null: they get a token (to read their own
+        // state) but every other API route stays closed until an admin approves them.
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'locale' => $data['locale'] ?? app()->getLocale(),
         ]);
 
         event(new Login('sanctum', $user, false));
@@ -129,6 +142,10 @@ class AuthController extends Controller
 
             // 4. Create your user & Sanctum token
             $user = User::findOrCreateFromSocialite($socialiteUser, $provider);
+
+            if (! $user->status) {
+                return redirect()->away(config('app.pwa_url', 'http://localhost:3000') . '/login?error=account_inactive');
+            }
 
             event(new Login('sanctum', $user, false));
 

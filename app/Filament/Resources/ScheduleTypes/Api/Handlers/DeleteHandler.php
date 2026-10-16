@@ -5,7 +5,8 @@ use Illuminate\Http\Request;
 use Rupadana\ApiService\Http\Handlers;
 use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
 
-class DeleteHandler extends Handlers {
+class DeleteHandler extends \App\Http\Handlers\ApprovedHandler
+{
     public static string | null $uri = '/{id}';
     public static string | null $resource = ScheduleTypeResource::class;
     protected static string $permission = 'delete_schedule_type';

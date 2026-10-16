@@ -21,11 +21,11 @@ $user = filament()->auth()->user();
 
         <div class="fi-account-widget-main">
             <h2 class="fi-account-widget-heading">
-                Language
+                {{ __('Language') }}
             </h2>
 
             <p class="fi-account-widget-user-name">
-                {{ app()->getLocale() }}
+                {{ collect(config('app-locales.available'))->firstWhere('code', app()->getLocale())['name'] ?? app()->getLocale() }}
             </p>
         </div>
         @if (filament()->hasProfile())
@@ -35,7 +35,7 @@ $user = filament()->auth()->user();
             color="gray"
             icon="heroicon-m-user-circle"
             outlined>
-            Edit Profile
+            {{ __('Edit Profile') }}
         </x-filament::button>
         @endif
         <form

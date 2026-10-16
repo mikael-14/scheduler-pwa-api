@@ -113,6 +113,18 @@ class EditUser extends EditRecord
                                             ->inline(false)
                                             ->helperText(__('User has a building key')),
                                     ]),
+                                Grid::make()
+                                    ->columns(2)
+                                    ->schema([
+                                        Toggle::make('email_notification')
+                                            ->label(__('Email notifications'))
+                                            ->inline(false)
+                                            ->helperText(__('Receive an email when a schedule is approved, rejected or cancelled.')),
+                                        Toggle::make('push_notification')
+                                            ->label(__('Push notifications'))
+                                            ->inline(false)
+                                            ->helperText(__('Receive push notifications on the devices where you enabled them in the app.')),
+                                    ]),
                                 Select::make('role')
                                     ->options(Role::all()->pluck('name', 'id')->toArray())
                                     ->multiple()

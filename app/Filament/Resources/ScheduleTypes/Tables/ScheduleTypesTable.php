@@ -48,7 +48,7 @@ class ScheduleTypesTable
                         'schedules' => fn(Builder $query) => $query->where('status', ScheduleStatus::Pending),
                     ]),
                 IconColumn::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('description')
@@ -64,11 +64,11 @@ class ScheduleTypesTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('range')
-                    ->label('Range')
+                    ->label(__('Range'))
                     ->sortable()
                     ->toggleable(),
                 IconColumn::make('all_day')
-                    ->label('All Day')
+                    ->label(__('All Day'))
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('created_at')
@@ -83,15 +83,15 @@ class ScheduleTypesTable
             ->filters([
                 // Row 1: Quick Toggle Filters (4 Columns)
                 TernaryFilter::make('status')
-                    ->label('Status'),
+                    ->label(__('Status')),
                 TernaryFilter::make('range')
-                    ->label('Range'),
+                    ->label(__('Range')),
                 TernaryFilter::make('all_day')
-                    ->label('All Day'),
+                    ->label(__('All Day')),
                 Filter::make('description')
                     ->schema([
                         TextInput::make('description')
-                            ->label('Description')->columnSpanFull()
+                            ->label(__('Description'))->columnSpanFull()
                     ])->query(function (Builder $query, array $data): Builder {
                         return $query->when($data['description'], fn($q, $v) => $q->where('description', 'like', "%{$v}%"));
                     }),
@@ -100,11 +100,11 @@ class ScheduleTypesTable
                         Grid::make(2)
                             ->schema([
                                 DatePicker::make('start')
-                                    ->label('Start')
+                                    ->label(__('Start'))
                                     ->native(false)
                                     ->displayFormat(config('app.date_format')),
                                 DatePicker::make('end')
-                                    ->label('End')
+                                    ->label(__('End'))
                                     ->native(false)
                                     ->displayFormat(config('app.date_format')),
                             ]),
@@ -127,8 +127,8 @@ class ScheduleTypesTable
                             $record = $action->getRecord();
                             if ($record->schedules()->count() > 0) {
                                 Notification::make()
-                                    ->title('Cannot delete record')
-                                    ->body('This record has related schedules and cannot be deleted.')
+                                    ->title(__('Cannot delete record'))
+                                    ->body(__('This record has related schedules and cannot be deleted.'))
                                     ->danger()
                                     ->send();
                                 $action->cancel();
@@ -145,14 +145,14 @@ class ScheduleTypesTable
                             });
                             if ($recordsWithoutSchedules->count() != $records->count()) {
                                 Notification::make()
-                                    ->title('Cannot delete some records')
-                                    ->body('One or more selected records have related schedules and cannot be deleted.')
+                                    ->title(__('Cannot delete some records'))
+                                    ->body(__('One or more selected records have related schedules and cannot be deleted.'))
                                     ->danger()
                                     ->send();
                             }
                             $recordsWithoutSchedules->each->delete();
                         })
-                        ->successNotificationTitle('Deleted')
+                        ->successNotificationTitle(__('Deleted'))
                         ->failureNotificationTitle(function (int $successCount, int $totalCount): string {
                             if ($successCount) {
                                 return "{$successCount} of {$totalCount} records deleted";

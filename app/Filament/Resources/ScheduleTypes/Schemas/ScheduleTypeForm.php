@@ -20,7 +20,7 @@ class ScheduleTypeForm
     {
         return $schema
             ->components([
-                Section::make('Schedule Information')
+                Section::make(__('Schedule Information'))
                     ->schema([
                         FusedGroup::make([
                             TextInput::make('name')

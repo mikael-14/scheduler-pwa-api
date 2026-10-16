@@ -25,10 +25,12 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Filament Shield';
-
     protected static ?string $recordTitleAttribute = 'name';
 
+    public static function getNavigationGroup(): string|UnitEnum|null
+    {
+        return __('Administration');
+    }
 
     public static function getNavigationLabel(): string
     {

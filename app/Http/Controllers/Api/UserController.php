@@ -3,12 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
-use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -27,58 +24,66 @@ class UserController extends Controller
             'permissions' => $permissionsArray
         ]);
     }
+
     /**
-     * Update the authenticated user's information.
+     * Replace the authenticated user's profile (all of name, email, locale are required).
      */
-    public function update(Request $request, User $user)
+    public function update(Request $request)
     {
-
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => __('User not found.')], 404);
-        }
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email,' . $user->id],
-            'password' => ['nullable', 'min:6', 'confirmed'],
-            'locale' => ['required', 'string', 'max:2'],
-            'avatar_url' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        if (!empty($data['password'])) {
-            $data['password'] = Hash::make($data['password']);
-        } else {
-            unset($data['password']);
-        }
-        if (isset($data['avatar_url'])) {
-            $data['avatar_url'] = $data['avatar_url'] ?: null;
-        }
-
-        $user->update($data);
-
-        return response()->json(['message' => __('User updated successfully.'), 'user' => $user]);
+        return $this->save($request, partial: false);
     }
-    public function patch(Request $request, User $user)
+
+    /**
+     * Update some fields of the authenticated user's profile.
+     */
+    public function patch(Request $request)
     {
+        return $this->save($request, partial: true);
+    }
+
+    /**
+     * Always acts on the authenticated user, never on an id from the request.
+     * Avatar is managed in the admin panel / social login, not through this endpoint.
+     */
+    private function save(Request $request, bool $partial)
+    {
+        $user = $request->user();
+        $required = $partial ? 'sometimes' : 'required';
+
         $data = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'unique:users,email,' . $user->id],
-            'password' => ['sometimes', 'nullable', 'min:6', 'confirmed'],
-            'locale' => ['sometimes', 'string', 'max:2'],
-            'avatar_url' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'name' => [$required, 'string', 'max:255'],
+            'email' => [$required, 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'locale' => [$required, 'string', Rule::in(collect(config('app-locales.available'))->pluck('code')->all())],
+            // Notification preferences: always optional, so existing clients keep working
+            'email_notification' => ['sometimes', 'boolean'],
+            'push_notification' => ['sometimes', 'boolean'],
+            // Changing the password proves knowledge of the current one (social-only accounts have none)
+            'current_password' => [Rule::requiredIf(fn() => $request->filled('password') && $user->password !== null), 'nullable', 'string'],
+            'password' => ['sometimes', 'nullable', 'min:8', 'confirmed'],
         ]);
 
-        if (!empty($data['password'])) {
-            $data['password'] = Hash::make($data['password']);
+        if (! empty($data['password'])) {
+            if ($user->password !== null && ! Hash::check($data['current_password'] ?? '', $user->password)) {
+                return response()->json([
+                    'message' => __('The current password is incorrect.'),
+                    'errors' => ['current_password' => [__('The current password is incorrect.')]],
+                ], 422);
+            }
         } else {
             unset($data['password']);
         }
-        if (isset($data['avatar_url'])) {
-            $data['avatar_url'] = $data['avatar_url'] ?: null;
-        }
+        unset($data['current_password']);
 
         $user->update($data);
 
-        return response()->json(['message' => __('User updated successfully.'), 'user' => $user]);
+        // Other devices must sign in again after a password change
+        if (! empty($data['password'])) {
+            $currentTokenId = $user->currentAccessToken()->id ?? null;
+            $user->tokens()
+                ->when($currentTokenId, fn($query) => $query->where('id', '!=', $currentTokenId))
+                ->delete();
+        }
+
+        return response()->json(['message' => __('User updated successfully.'), 'user' => $user->fresh()]);
     }
 }

@@ -22,7 +22,7 @@ return [
             'register' => false,
             'sort' => 1,
             'icon' => 'heroicon-o-shield-check',
-            'group' => 'Filament Shield',
+            'group' => 'Administration',
         ],
     ],
 

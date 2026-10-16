@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\SocialiteUser;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -22,7 +23,7 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
 // IMPORT THE SOCIALITE USER CONTRACT TO FIX THE TYPE-HINTING
 use Laravel\Socialite\Contracts\User as ProviderUser;
 
-class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
+class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable, HasLocalePreference
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars, \OwenIt\Auditing\Auditable, HasApiTokens, HasPushSubscriptions;
@@ -40,7 +41,9 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         'locale',
         'approved_at',
         'avatar_url',
-        'building_key'
+        'building_key',
+        'push_notification',
+        'email_notification',
     ];
 
     /**
@@ -65,7 +68,16 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
             'approved_at' => 'datetime',
             'password' => 'hashed',
             'building_key' => 'boolean',
+            'status' => 'boolean',
+            'push_notification' => 'boolean',
+            'email_notification' => 'boolean',
         ];
+    }
+
+    /** Notifications and mail are composed in the recipient's language. */
+    public function preferredLocale(): string
+    {
+        return $this->locale ?: config('app.locale');
     }
 
     public function socialiteUsers()
@@ -89,7 +101,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         // Pending users will be redirected via middleware
         // add this method to acept only verified email addresses
         # $this->hasVerifiedEmail(); 
-        return ($this->status === 1);
+        return (bool) $this->status;
     }
     // https://github.com/xlite-dev/filament-impersonate
     /**
@@ -107,7 +119,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
     public function canBeImpersonated(): bool
     {
         // Let's prevent impersonating other users that are super admins
-        return !$this->hasRole('super_admin') && $this->status === 1 ? true : false;
+        return !$this->hasRole('super_admin') && (bool) $this->status;
     }
 
     public function isAdmin(): bool
@@ -123,12 +135,43 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
 
     protected static function booted()
     {
+        // A new account (e.g. panel self-registration) starts in the language the visitor was using,
+        // not in the column default
+        static::creating(function (User $user) {
+            if (empty($user->locale)) {
+                $user->locale = app()->getLocale();
+            }
+        });
+
+        // A deactivated or removed account must lose API access immediately, not at token expiry
+        static::updated(function (User $user) {
+            if ($user->wasChanged('status') && ! $user->status) {
+                $user->tokens()->delete();
+            }
+        });
+        static::deleted(fn(User $user) => $user->tokens()->delete());
+
         static::deleting(function ($user) {
             if ($user->schedules()->exists()) {
                 return false; // Prevent deletion if the user has schedules
             }
             $user->socialiteUsers()->forceDelete();
         });
+    }
+
+    /**
+     * Whether the provider vouches that the email belongs to the person logging in.
+     * Google says so explicitly; Facebook only releases confirmed addresses.
+     */
+    public static function providerVerifiesEmail(ProviderUser $socialiteUser, string $provider): bool
+    {
+        if ($provider === 'facebook') {
+            return true;
+        }
+
+        $raw = $socialiteUser instanceof \Laravel\Socialite\AbstractUser ? $socialiteUser->getRaw() : [];
+
+        return filter_var($raw['email_verified'] ?? $raw['verified_email'] ?? false, FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -150,7 +193,17 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         }
 
         // 2. If no direct social link exists, check if the email address exists in our system
-        $user = self::where('email', $socialiteUser->getEmail())->first();
+        $email = $socialiteUser->getEmail();
+        if (empty($email)) {
+            throw new \DomainException('The provider did not return an email address.');
+        }
+
+        $user = self::where('email', $email)->first();
+
+        // Never attach a social identity to an existing account on the strength of an unverified email
+        if ($user && ! self::providerVerifiesEmail($socialiteUser, $provider)) {
+            throw new \DomainException("Email from {$provider} is not verified; refusing to link to an existing account.");
+        }
 
         if (!$user) {
             // Handle the Avatar Download (replicating your Filament logic)

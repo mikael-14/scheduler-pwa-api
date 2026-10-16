@@ -4,7 +4,7 @@ return [
     'navigation' => [
         'token' => [
             'cluster' => null,
-            'group' => 'Filament Shield',
+            'group' => 'Administration',
             'sort' => -1,
             'icon' => 'heroicon-o-key',
             'should_register_navigation' => true,

@@ -60,10 +60,14 @@ class PwaWebPushNotification extends Notification
 
     public function toWebPush($notifiable, $notification)
     {
+        // The stored notification is in Filament's format: title/body live inside `data`
+        $data = $this->filamentNotification->data ?? [];
+
         return (new WebPushMessage)
-            ->title($this->filamentNotification->title)
-            ->body($this->filamentNotification->body)
-            ->icon('/icons/icon-192x192.png')
-            ->data(['url' => '/dashboard/notifications']); // Target destination inside PWA
+            ->title($data['title'] ?? config('app.name'))
+            ->body(strip_tags((string) ($data['body'] ?? '')))
+            ->icon('/img/icons/icon-192x192.png')
+            ->tag($this->filamentNotification->id)
+            ->data(['url' => $data['path'] ?? '/notifications']); // route inside the PWA
     }
 }
