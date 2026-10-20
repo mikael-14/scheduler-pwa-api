@@ -7,6 +7,7 @@ use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Http\Handlers\ApprovedHandler;
 use App\Http\Handlers\Concerns\WritesSchedules;
 use App\Models\Schedule;
+use App\Services\PrimaryScheduleRule;
 use App\Services\ScheduleAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -55,7 +56,11 @@ class CreateHandler extends ApprovedHandler
                 $schedule->internal_note = $data['internal_note'];
             }
 
-            $schedule->save();
+            // participants are stored after the schedule; the primary rule counts them already
+            PrimaryScheduleRule::withCompanions(
+                array_column($data['schedule_users'] ?? [], 'user_id'),
+                fn() => $schedule->save()
+            );
 
             if (! empty($data['schedule_users'])) {
                 $this->syncParticipants($schedule, $data['schedule_users'], $actor, false);

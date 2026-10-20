@@ -78,6 +78,15 @@ class ScheduleResource extends Resource
         ];
     }
 
+    /** Without `view_inactive_schedule`: pending / approved schedules and the user's own (ScheduleAccess). */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = \Filament\Facades\Filament::auth()->user();
+
+        return $user ? \App\Services\ScheduleAccess::scopeVisible($query, $user) : $query;
+    }
+
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {
         return parent::getRecordRouteBindingEloquentQuery()

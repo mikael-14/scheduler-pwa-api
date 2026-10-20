@@ -161,6 +161,53 @@ php artisan shield:generate --all
 
 For detailed documentation, visit: https://github.com/bezhansalleh/filament-shield
 
+### Schedule permissions and suggested roles
+
+Roles are created in the admin panel (Shield → Roles); the code only checks permissions. After
+pulling new permissions, run `php artisan db:seed --class=PermissionsSeeder`.
+
+| Permission | Allows |
+|---|---|
+| `view_any_schedule`, `view_schedule` | open the shared agenda / a schedule |
+| `view_inactive_schedule` | also see other people's rejected, cancelled, completed and not-shown schedules (without it: only pending / approved, plus your own and the ones you take part in) |
+| `create_schedule` | book for yourself |
+| `create_any_schedule` | book for someone else |
+| `update_schedule` | edit your own schedules |
+| `update_any_schedule` | edit anyone's |
+| `update_past_schedule` | anything on schedules before today (without it, from today on only) |
+| `participate_schedule` | join someone else's pending / approved schedule (waits for approval) |
+| `cancel_participation_schedule` | leave a schedule you joined |
+| `approve_schedule` | approve / reject pending schedules and participations |
+| `update_status_schedule` | set any status (completed, not shown…) |
+| `independent_schedule` | **may go alone** on the primary type (see below) |
+| `send_notification_log` | send announcements |
+| `create_role`, `update_role`… | manage roles (Shield) |
+
+| Role | Permissions |
+|---|---|
+| Super Admin | everything (the seeder keeps it complete) |
+| Admin | `approve_schedule`, `create_any_schedule`, `update_any_schedule`, `view_any_schedule`, `view_schedule`, `view_inactive_schedule`, `create_schedule`, `update_schedule`, `independent_schedule`, `send_notification_log` (+ participate / cancel participation) |
+| Voluntário Experiente | `view_any_schedule`, `view_schedule`, `create_schedule`, `update_schedule`, `participate_schedule`, `cancel_participation_schedule`, `independent_schedule` |
+| Voluntário Novo | the same, **without** `independent_schedule` |
+| Externo | `view_any_schedule`, `view_schedule`, `participate_schedule`, `cancel_participation_schedule` |
+
+### The primary type rule
+
+On the schedule type marked **primary** (going to the shelter), someone without
+`independent_schedule` can book, but is only **approved** when someone with it is already
+approved at overlapping hours (as owner or approved participant of a primary schedule). People on
+the same schedule count together, so a Novo booking with an Experiente participant is approved
+in one go. Other types are not affected.
+
+When that person stops counting (cancels, is rejected, leaves, is deleted, moved or handed over),
+approved schedules at those hours that nobody else who may go alone covers go **back to pending**:
+their people are told ("O seu agendamento voltou a aguardar aprovação") and approvers get them to
+decide again.
+
+The rule lives in `App\Services\PrimaryScheduleRule` and runs from the models' `saving` hooks,
+so the admin panel, the API and the PWA all obey it. Approvers see why something cannot be
+approved yet (`approval_problem` in the API, a warning in the panel and the PWA).
+
 ## API sessions (PWA tokens)
 
 The PWA signs in with a Laravel Sanctum token (email/password, Google or Facebook). The API

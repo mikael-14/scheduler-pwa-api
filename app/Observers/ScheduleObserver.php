@@ -132,13 +132,19 @@ class ScheduleObserver
      */
     private function notifyApprovers(Schedule $schedule): void
     {
+        $schedule->loadMissing(['user', 'schedule_type']);
+
+        static::tellApprovers(new SchedulePendingApproval($schedule));
+    }
+
+    /** Sends a notification to every approver (see notifyApprovers), also used for participations. */
+    public static function tellApprovers(\App\Notifications\AppNotification $notification): void
+    {
         $permissions = Permission::whereIn('name', ['approve_schedule', 'update_status_schedule'])->pluck('name')->all();
 
         if ($permissions === []) {
             return;
         }
-
-        $schedule->loadMissing(['user', 'schedule_type']);
 
         User::permission($permissions)
             ->where('status', true)
@@ -146,9 +152,9 @@ class ScheduleObserver
             ->where('id', '!=', auth()->id() ?? 0)
             ->get()
             ->unique('id')
-            ->each(function (User $approver) use ($schedule) {
+            ->each(function (User $approver) use ($notification) {
                 try {
-                    $approver->notify(new SchedulePendingApproval($schedule));
+                    $approver->notify($notification);
                 } catch (\Throwable $e) {
                     report($e);
                 }

@@ -6,8 +6,12 @@ namespace App\Policies;
 
 use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Schedule;
+use App\Services\ScheduleAccess;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
+/**
+ * Shield permissions, plus who and when (own schedules, from today on, visibility): see ScheduleAccess.
+ */
 class SchedulePolicy
 {
     use HandlesAuthorization;
@@ -19,7 +23,7 @@ class SchedulePolicy
 
     public function view(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('view_schedule');
+        return $authUser->can('view_schedule') && ScheduleAccess::canView($authUser, $schedule);
     }
 
     public function create(AuthUser $authUser): bool
@@ -29,12 +33,12 @@ class SchedulePolicy
 
     public function update(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('update_schedule');
+        return $authUser->can('update_schedule') && ScheduleAccess::canUpdate($authUser, $schedule);
     }
 
     public function delete(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('delete_schedule');
+        return $authUser->can('delete_schedule') && ScheduleAccess::canDelete($authUser, $schedule);
     }
 
     public function restore(AuthUser $authUser, Schedule $schedule): bool
@@ -89,7 +93,17 @@ class SchedulePolicy
 
     public function participate(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('participate_schedule');
+        return ScheduleAccess::canJoin($authUser, $schedule);
+    }
+
+    public function cancelParticipation(AuthUser $authUser, Schedule $schedule): bool
+    {
+        return ScheduleAccess::canLeave($authUser, $schedule);
+    }
+
+    public function viewInactive(AuthUser $authUser): bool
+    {
+        return $authUser->can('view_inactive_schedule');
     }
 
     public function independent(AuthUser $authUser, Schedule $schedule): bool

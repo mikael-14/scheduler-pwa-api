@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Schedules\Api\Handlers;
 use App\Filament\Resources\Schedules\Api\Transformers\ScheduleTransformer;
 use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Http\Handlers\ApprovedHandler;
+use App\Services\ScheduleAccess;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
 use Spatie\QueryBuilder\AllowedFilter;
@@ -69,7 +70,8 @@ class PaginationHandler extends ApprovedHandler
     {
         $perPage = min(max((int) request()->query('per_page', 25), 1), self::MAX_PER_PAGE);
 
-        $query = static::getEloquentQuery()->with(ScheduleTransformer::RELATIONS);
+        $query = ScheduleAccess::scopeVisible(static::getEloquentQuery(), request()->user())
+            ->with(ScheduleTransformer::RELATIONS);
 
         $query = QueryBuilder::for($query)
             ->allowedFields($this->getAllowedFields() ?? [])

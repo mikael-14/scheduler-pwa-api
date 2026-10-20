@@ -71,6 +71,17 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 	{
 		// Type rules and the past-date rule must hold on every path (panel, calendar modals, API)
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleRulesValidator::enforce($schedule));
+		// Primary type: who may be approved without someone who may go alone
+		static::saving(fn(Schedule $schedule) => \App\Services\PrimaryScheduleRule::enforceOnSchedule($schedule));
+		// Handed over to one of its participants: they are the owner now, not also a participant
+		static::updated(function (Schedule $schedule) {
+			if ($schedule->wasChanged('user_id')) {
+				$schedule->schedule_users()->where('user_id', $schedule->user_id)->get()->each->delete();
+			}
+		});
+		// ...and approved schedules left without anyone who may go alone go back to pending
+		static::updated(fn(Schedule $schedule) => \App\Services\PrimaryScheduleRule::afterScheduleChange($schedule));
+		static::deleted(fn(Schedule $schedule) => \App\Services\PrimaryScheduleRule::afterScheduleChange($schedule, deleted: true));
 	}
 
 	public function schedule_type()

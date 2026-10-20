@@ -35,7 +35,8 @@ class ScheduleUserObserver
         }
 
         $schedule = $participant->schedule()->withTrashed()->with(['schedule_type', 'user'])->first();
-        if (! $schedule) {
+        // handed the schedule itself: "booked for you" tells them, not "removed"
+        if (! $schedule || $schedule->user_id === $user->id) {
             return;
         }
 

@@ -62,6 +62,25 @@ class ScheduleUser extends Model implements Auditable
 	}
 
 	#API
+	protected static function booted(): void
+	{
+		// The owner of a schedule is never also one of its participants
+		static::saving(function (ScheduleUser $participant) {
+			$ownerId = Schedule::withTrashed()->whereKey($participant->schedule_id)->value('user_id');
+
+			if ($ownerId !== null && (int) $ownerId === (int) $participant->user_id) {
+				throw \Illuminate\Validation\ValidationException::withMessages([
+					'schedule_users' => [__('The owner of a schedule cannot also be a participant.')],
+				]);
+			}
+		});
+		// Primary type: who may be approved without someone who may go alone
+		static::saving(fn(ScheduleUser $participant) => \App\Services\PrimaryScheduleRule::enforceOnParticipant($participant));
+		// ...and approved schedules left without anyone who may go alone go back to pending
+		static::updated(fn(ScheduleUser $participant) => \App\Services\PrimaryScheduleRule::afterParticipantChange($participant));
+		static::deleted(fn(ScheduleUser $participant) => \App\Services\PrimaryScheduleRule::afterParticipantChange($participant, deleted: true));
+	}
+
 	public static function getValidationRules(): array
 	{
 		return [

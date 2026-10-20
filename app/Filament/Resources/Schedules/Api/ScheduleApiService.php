@@ -17,6 +17,10 @@ class ScheduleApiService extends ApiService
             Handlers\PatchHandler::class,
             Handlers\ApproveHandler::class,
             Handlers\RejectHandler::class,
+            Handlers\JoinHandler::class,
+            Handlers\LeaveHandler::class,
+            Handlers\ApproveParticipantHandler::class,
+            Handlers\RejectParticipantHandler::class,
             Handlers\DeleteHandler::class,
             Handlers\PaginationHandler::class,
             // before DetailHandler, whose `/{id}` would otherwise swallow `/pending`

@@ -102,7 +102,7 @@ class CalendarWidget extends FullCalendarWidget
         $to = Carbon::parse($fetchInfo['end'])->setTimezone($tz);
         $typeId = $this->record?->id;
 
-        return Schedule::query()
+        return \App\Services\ScheduleAccess::scopeVisible(Schedule::query(), auth()->user())
             ->with(['user', 'schedule_type', 'schedule_users.user'])
             ->when($typeId, fn($query) => $query->where('schedule_type_id', $typeId))
             ->when(!$typeId && !empty($this->filterTypeIds), fn($query) => $query->whereIn('schedule_type_id', $this->filterTypeIds))

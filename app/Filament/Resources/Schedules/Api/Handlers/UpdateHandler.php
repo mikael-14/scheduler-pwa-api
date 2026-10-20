@@ -6,6 +6,7 @@ use App\Filament\Resources\Schedules\Api\Transformers\ScheduleTransformer;
 use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Http\Handlers\ApprovedHandler;
 use App\Http\Handlers\Concerns\WritesSchedules;
+use App\Services\PrimaryScheduleRule;
 use App\Services\ScheduleAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -89,7 +90,11 @@ class UpdateHandler extends ApprovedHandler
                 $schedule->status = ScheduleStatus::Pending;
             }
 
-            $schedule->save();
+            // participants are stored after the schedule; the primary rule counts them already
+            PrimaryScheduleRule::withCompanions(
+                array_column($data['schedule_users'] ?? [], 'user_id'),
+                fn() => $schedule->save()
+            );
 
             // Participants follow the schedule when it is approved or rejected
             if ($schedule->wasChanged('status')) {

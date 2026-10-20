@@ -7,6 +7,7 @@ use App\Models\Schedule;
 use App\Models\ScheduleType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -21,6 +22,9 @@ class ScheduleApiForAppsTest extends TestCase
     private const URL = '/api/admin/schedules';
 
     private const MEMBER = ['view_any_schedule', 'view_schedule', 'create_schedule', 'update_schedule', 'delete_schedule'];
+
+    /** The abilities these tests are about; newer ones (join, leave...) have tests of their own. */
+    private const BASIC = ['update', 'cancel', 'delete', 'approve'];
 
     private function user(array $permissions, array $attributes = []): User
     {
@@ -71,9 +75,9 @@ class ScheduleApiForAppsTest extends TestCase
         $this->assertSame('Friend', $rows[$mine->id]['schedule_users'][0]['name']);
 
         // my pending schedule: edit, cancel, delete; never approve my own without the permission
-        $this->assertSame(['update' => true, 'cancel' => true, 'delete' => true, 'approve' => false], $rows[$mine->id]['can']);
+        $this->assertSame(['update' => true, 'cancel' => true, 'delete' => true, 'approve' => false], Arr::only($rows[$mine->id]['can'], self::BASIC));
         // someone else's: nothing
-        $this->assertSame(['update' => false, 'cancel' => false, 'delete' => false, 'approve' => false], $rows[$theirs->id]['can']);
+        $this->assertSame(['update' => false, 'cancel' => false, 'delete' => false, 'approve' => false], Arr::only($rows[$theirs->id]['can'], self::BASIC));
     }
 
     public function test_abilities_follow_the_permissions_and_the_status(): void
@@ -86,7 +90,7 @@ class ScheduleApiForAppsTest extends TestCase
         Sanctum::actingAs($owner);
         $this->assertSame(
             ['update' => true, 'cancel' => true, 'delete' => false, 'approve' => false],
-            $this->getJson(self::URL . "/{$approved->id}")->assertOk()->json('data.can')
+            Arr::only($this->getJson(self::URL . "/{$approved->id}")->assertOk()->json('data.can'), self::BASIC)
         );
 
         // an approver sees approve on pending schedules only

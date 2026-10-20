@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\ScheduleStatus;
 use App\Models\Schedule;
+use App\Services\PrimaryScheduleRule;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
@@ -67,6 +68,13 @@ class PendingSchedulesWidget extends TableWidget
                         ->badge()
                         ->placeholder('-')
                         ->columnSpanFull(),
+                    TextEntry::make('rule')
+                        ->label(__('Cannot be approved yet'))
+                        ->state(fn(Schedule $record) => PrimaryScheduleRule::scheduleProblem($record))
+                        ->visible(fn(Schedule $record) => PrimaryScheduleRule::scheduleProblem($record) !== null)
+                        ->color('warning')
+                        ->icon('heroicon-m-exclamation-triangle')
+                        ->columnSpanFull(),
                     TextEntry::make('details')
                         ->label(__('Description'))
                         ->state(fn(Schedule $record) => $record->description)
@@ -127,6 +135,11 @@ class PendingSchedulesWidget extends TableWidget
                 TextColumn::make('user.name')
                     ->label(__('Assigned To'))
                     ->placeholder('-')
+                    // primary type: nobody who may go alone is approved at these hours yet
+                    ->description(fn(Schedule $record) => PrimaryScheduleRule::scheduleProblem($record) ? __('Cannot be approved yet') : null)
+                    ->icon(fn(Schedule $record) => PrimaryScheduleRule::scheduleProblem($record) ? 'heroicon-m-exclamation-triangle' : null)
+                    ->iconColor('warning')
+                    ->tooltip(fn(Schedule $record) => PrimaryScheduleRule::scheduleProblem($record))
                     ->searchable(),
                 TextColumn::make('schedule_users.user.name')
                     ->label(__('Participants'))

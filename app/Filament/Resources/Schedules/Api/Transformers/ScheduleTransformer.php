@@ -3,6 +3,7 @@ namespace App\Filament\Resources\Schedules\Api\Transformers;
 
 use App\Enums\ScheduleStatus;
 use App\Models\Schedule;
+use App\Services\PrimaryScheduleRule;
 use App\Services\ScheduleAccess;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,17 +42,31 @@ class ScheduleTransformer extends JsonResource
         $owner = $this->resource->user;
         $data['user'] = $owner ? ['id' => $owner->id, 'name' => $owner->name] : null;
 
-        $data['schedule_users'] = $this->resource->schedule_users->map(function ($scheduleUser) {
-            return [
+        $approver = $user && ScheduleAccess::canApprove($user);
+
+        $data['schedule_users'] = $this->resource->schedule_users->map(function ($scheduleUser) use ($approver) {
+            $row = [
                 'id' => $scheduleUser->id,
                 'user_id' => $scheduleUser->user_id,
                 'name' => $scheduleUser->user?->name,
                 'status' => $scheduleUser->status,
                 'description' => $scheduleUser->description,
             ];
+
+            // approvers: why a pending participation cannot be approved yet (primary rule), or null
+            if ($approver && $scheduleUser->status === ScheduleStatus::Pending) {
+                $row['approval_problem'] = PrimaryScheduleRule::participantProblem($scheduleUser);
+            }
+
+            return $row;
         });
 
         $data['can'] = $user ? $this->abilities($user) : [];
+
+        // approvers: why this pending schedule cannot be approved yet (primary rule), or null
+        if ($approver && $this->resource->status === ScheduleStatus::Pending) {
+            $data['approval_problem'] = PrimaryScheduleRule::scheduleProblem($this->resource);
+        }
 
         return $data;
     }
@@ -73,6 +88,12 @@ class ScheduleTransformer extends JsonResource
             'cancel' => $update && in_array($status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true),
             'delete' => $user->can('delete_schedule') && ScheduleAccess::canDelete($user, $schedule) && $deletable,
             'approve' => ScheduleAccess::canApprove($user) && $status === ScheduleStatus::Pending,
+            // join / leave someone else's schedule (participate_schedule / cancel_participation_schedule)
+            'join' => ScheduleAccess::canJoin($user, $schedule),
+            'leave' => ScheduleAccess::canLeave($user, $schedule),
+            // decide on pending participants (people who joined)
+            'approve_participants' => ScheduleAccess::canApprove($user)
+                && $schedule->schedule_users->contains('status', ScheduleStatus::Pending),
         ];
     }
 }

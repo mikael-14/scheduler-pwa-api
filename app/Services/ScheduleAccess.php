@@ -4,15 +4,21 @@ namespace App\Services;
 
 use App\Enums\ScheduleStatus;
 use App\Models\Schedule;
+use App\Models\ScheduleUser;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Who may do what with a schedule through the API.
+ * Who may do what with a schedule, for the API and the admin panel (SchedulePolicy).
  *
- * - Everyone approved with `view_any_schedule` can see the shared agenda.
- * - A person manages their own schedules; managing other people's needs the *_any_schedule permissions.
- * - Approving / rejecting / setting any status is limited to the approval permissions.
+ * - `view_any_schedule` opens the shared agenda; without `view_inactive_schedule` it only shows
+ *   pending / approved schedules and the person's own.
+ * - A person manages their own schedules from today on; other people's need the *_any_schedule
+ *   permissions, past ones `update_past_schedule`.
+ * - `participate_schedule` / `cancel_participation_schedule`: join / leave other people's schedules.
+ * - Approving / rejecting / setting any status is limited to the approval permissions, and the
+ *   primary type has its own rule (PrimaryScheduleRule).
  */
 class ScheduleAccess
 {
@@ -24,9 +30,80 @@ class ScheduleAccess
             || $user->can('update_any_schedule');
     }
 
+    /**
+     * What the shared agenda shows. With `view_inactive_schedule`, everything. Otherwise only
+     * pending and approved schedules, plus the person's own and the ones they take part in
+     * (whatever their status).
+     */
+    public static function scopeVisible(Builder $query, User $user): Builder
+    {
+        if ($user->can('view_inactive_schedule')) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user) {
+            $visible->whereIn('status', [ScheduleStatus::Pending, ScheduleStatus::Approved])
+                ->orWhere('user_id', $user->id)
+                ->orWhereHas('schedule_users', fn(Builder $su) => $su->where('user_id', $user->id));
+        });
+    }
+
+    public static function canView(User $user, Schedule $schedule): bool
+    {
+        return $user->can('view_inactive_schedule')
+            || in_array($schedule->status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true)
+            || static::isOwnerOrParticipant($user, $schedule);
+    }
+
+    /** Started before today: only `update_past_schedule` may change it or take part in it. */
+    public static function isPastLocked(User $user, Schedule $schedule): bool
+    {
+        $tz = config('app.timezone');
+
+        return $schedule->start
+            && $schedule->start->copy()->setTimezone($tz)->lt(now($tz)->startOfDay())
+            && ! $user->can('update_past_schedule');
+    }
+
+    /** Own schedules (or anyone's with `update_any_schedule`), from today on. */
     public static function canUpdate(User $user, Schedule $schedule): bool
     {
-        return $schedule->user_id === $user->id || $user->can('update_any_schedule');
+        return ($schedule->user_id === $user->id || $user->can('update_any_schedule'))
+            && ! static::isPastLocked($user, $schedule);
+    }
+
+    /**
+     * `participate_schedule`: join someone else's pending or approved schedule, from today on.
+     * The participation starts pending and is approved like a schedule.
+     */
+    public static function canJoin(User $user, Schedule $schedule): bool
+    {
+        return $user->can('participate_schedule')
+            && $schedule->user_id !== $user->id
+            && in_array($schedule->status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true)
+            && ! static::isPastLocked($user, $schedule)
+            && ! static::participation($user, $schedule);
+    }
+
+    /** `cancel_participation_schedule`: leave a schedule they take part in, from today on. */
+    public static function canLeave(User $user, Schedule $schedule): bool
+    {
+        return $user->can('cancel_participation_schedule')
+            && ! static::isPastLocked($user, $schedule)
+            && (bool) static::participation($user, $schedule);
+    }
+
+    /** The user's participation in the schedule, if any. */
+    public static function participation(User $user, Schedule $schedule): ?ScheduleUser
+    {
+        return $schedule->relationLoaded('schedule_users')
+            ? $schedule->schedule_users->firstWhere('user_id', $user->id)
+            : $schedule->schedule_users()->where('user_id', $user->id)->first();
+    }
+
+    public static function isOwnerOrParticipant(User $user, Schedule $schedule): bool
+    {
+        return $schedule->user_id === $user->id || (bool) static::participation($user, $schedule);
     }
 
     /**
@@ -46,7 +123,8 @@ class ScheduleAccess
 
     public static function canDelete(User $user, Schedule $schedule): bool
     {
-        return $schedule->user_id === $user->id || $user->can('delete_any_schedule');
+        return ($schedule->user_id === $user->id || $user->can('delete_any_schedule'))
+            && ! static::isPastLocked($user, $schedule);
     }
 
     /** Whose schedule is being created: only `create_any_schedule` may book for someone else. */

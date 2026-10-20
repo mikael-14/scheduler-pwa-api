@@ -193,7 +193,12 @@ return [
                 'update_any',
                 'delete_any',
                 'update_past',
+                // see rejected / cancelled / completed / not shown schedules of other people
+                'view_inactive',
+                // join (participate) / leave (cancel_participation) other people's schedules
                 'participate',
+                'cancel_participation',
+                // may go alone on the primary type (see App\Services\PrimaryScheduleRule)
                 'independent',
                 'update_status',
                 'approve',

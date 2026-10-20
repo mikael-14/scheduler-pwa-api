@@ -25,7 +25,7 @@ class DetailHandler extends \App\Http\Handlers\ApprovedHandler
     {
         $id = $request->route('id');
         
-        $model = QueryBuilder::for(static::getEloquentQuery())
+        $model = QueryBuilder::for(\App\Services\ScheduleAccess::scopeVisible(static::getEloquentQuery(), $request->user()))
             ->where(static::getKeyName(), $id)
             ->allowedFields($this->getAllowedFields() ?? [])
             ->allowedIncludes($this->getAllowedIncludes() ?? [])
