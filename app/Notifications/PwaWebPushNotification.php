@@ -2,63 +2,46 @@
 
 namespace App\Notifications;
 
-use Illuminate\Notifications\DatabaseNotification; 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 
-class PwaWebPushNotification extends Notification
+/**
+ * The web push copy of a stored notification (see FilamentNotificationObserver). Queued: sending
+ * means one HTTPS call to the push service per subscribed device. Expired subscriptions are
+ * removed by the channel itself. How it went is recorded on the stored row (DeliveryLog).
+ */
+class PwaWebPushNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    protected DatabaseNotification $filamentNotification;
-    /**
-     * Create a new notification instance.
-     */
-
-    public function __construct(DatabaseNotification $notification)
+    public function __construct(protected DatabaseNotification $filamentNotification)
     {
-        $this->filamentNotification = $notification;
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @return array<int, string>
-     */
+    /** The id of the stored notification this push is a copy of. */
+    public function storedId(): string
+    {
+        return $this->filamentNotification->id;
+    }
+
+    /** @return array<int, string> */
     public function via(object $notifiable): array
     {
+        // checked again when the job runs: push may have been turned off in the meantime
+        if (! $notifiable->push_notification) {
+            DeliveryLog::pushNotSent($this->storedId());
+
+            return [];
+        }
+
         return [WebPushChannel::class];
-        //return ['mail'];
     }
 
-    /**
-     * Get the mail representation of the notification.
-     */
-    public function toMail(object $notifiable): MailMessage
-    {
-        return (new MailMessage)
-            ->line('The introduction to the notification.')
-            ->action('Notification Action', url('/'))
-            ->line('Thank you for using our application!');
-    }
-
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(object $notifiable): array
-    {
-        return [
-            //
-        ];
-    }
-
-    public function toWebPush($notifiable, $notification)
+    public function toWebPush($notifiable, $notification): WebPushMessage
     {
         // The stored notification is in Filament's format: title/body live inside `data`
         $data = $this->filamentNotification->data ?? [];
@@ -67,7 +50,13 @@ class PwaWebPushNotification extends Notification
             ->title($data['title'] ?? config('app.name'))
             ->body(strip_tags((string) ($data['body'] ?? '')))
             ->icon('/img/icons/icon-192x192.png')
-            ->tag($this->filamentNotification->id)
+            ->tag($this->storedId()) // also how DeliveryLog finds the row again
             ->data(['url' => $data['path'] ?? '/notifications']); // route inside the PWA
+    }
+
+    /** The queued job gave up (e.g. the push service could not be reached). */
+    public function failed(\Throwable $e): void
+    {
+        DeliveryLog::pushFailed($this->storedId(), $e);
     }
 }

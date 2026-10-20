@@ -65,7 +65,8 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Schedule times are shelter time: what people type in the panel and the PWA is Lisbon time
+    'timezone' => env('APP_TIMEZONE', 'Europe/Lisbon'),
 
     /*
     |--------------------------------------------------------------------------

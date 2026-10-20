@@ -4,6 +4,8 @@ namespace App\Notifications;
 
 use Filament\Actions\Action;
 use Filament\Notifications\Notification as FilamentNotification;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -13,13 +15,26 @@ use Illuminate\Notifications\Notification;
  * - `database`: always stored. It feeds the bell of the admin panel (Filament format) and the
  *   notification list of the PWA. FilamentNotificationObserver then forwards every stored
  *   notification as web push to the PWA when the user has push enabled and a subscription.
- * - `mail`: only when the user turned on email notifications in their profile.
+ * - `mail`: when the user has email notifications on in their profile, or always for account
+ *   messages (alwaysEmail()).
  *
  * User preferences live on users.email_notification / users.push_notification. The text is built in
  * the recipient's language because User implements HasLocalePreference.
+ *
+ * Queued, and only after the surrounding transaction commits: the bell entry is written right
+ * away (sync), while email waits for a queue worker so a slow mail server never slows down or
+ * fails an approval. Web push is queued too (see PwaWebPushNotification).
  */
-abstract class AppNotification extends Notification
+abstract class AppNotification extends Notification implements ShouldQueueAfterCommit
 {
+    use Queueable;
+
+    /** @return array<string, string> */
+    public function viaConnections(): array
+    {
+        return ['database' => 'sync'];
+    }
+
     abstract protected function title(): string;
 
     abstract protected function body(): string;
@@ -45,11 +60,26 @@ abstract class AppNotification extends Notification
         return null;
     }
 
+    /**
+     * The queued email gave up (mail server down, bad address...). Recorded on the stored row,
+     * which shares this notification's id; the in-app copy itself is written synchronously.
+     */
+    public function failed(\Throwable $e): void
+    {
+        DeliveryLog::mailFailed($this->id, $e);
+    }
+
+    /** Account messages the user must get even with email notifications turned off. */
+    protected function alwaysEmail(): bool
+    {
+        return false;
+    }
+
     public function via(object $notifiable): array
     {
         $channels = ['database'];
 
-        if ($notifiable->email_notification && filled($notifiable->email)) {
+        if (($this->alwaysEmail() || $notifiable->email_notification) && filled($notifiable->email)) {
             $channels[] = 'mail';
         }
 
@@ -84,11 +114,15 @@ abstract class AppNotification extends Notification
         return (new MailMessage)
             ->subject($this->title())
             ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
-            ->line($this->body())
+            // one paragraph per line, so a multi-line message keeps its shape
+            ->lines(array_filter(array_map('trim', preg_split('/\R/', $this->body()))))
             ->action(
                 __('Open the scheduler'),
                 $this->url() ?? rtrim((string) config('app.pwa_url'), '/') . $this->path()
             )
-            ->line(__('You are receiving this email because email notifications are enabled in your profile.'));
+            ->lineIf(
+                ! $this->alwaysEmail(),
+                __('You are receiving this email because email notifications are enabled in your profile.')
+            );
     }
 }

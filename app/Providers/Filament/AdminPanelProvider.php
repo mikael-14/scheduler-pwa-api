@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use Filament\Http\Middleware\Authenticate;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -32,8 +31,8 @@ use App\Http\Middleware\ApplyUserLocale;
 use App\Http\Middleware\CheckPendingApproval;
 use App\Filament\Pages\PendingApproval;
 use Filament\Enums\DatabaseNotificationsPosition;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
+use Filament\Facades\Filament;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Tapp\FilamentAuditing\FilamentAuditingPlugin;
 
 class AdminPanelProvider extends PanelProvider
@@ -62,11 +61,10 @@ class AdminPanelProvider extends PanelProvider
                // AccountWidget::class,
                 //FilamentInfoWidget::class,
             ])
-            ->viteTheme('resources/css/filament/admin/theme.css')
             ->profile(\App\Filament\Pages\Auth\EditProfile::class)
-            ->databaseNotifications()
-            ->databaseNotificationsPolling(interval: 30)
+            // every open tab polls once per interval (one small request); raise it if the server gets busy
             ->databaseNotifications(position: DatabaseNotificationsPosition::Topbar)
+            ->databaseNotificationsPolling(interval: '30s')
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -80,7 +78,8 @@ class AdminPanelProvider extends PanelProvider
                 CheckPendingApproval::class,
             ])
             ->authMiddleware([
-                Authenticate::class,
+                // Filament's Authenticate + signs out users deactivated mid-session
+                \App\Http\Middleware\AuthenticatePanel::class,
             ])
             ->plugins([
                 FilamentShieldPlugin::make(),
@@ -114,11 +113,21 @@ class AdminPanelProvider extends PanelProvider
                             string $provider,
                             SocialiteUserContract $oauthUser
                         ): ?Authenticatable {
-                            $user = User::where('email', $oauthUser->getEmail())->first();
+                            // Without an email there is nothing to match or create (Facebook may withhold it)
+                            if (blank($oauthUser->getEmail())) {
+                                $this->refuseSocialLogin(__('The provider did not share your email address.'));
+                            }
+
+                            $user = User::withTrashed()->where('email', $oauthUser->getEmail())->first();
+
+                            // A removed account keeps its email, so creating a new one would fail on the unique index
+                            if ($user?->trashed()) {
+                                $this->refuseSocialLogin(__('This account has been removed. Contact an administrator.'));
+                            }
 
                             // Never log into an existing account on the strength of an unverified email
                             if ($user && ! User::providerVerifiesEmail($oauthUser, $provider)) {
-                                abort(403, __('The email address from this provider is not verified.'));
+                                $this->refuseSocialLogin(__('The email address from this provider is not verified.'));
                             }
 
                             return $user;
@@ -134,7 +143,7 @@ class AdminPanelProvider extends PanelProvider
                                     ?? $oauthUser->getNickname()
                                     ?? 'User',
                                 'email' => $oauthUser->getEmail(),
-                                'avatar_url' => $this->downloadAndStoreAvatar($oauthUser->getAvatar()),
+                                'avatar_url' => User::storeSocialAvatar($oauthUser->getAvatar()),
                                 'locale' => app()->getLocale(),
                                 'password' => null,
                             ]);
@@ -147,27 +156,14 @@ class AdminPanelProvider extends PanelProvider
             // a signed-in user's `locale` column wins, on page loads and on Livewire updates.
             ->middleware([ApplyUserLocale::class], isPersistent: true);
     }
-    private function downloadAndStoreAvatar(?string $avatarUrl): ?string
+    /**
+     * Back to the login page with the reason shown under the social buttons (the plugin's own
+     * error slot), instead of a bare error page.
+     */
+    private function refuseSocialLogin(string $message): never
     {
-        if (empty($avatarUrl)) {
-            return null;
-        }
+        session()->flash('filament-socialite-login-error', $message);
 
-        try {
-            $response = Http::timeout(10)->get($avatarUrl);
-
-            if (! $response->successful()) {
-                return null;
-            }
-
-            $filename = 'avatars/' . uniqid() . '.jpg';
-            Storage::disk('public')->put($filename, $response->body());
-
-            return $filename;
-        } catch (\Throwable $e) {
-            report($e);
-
-            return null;
-        }
+        throw new HttpResponseException(redirect(Filament::getLoginUrl()));
     }
 }

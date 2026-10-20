@@ -23,4 +23,10 @@ class AccountApproved extends AppNotification
     {
         return '/';
     }
+
+    /** A user waiting for approval is not using the app, so the in-app notice alone would go unseen. */
+    protected function alwaysEmail(): bool
+    {
+        return true;
+    }
 }

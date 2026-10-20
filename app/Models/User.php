@@ -47,6 +47,34 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
     ];
 
     /**
+     * Every permission the user has, directly or through their roles, for apps to decide what
+     * to show (the API checks each permission again). Not getPermissionNames(): that one only
+     * lists permissions given directly to the user, and here they come from roles.
+     *
+     * @return list<string>
+     */
+    public function permissionNamesForApps(): array
+    {
+        return $this->getAllPermissions()->pluck('name')->unique()->sort()->values()->all();
+    }
+
+    /**
+     * Never copied into the audit log: the audit only says the password changed, not its hash.
+     *
+     * @var list<string>
+     */
+    protected $auditExclude = [
+        'password',
+        'remember_token',
+    ];
+
+    /** New accounts get both notification kinds (same as the column defaults). */
+    protected $attributes = [
+        'push_notification' => true,
+        'email_notification' => true,
+    ];
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>
@@ -175,6 +203,29 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
     }
 
     /**
+     * Copy the provider's avatar to the public disk (used by the panel and the API social logins).
+     * Best effort: a slow or broken avatar URL must not hang or fail the login.
+     */
+    public static function storeSocialAvatar(?string $avatarUrl): ?string
+    {
+        if (empty($avatarUrl)) {
+            return null;
+        }
+
+        try {
+            $avatarContents = \Illuminate\Support\Facades\Http::timeout(5)->get($avatarUrl)->throw()->body();
+            $filename = 'avatars/' . Str::random(40) . '.jpg';
+            Storage::disk('public')->put($filename, $avatarContents);
+
+            return $filename;
+        } catch (\Exception $e) {
+            Log::error("Failed to download social avatar: " . $e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
      * Find or create a user from a Socialite login.
      *
      * @param ProviderUser $socialiteUser
@@ -207,17 +258,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
 
         if (!$user) {
             // Handle the Avatar Download (replicating your Filament logic)
-            $avatarPath = null;
-            if ($avatarUrl = $socialiteUser->getAvatar()) {
-                try {
-                    $avatarContents = file_get_contents($avatarUrl);
-                    $filename = 'avatars/' . Str::random(40) . '.jpg';
-                    Storage::disk('public')->put($filename, $avatarContents);
-                    $avatarPath = $filename;
-                } catch (\Exception $e) {
-                    Log::error("Failed to download social avatar: " . $e->getMessage());
-                }
-            }
+            $avatarPath = self::storeSocialAvatar($socialiteUser->getAvatar());
 
             // 3. Create the new user record
             $user = self::create([

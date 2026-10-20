@@ -10,13 +10,17 @@ use App\Models\Schedule;
  */
 class ScheduleStatusChanged extends AppNotification
 {
+    /** The decision being announced; the schedule may change again before a queued email goes out. */
+    private readonly ScheduleStatus $decision;
+
     public function __construct(private readonly Schedule $schedule)
     {
+        $this->decision = $schedule->status;
     }
 
     protected function title(): string
     {
-        return match ($this->schedule->status) {
+        return match ($this->decision) {
             ScheduleStatus::Approved => __('Your schedule was approved'),
             ScheduleStatus::Rejected => __('Your schedule was rejected'),
             ScheduleStatus::Cancelled => __('Your schedule was cancelled'),
@@ -34,15 +38,16 @@ class ScheduleStatusChanged extends AppNotification
 
     protected function status(): string
     {
-        return match ($this->schedule->status) {
+        return match ($this->decision) {
             ScheduleStatus::Approved => 'success',
             ScheduleStatus::Rejected, ScheduleStatus::Cancelled => 'danger',
             default => 'info',
         };
     }
 
+    /** The schedule itself in the PWA (details, and edit or cancel when allowed). */
     protected function path(): string
     {
-        return '/my-agenda';
+        return "/schedules/{$this->schedule->id}";
     }
 }

@@ -11,6 +11,7 @@ class CheckPendingApproval
     public function handle(Request $request, Closure $next): Response
     {
         $user = auth()->user();
+
         if ($user && $user->approved_at === null) {
             // Don't redirect if already on the pending approval page or trying to logout
             if ($request->routeIs('filament.admin.pages.pending-approval') || $request->routeIs('filament.admin.auth.logout')) {

@@ -82,7 +82,7 @@ class CreateUser extends CreateRecord
                                 Toggle::make('email_notification')
                                     ->label(__('Email notifications'))
                                     ->inline(false)
-                                    ->default(false)
+                                    ->default(true)
                                     ->helperText(__('Receive an email when a schedule is approved, rejected or cancelled.')),
                                 Toggle::make('push_notification')
                                     ->label(__('Push notifications'))

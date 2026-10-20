@@ -1,0 +1,210 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\DeliveryStatus;
+use App\Enums\ScheduleStatus;
+use App\Filament\Resources\NotificationLogs\Pages\ListNotificationLogs;
+use App\Filament\Resources\NotificationLogs\Pages\ViewNotificationLog;
+use App\Models\NotificationLog;
+use App\Models\Schedule;
+use App\Models\ScheduleType;
+use App\Models\User;
+use App\Notifications\AccountApproved;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+use Laravel\Sanctum\Sanctum;
+use Livewire\Livewire;
+use Minishlink\WebPush\MessageSentReport;
+use Minishlink\WebPush\WebPush;
+use Mockery;
+use NotificationChannels\WebPush\ReportHandler;
+use NotificationChannels\WebPush\WebPushChannel;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport\AbstractTransport;
+use Tests\TestCase;
+
+/** Each stored notification records its sender and how its email and push copies went. */
+class NotificationDeliveryLogTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function user(array $attributes = []): User
+    {
+        return User::factory()->create(array_merge(['approved_at' => now(), 'status' => true], $attributes));
+    }
+
+    private function withPermissions(array $permissions, array $attributes = []): User
+    {
+        $user = $this->user($attributes);
+        $role = Role::firstOrCreate(['name' => 'role-' . implode('-', $permissions), 'guard_name' => 'web']);
+        foreach ($permissions as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+        }
+        $role->syncPermissions($permissions);
+        $user->assignRole($role);
+
+        return $user;
+    }
+
+    private function pendingSchedule(User $owner): Schedule
+    {
+        $type = ScheduleType::create(['name' => 'Cleaning', 'color' => '#112233', 'status' => true, 'range' => true, 'all_day' => false]);
+        $day = now()->addDays(3)->format('Y-m-d');
+
+        return Schedule::create([
+            'schedule_type_id' => $type->id, 'user_id' => $owner->id, 'status' => ScheduleStatus::Pending,
+            'start' => "$day 10:00", 'end' => "$day 12:00",
+        ]);
+    }
+
+    /** The push service answers per device: endpoint => HTTP status (201 = delivered). */
+    private function pushServiceAnswers(array $statusByEndpoint): void
+    {
+        $queued = [];
+        $webPush = Mockery::mock(WebPush::class);
+        $webPush->shouldReceive('queueNotification')->andReturnUsing(function ($subscription) use (&$queued) {
+            $queued[] = $subscription->getEndpoint();
+        });
+        $webPush->shouldReceive('flush')->andReturnUsing(function () use (&$queued, $statusByEndpoint) {
+            foreach ($queued as $endpoint) {
+                $status = $statusByEndpoint[$endpoint] ?? 201;
+                yield new MessageSentReport(new Request('POST', $endpoint), new Response($status), $status < 300, $status < 300 ? 'OK' : "HTTP $status");
+            }
+            $queued = [];
+        });
+
+        $this->app->instance(WebPushChannel::class, new WebPushChannel($webPush, app(ReportHandler::class)));
+    }
+
+    private function approveAs(User $approver, Schedule $schedule): NotificationLog
+    {
+        Sanctum::actingAs($approver);
+        $this->postJson("/api/admin/schedules/{$schedule->id}/approve")->assertOk();
+
+        return NotificationLog::where('notifiable_id', $schedule->user_id)->latest()->firstOrFail();
+    }
+
+    public function test_email_and_push_delivered_are_recorded_with_the_sender(): void
+    {
+        $this->pushServiceAnswers([]);
+        $owner = $this->user(['email_notification' => true, 'push_notification' => true]);
+        $owner->updatePushSubscription('https://push.example/phone', 'key', 'token');
+        $approver = $this->withPermissions(['approve_schedule']);
+
+        $log = $this->approveAs($approver, $this->pendingSchedule($owner));
+
+        $this->assertSame($approver->id, $log->sender_id);
+        $this->assertSame(DeliveryStatus::Sent, $log->mail_status);
+        $this->assertNotNull($log->mail_sent_at);
+        $this->assertSame(DeliveryStatus::Sent, $log->push_status);
+        $this->assertNotNull($log->push_sent_at);
+        $this->assertNull($log->delivery_error);
+    }
+
+    public function test_ways_the_user_turned_off_are_left_empty(): void
+    {
+        $owner = $this->user(['email_notification' => false, 'push_notification' => false]);
+        $owner->updatePushSubscription('https://push.example/phone', 'key', 'token');
+
+        $log = $this->approveAs($this->withPermissions(['approve_schedule']), $this->pendingSchedule($owner));
+
+        $this->assertNull($log->mail_status);
+        $this->assertNull($log->push_status);
+    }
+
+    public function test_push_counts_as_sent_when_one_device_got_it_and_failed_when_none_did(): void
+    {
+        $this->pushServiceAnswers(['https://push.example/old' => 410, 'https://push.example/broken' => 500]);
+
+        $mixed = $this->user(['email_notification' => false]);
+        $mixed->updatePushSubscription('https://push.example/old', 'key', 'token');
+        $mixed->updatePushSubscription('https://push.example/phone', 'key', 'token');
+        $log = $this->approveAs($this->withPermissions(['approve_schedule']), $this->pendingSchedule($mixed));
+        $this->assertSame(DeliveryStatus::Sent, $log->push_status);
+        // the expired device was dropped by the channel
+        $this->assertSame(1, $mixed->pushSubscriptions()->count());
+
+        $failing = $this->user(['email_notification' => false]);
+        $failing->updatePushSubscription('https://push.example/broken', 'key', 'token');
+        $log = $this->approveAs($this->withPermissions(['approve_schedule']), $this->pendingSchedule($failing));
+        $this->assertSame(DeliveryStatus::Failed, $log->push_status);
+        $this->assertStringContainsString('HTTP 500', $log->delivery_error);
+    }
+
+    public function test_a_failing_mail_server_is_recorded_as_a_failed_email(): void
+    {
+        Mail::extend('broken', fn() => new class extends AbstractTransport {
+            protected function doSend(SentMessage $message): void
+            {
+                throw new TransportException('SMTP server unreachable');
+            }
+
+            public function __toString(): string
+            {
+                return 'broken';
+            }
+        });
+        config(['mail.default' => 'broken', 'mail.mailers.broken' => ['transport' => 'broken']]);
+
+        $user = $this->user(['email_notification' => false, 'push_notification' => false]);
+        try {
+            $user->notify(new AccountApproved());
+        } catch (TransportException) {
+            // with the sync queue of the tests the failure also reaches the caller
+        }
+
+        $log = NotificationLog::where('notifiable_id', $user->id)->firstOrFail();
+        $this->assertSame(DeliveryStatus::Failed, $log->mail_status);
+        $this->assertStringContainsString('SMTP server unreachable', $log->delivery_error);
+        $this->assertNull($log->sender_id);
+    }
+
+    public function test_admins_list_filter_and_view_the_log_and_members_cannot(): void
+    {
+        $this->withoutVite();
+        $this->pushServiceAnswers(['https://push.example/broken' => 500]);
+        $approver = $this->withPermissions(['approve_schedule']);
+
+        $ana = $this->user(['name' => 'Ana', 'email_notification' => true]);
+        $rui = $this->user(['name' => 'Rui', 'email_notification' => false]);
+        $rui->updatePushSubscription('https://push.example/broken', 'key', 'token');
+        $anaLog = $this->approveAs($approver, $this->pendingSchedule($ana));
+        $ruiLog = $this->approveAs($approver, $this->pendingSchedule($rui));
+
+        $admin = $this->withPermissions(['view_any_notification_log', 'view_notification_log']);
+        $this->actingAs($admin);
+        ilamentacadesilament::setcurrentpanel('admin');
+
+        Livewire::test(ListNotificationLogs::class)
+            ->assertCanSeeTableRecords([$anaLog, $ruiLog])
+            ->filterTable('mail_status', DeliveryStatus::Sent->value)
+            ->assertCanSeeTableRecords([$anaLog])->assertCanNotSeeTableRecords([$ruiLog])
+            ->resetTableFilters()
+            ->filterTable('mail_status', 'none')
+            ->assertCanSeeTableRecords([$ruiLog])->assertCanNotSeeTableRecords([$anaLog])
+            ->resetTableFilters()
+            ->filterTable('push_status', DeliveryStatus::Failed->value)
+            ->assertCanSeeTableRecords([$ruiLog])->assertCanNotSeeTableRecords([$anaLog])
+            ->resetTableFilters()
+            ->filterTable('recipient', $ana->id)
+            ->assertCanSeeTableRecords([$anaLog])->assertCanNotSeeTableRecords([$ruiLog])
+            ->resetTableFilters()
+            ->filterTable('sender', $approver->id)
+            ->assertCanSeeTableRecords([$anaLog, $ruiLog])
+            ->resetTableFilters()
+            ->searchTable('Ana')
+            ->assertCanSeeTableRecords([$anaLog])->assertCanNotSeeTableRecords([$ruiLog]);
+
+        Livewire::test(ViewNotificationLog::class, ['record' => $ruiLog->getKey()])
+            ->assertSee('Rui')
+            ->assertSee('HTTP 500');
+
+        $this->actingAs($this->user())->get('/admin/sent-notifications')->assertForbidden();
+    }
+}

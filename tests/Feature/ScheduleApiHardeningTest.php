@@ -149,12 +149,17 @@ class ScheduleApiHardeningTest extends TestCase
         $type = $this->type();
         $day = now()->addDays(3)->format('Y-m-d');
 
-        // before min_time
-        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 06:00", 'end' => "$day 09:00"]))
-            ->assertStatus(422)->assertJsonValidationErrors('start');
+        // min_time / max_time only set the calendar's visible hours: outside them is allowed
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 06:00", 'end' => "$day 09:00"]))->assertOk();
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 16:00", 'end' => "$day 20:00"]))->assertOk();
 
-        // after max_time
-        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 16:00", 'end' => "$day 20:00"]))
+        // outside the type's start / end (when it may be booked) is not
+        $type->update(['start' => now()->addDays(2)->startOfDay(), 'end' => now()->addDays(10)->endOfDay()]);
+        $early = now()->addDay()->format('Y-m-d');
+        $late = now()->addDays(11)->format('Y-m-d');
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$early 10:00", 'end' => "$early 12:00"]))
+            ->assertStatus(422)->assertJsonValidationErrors('start');
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 10:00", 'end' => "$late 12:00"]))
             ->assertStatus(422)->assertJsonValidationErrors('end');
 
         // range type needs an end
@@ -250,9 +255,17 @@ class ScheduleApiHardeningTest extends TestCase
         // an already decided schedule is not re-decided with this permission alone
         $this->postJson(self::URL . "/{$schedule->id}/reject")->assertStatus(422)->assertJsonPath('code', 'not_pending');
 
-        $second = Schedule::create(array_merge($this->payload($type), ['user_id' => $owner->id, 'status' => ScheduleStatus::Pending]));
-        $this->postJson(self::URL . "/{$second->id}/reject")->assertOk();
+        $second = Schedule::create(array_merge($this->payload($type), ['user_id' => $owner->id, 'status' => ScheduleStatus::Pending, 'internal_note' => 'earlier']));
+        $this->postJson(self::URL . "/{$second->id}/reject", ['message' => 'Full that day'])->assertOk();
         $this->assertSame(ScheduleStatus::Rejected, $second->fresh()->status);
+        $this->assertStringStartsWith("earlier\n[", $second->fresh()->internal_note);
+        $this->assertStringEndsWith(': Full that day', $second->fresh()->internal_note);
+
+        // the message is optional but bounded
+        $third = Schedule::create(array_merge($this->payload($type), ['user_id' => $owner->id, 'status' => ScheduleStatus::Pending]));
+        $this->postJson(self::URL . "/{$third->id}/approve", ['message' => str_repeat('x', 1001)])->assertStatus(422);
+        $this->postJson(self::URL . "/{$third->id}/approve")->assertOk();
+        $this->assertNull($third->fresh()->internal_note);
     }
 
     public function test_pending_list_is_the_approvers_work_list_and_is_closed_to_members(): void

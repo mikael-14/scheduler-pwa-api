@@ -40,6 +40,9 @@ class ApproveHandler extends ApprovedHandler
      */
     public function handler(Request $request)
     {
+        // Optional reason, appended to the schedule's internal note (staff only)
+        $data = $request->validate(['message' => ['nullable', 'string', 'max:1000']]);
+
         $schedule = static::getModel()::with('schedule_users')->find($request->route('id'));
 
         if (! $schedule) {
@@ -55,7 +58,9 @@ class ApproveHandler extends ApprovedHandler
             ], 422);
         }
 
-        $this->target === ScheduleStatus::Approved ? $schedule->approve() : $schedule->reject();
+        $this->target === ScheduleStatus::Approved
+            ? $schedule->approve($data['message'] ?? null)
+            : $schedule->reject($data['message'] ?? null);
 
         return static::sendSuccessResponse(
             new ScheduleTransformer($schedule->fresh('schedule_users')),

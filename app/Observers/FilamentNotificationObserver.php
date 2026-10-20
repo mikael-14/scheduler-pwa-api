@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\User;
+use App\Notifications\DeliveryLog;
 use App\Notifications\PwaWebPushNotification;
 use Illuminate\Notifications\DatabaseNotification;
 
@@ -21,8 +22,10 @@ class FilamentNotificationObserver
         }
 
         try {
+            DeliveryLog::queuedPush($notification->id);
             $user->notify(new PwaWebPushNotification($notification));
         } catch (\Throwable $e) {
+            DeliveryLog::pushFailed($notification->id, $e);
             report($e);
         }
     }

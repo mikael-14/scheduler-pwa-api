@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Gate;
 use Tapp\FilamentAuditing\Models\Audit;
 use Illuminate\Notifications\DatabaseNotification;
 use App\Observers\FilamentNotificationObserver;
+use App\Notifications\DeliveryLog;
+use App\Notifications\PwaWebPushNotification;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,7 +25,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Stored notifications also record their sender and whether an email copy is on its way
+        $this->app->bind(
+            \Illuminate\Notifications\Channels\DatabaseChannel::class,
+            \App\Notifications\Channels\DatabaseChannel::class
+        );
     }
 
     /**
@@ -32,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         DatabaseNotification::observe(FilamentNotificationObserver::class);
+        $this->trackNotificationDelivery();
         Gate::policy(Audit::class, AuditPolicy::class);
         // Saving the language chosen in the panel's switcher is done by the
         // App\Listeners\PersistUserLocale listener (auto-discovered); it used to be duplicated here.
@@ -58,6 +65,33 @@ class AppServiceProvider extends ServiceProvider
                 return $user->can('restore_audit');
             });
 
+        });
+    }
+
+    /** Email and push outcomes, written on the stored notification (see App\Notifications\DeliveryLog). */
+    private function trackNotificationDelivery(): void
+    {
+        Event::listen(function (\Illuminate\Notifications\Events\NotificationSent $event) {
+            if ($event->channel === 'mail' && $event->notification->id) {
+                DeliveryLog::mailSent($event->notification->id);
+            }
+
+            // the push channel finished without any device reporting back (e.g. all were removed)
+            if ($event->notification instanceof PwaWebPushNotification) {
+                DeliveryLog::pushNotSent($event->notification->storedId(), __('No subscribed device received it.'));
+            }
+        });
+
+        Event::listen(function (\NotificationChannels\WebPush\Events\NotificationSent $event) {
+            if ($id = $event->message->toArray()['tag'] ?? null) {
+                DeliveryLog::pushSent($id);
+            }
+        });
+
+        Event::listen(function (\NotificationChannels\WebPush\Events\NotificationFailed $event) {
+            if ($id = $event->message->toArray()['tag'] ?? null) {
+                DeliveryLog::pushFailed($id, $event->report->getReason());
+            }
         });
     }
 }

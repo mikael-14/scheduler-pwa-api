@@ -11,6 +11,8 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
 use OwenIt\Auditing\Contracts\Auditable;
+use App\Observers\ScheduleUserObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
 
 /**
@@ -29,6 +31,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  *
  * @package App\Models
  */
+#[ObservedBy(ScheduleUserObserver::class)]
 class ScheduleUser extends Model implements Auditable
 {
 	use \OwenIt\Auditing\Auditable;

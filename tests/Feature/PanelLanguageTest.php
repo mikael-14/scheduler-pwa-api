@@ -59,6 +59,49 @@ class PanelLanguageTest extends TestCase
     }
 
     #[RunInSeparateProcess]
+    public function test_notification_bell_polls_every_30_seconds_not_livewires_2s_default(): void
+    {
+        $this->panelAs('pt');
+
+        // the bell is its own (lazy) Livewire component, so render it directly
+        $html = \Livewire\Livewire::test(\Filament\Livewire\DatabaseNotifications::class)->html();
+
+        $this->assertStringContainsString('wire:poll.30s', $html);
+        $this->assertDoesNotMatchRegularExpression('/wire:poll\.\d+(?![\dms])/', $html);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_profile_language_is_written_to_the_switcher_cookie_for_the_login_page(): void
+    {
+        $this->withoutVite();
+        Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        Gate::before(fn($user) => $user->hasRole('super_admin') ? true : null);
+        $user = User::factory()->create(['approved_at' => now(), 'status' => true, 'locale' => 'en']);
+        $user->assignRole('super_admin');
+
+        $this->actingAs($user)
+            ->withUnencryptedCookie(\App\Http\Middleware\ApplyUserLocale::SWITCHER_COOKIE, 'pt')
+            ->get('/admin')
+            ->assertOk()
+            ->assertCookie(\App\Http\Middleware\ApplyUserLocale::SWITCHER_COOKIE, 'en');
+    }
+
+    #[RunInSeparateProcess]
+    public function test_user_deactivated_mid_session_is_signed_out_with_a_reason(): void
+    {
+        $this->withoutVite();
+        $user = User::factory()->create(['approved_at' => now(), 'status' => true]);
+        $this->actingAs($user);
+
+        $user->update(['status' => false]);
+
+        $this->get('/admin')
+            ->assertRedirect('/admin/login')
+            ->assertSessionHas('filament.notifications');
+        $this->assertGuest();
+    }
+
+    #[RunInSeparateProcess]
     public function test_audits_page_and_navigation_are_translated(): void
     {
         $html = $this->panelAs('pt', '/admin/audits');
@@ -66,6 +109,43 @@ class PanelLanguageTest extends TestCase
         $this->assertStringContainsString('Auditorias', $html);
         $this->assertStringContainsString('Agendamentos', $html);
         $this->assertStringNotContainsString('>Audits<', $html);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_approvals_page_lists_only_pending_schedules_for_approvers(): void
+    {
+        $this->withoutVite();
+
+        $type = \App\Models\ScheduleType::create(['name' => 'Cleaning', 'color' => '#112233', 'status' => true, 'range' => true, 'all_day' => false]);
+        $owner = User::factory()->create(['approved_at' => now(), 'status' => true, 'name' => 'Maria Pendente']);
+        $day = now()->addDays(3)->format('Y-m-d');
+        $make = fn(string $status, string $name) => \App\Models\Schedule::create([
+            'schedule_type_id' => $type->id, 'user_id' => $owner->id, 'status' => $status,
+            'start' => "$day 10:00", 'end' => "$day 12:00", 'description' => $name,
+        ]);
+        $make('pending', 'wait-for-me');
+        $make('approved', 'already-decided');
+
+        // approve-only role: sees the page, the badge and just the pending row
+        $approver = User::factory()->create(['approved_at' => now(), 'status' => true, 'locale' => 'pt']);
+        $role = Role::firstOrCreate(['name' => 'approver', 'guard_name' => 'web']);
+        $role->givePermissionTo(\Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'approve_schedule', 'guard_name' => 'web']));
+        $approver->assignRole($role);
+
+        $html = $this->actingAs($approver)->get('/admin/approvals')->assertOk()->getContent();
+        $this->assertStringContainsString('Aprovações', $html);
+        // the badge counts what is waiting
+        $this->assertMatchesRegularExpression('/>\s*1\s*</', $html);
+
+        // the table widget loads lazily, so check its rows on the component itself
+        \Livewire\Livewire::test(\App\Filament\Widgets\PendingSchedulesWidget::class)
+            ->assertSee('Maria Pendente')
+            ->assertSee('wait-for-me')
+            ->assertDontSee('already-decided');
+
+        // regular member: no access
+        $member = User::factory()->create(['approved_at' => now(), 'status' => true]);
+        $this->actingAs($member)->get('/admin/approvals')->assertForbidden();
     }
 
     #[RunInSeparateProcess]

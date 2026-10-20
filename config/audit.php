@@ -26,9 +26,11 @@ return [
 
     'user' => [
         'morph_prefix' => 'user',
+        // web: the admin panel; sanctum: the PWA / API tokens (without it, every change made
+        // from the PWA is recorded without its author)
         'guards' => [
             'web',
-            'api',
+            'sanctum',
         ],
         'resolver' => OwenIt\Auditing\Resolvers\UserResolver::class,
     ],

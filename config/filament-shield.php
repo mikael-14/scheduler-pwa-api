@@ -200,7 +200,10 @@ return [
             ],
             Tapp\FilamentAuditing\Filament\Resources\Audits\AuditResource::class =>[
                 'restore_audit',
-            ]
+            ],
+            App\Filament\Resources\NotificationLogs\NotificationLogResource::class => [
+                'send',
+            ],
         ],
         'exclude' => [
             Tapp\FilamentAuthenticationLog\Resources\AuthenticationLogResource::class,
@@ -227,6 +230,8 @@ return [
             \App\Filament\Pages\PendingApproval::class,
             // Access is `view_any_schedule`, checked in the page itself
             \App\Filament\Pages\ScheduleCalendar::class,
+            // Access is approve_schedule / update_status_schedule, checked in the page itself
+            \App\Filament\Pages\Approvals::class,
         ],
     ],
 

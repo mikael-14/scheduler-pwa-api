@@ -79,7 +79,8 @@ trait WritesSchedules
         }
 
         if ($removeMissing) {
-            $schedule->schedule_users()->whereNotIn('id', array_values($kept))->delete();
+            // one by one, not a bulk delete: each removal is audited and the person is told
+            $schedule->schedule_users()->whereNotIn('id', array_values($kept))->get()->each->delete();
         }
     }
 

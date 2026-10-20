@@ -38,6 +38,13 @@ class ScheduleType extends Model implements Auditable
 
 	protected $table = 'schedule_types';
 
+	/** A changed type must not keep its old rules for the rest of the request (ScheduleTypeRules). */
+	protected static function booted(): void
+	{
+		static::saved(fn() => \App\Services\ScheduleTypeRules::flush());
+		static::deleted(fn() => \App\Services\ScheduleTypeRules::flush());
+	}
+
 	protected $casts = [
 		'status' => 'bool',
 		'range' => 'bool',

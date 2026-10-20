@@ -69,7 +69,7 @@ class PaginationHandler extends ApprovedHandler
     {
         $perPage = min(max((int) request()->query('per_page', 25), 1), self::MAX_PER_PAGE);
 
-        $query = static::getEloquentQuery()->with('schedule_users');
+        $query = static::getEloquentQuery()->with(ScheduleTransformer::RELATIONS);
 
         $query = QueryBuilder::for($query)
             ->allowedFields($this->getAllowedFields() ?? [])

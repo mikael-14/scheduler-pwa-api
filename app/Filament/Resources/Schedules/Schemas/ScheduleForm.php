@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Schedules\Schemas;
 use App\Enums\ScheduleStatus;
 use App\Models\ScheduleType;
 use App\Models\User;
+use App\Services\ScheduleTypeRules;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Section;
@@ -50,76 +51,44 @@ class ScheduleForm
                     ->live()
                     ->searchable()
                     ->preload(true),
+                // The type's rules (ScheduleTypeRules), also enforced on save by ScheduleRulesValidator:
+                // the pickers stop at the type's start / end, "all day" only when the type allows it,
+                // an end only when the type needs one.
                 Flatpickr::make('start')
                     ->allowInput()
-                    ->key(fn(Get $get) => 'start_' . $get('schedule_type_id'))
+                    // a new picker when the type or "all day" changes (limits and time picker differ)
+                    ->key(fn(Get $get) => 'start_' . $get('schedule_type_id') . '_' . (int) self::isAllDay($get))
                     ->visible(fn(Get $get) => $get('schedule_type_id') ?? false)
-                    ->minDate(function (Get $get) {
-                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->start?->format(config('app.date_time_format')) ?? null;
-                    })
-                    ->maxDate(function (Get $get) {
-                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->end?->format(config('app.date_time_format')) ?? null;
-                    })
-                    ->time(function (Get $get) {
-                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        if ($config === null || $config->all_day === false) {
-                            return true;
-                        } else {
-                            $get('all_day') ? false : true;
-                        }
-                        return true;
-                    })
+                    ->minDate(fn(Get $get) => self::pickerDate(self::rules($get)?->windowStart(), $get))
+                    ->maxDate(fn(Get $get) => self::pickerDate(self::rules($get)?->windowEnd(), $get))
+                    ->time(fn(Get $get) => ! self::isAllDay($get))
                     ->hourIncrement(1) // Intervals of incrementing hours in a time picker
                     ->minuteIncrement(5) // Intervals of minute increment in a time picker
                     ->seconds(false) // Enable seconds in a time picker
-                    ->format(config('app.date_time_format'))
-                    ->altFormat(config('app.date_time_format'))
+                    ->format(fn(Get $get) => self::pickerFormat($get))
+                    ->altFormat(fn(Get $get) => self::pickerFormat($get))
                     ->time24hr(true)
+                    ->live()
                     ->required(),
                 Flatpickr::make('end')
                     ->allowInput()
-                    ->key(fn(Get $get) => 'end_' . $get('schedule_type_id'))
-                    ->visible(function (Get $get) {
-                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->range ?? false;
-                    })
-                    ->maxDate(function (Get $get) {
-                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->end?->format(config('app.date_time_format')) ?? null;
-                    })
-                    ->minDate(function (Get $get) {
-                        $start = $get('start');
-                        if ($start) {
-                            return $start;
-                        }
-                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->start?->format(config('app.date_time_format')) ?? null;
-                    })
-                    ->time(function (Get $get) {
-                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        if ($config === null || $config->all_day === false) {
-                            return true;
-                        } else {
-                            $get('all_day') ? false : true;
-                        }
-                        return true;
-                    })
+                    ->key(fn(Get $get) => 'end_' . $get('schedule_type_id') . '_' . (int) self::isAllDay($get))
+                    ->visible(fn(Get $get) => self::rules($get)?->requiresEnd() ?? false)
+                    ->maxDate(fn(Get $get) => self::pickerDate(self::rules($get)?->windowEnd(), $get))
+                    // never before the start
+                    ->minDate(fn(Get $get) => $get('start') ?: self::pickerDate(self::rules($get)?->windowStart(), $get))
+                    ->time(fn(Get $get) => ! self::isAllDay($get))
                     ->hourIncrement(1) // Intervals of incrementing hours in a time picker
                     ->minuteIncrement(5) // Intervals of minute increment in a time picker
                     ->seconds(false) // Enable seconds in a time picker
-                    ->format(config('app.date_time_format'))
-                    ->altFormat(config('app.date_time_format'))
+                    ->format(fn(Get $get) => self::pickerFormat($get))
+                    ->altFormat(fn(Get $get) => self::pickerFormat($get))
                     ->time24hr(true)
                     ->required(),
                 Toggle::make('all_day')
                     ->inline(false)
                     ->live()
-                    ->visible(function (Get $get) {
-                        $config = ScheduleType::find($get('schedule_type_id')) ?? null;
-                        return $config?->all_day ?? false;
-                    })
+                    ->visible(fn(Get $get) => self::rules($get)?->allowsAllDay() ?? false)
                     ->default(false),
                 Textarea::make('description')->autosize(),
                 Textarea::make('internal_note')->autosize(),
@@ -191,6 +160,29 @@ class ScheduleForm
                     ->columnSpanFull()
 
             ];
+    }
+
+    /** The rules of the type chosen in the form (looked up once per request). */
+    private static function rules(Get $get): ?ScheduleTypeRules
+    {
+        return ScheduleTypeRules::for($get('schedule_type_id'));
+    }
+
+    /** "All day" counts only when the type allows it. */
+    private static function isAllDay(Get $get): bool
+    {
+        return (bool) $get('all_day') && (self::rules($get)?->allowsAllDay() ?? false);
+    }
+
+    /** Date only for all-day schedules, date and time otherwise. */
+    private static function pickerFormat(Get $get): string
+    {
+        return self::isAllDay($get) ? config('app.date_format') : config('app.date_time_format');
+    }
+
+    private static function pickerDate(?\Carbon\CarbonInterface $moment, Get $get): ?string
+    {
+        return $moment?->format(self::pickerFormat($get));
     }
 
     public static function getOptionWithColor(\Illuminate\Database\Eloquent\Collection $model)

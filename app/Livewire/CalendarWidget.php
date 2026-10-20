@@ -5,6 +5,8 @@ namespace App\Livewire;
 use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Schedule;
+use App\Models\ScheduleType;
+use App\Services\ScheduleTypeRules;
 use Filament\Schemas\Components\Grid;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
@@ -35,6 +37,7 @@ class CalendarWidget extends FullCalendarWidget
         return [
             CreateAction::make()
                 ->model(Schedule::class)
+                ->label(__('Create Schedule'))
                 ->schema([
                     Grid::make(2)
                         ->schema(ScheduleForm::formSchema())
@@ -176,11 +179,17 @@ class CalendarWidget extends FullCalendarWidget
             ],
         ];
 
-        if ($this->record?->min_time) {
-            $allConfig['slotMinTime'] = $this->record->min_time->format('H:i:s');
+        // Visible hours (display only): the type's own on its page, otherwise from the earliest
+        // to the latest of the active types, so no type is cut off on the central calendar
+        $hours = $this->record instanceof ScheduleType
+            ? (new ScheduleTypeRules($this->record))->calendarHours()
+            : ScheduleTypeRules::calendarHoursFor(ScheduleTypeRules::activeTypes());
+
+        if ($hours['min']) {
+            $allConfig['slotMinTime'] = $hours['min'];
         }
-        if ($this->record?->max_time) {
-            $allConfig['slotMaxTime'] = $this->record->max_time->format('H:i:s');
+        if ($hours['max']) {
+            $allConfig['slotMaxTime'] = $hours['max'];
         }
         return $allConfig;
     }

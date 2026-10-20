@@ -5,6 +5,9 @@ namespace App\Filament\Widgets;
 use App\Enums\ScheduleStatus;
 use App\Models\Schedule;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Grid;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ColorColumn;
@@ -24,6 +27,87 @@ class PendingSchedulesWidget extends TableWidget
         $user = Filament::auth()->user();
 
         return (bool) ($user?->can('approve_schedule') || $user?->can('update_status_schedule'));
+    }
+
+    /**
+     * "View" opens the schedule in a modal where it can be approved or rejected with a message.
+     * The message is appended to the schedule's internal note (see Schedule::approve/reject).
+     */
+    private function reviewAction(): Action
+    {
+        return Action::make('review')
+            ->label(__('View'))
+            ->icon('heroicon-o-eye')
+            ->color('gray')
+            ->iconButton()
+            ->modalHeading(fn(Schedule $record) => __('Schedule of :name', ['name' => $record->user?->name ?? '-']))
+            ->modalWidth('2xl')
+            ->schema([
+                Grid::make(2)->schema([
+                    TextEntry::make('type')
+                        ->label(__('Type'))
+                        ->state(fn(Schedule $record) => $record->schedule_type?->name),
+                    TextEntry::make('owner')
+                        ->label(__('Assigned To'))
+                        ->state(fn(Schedule $record) => $record->user?->name)
+                        ->placeholder('-'),
+                    TextEntry::make('period_start')
+                        ->label(__('Start'))
+                        ->state(fn(Schedule $record) => $record->start?->format($record->all_day
+                            ? config('app.date_format')
+                            : config('app.date_time_format')))
+                        ->helperText(fn(Schedule $record) => $record->all_day ? __('All Day') : null),
+                    TextEntry::make('period_end')
+                        ->label(__('End'))
+                        ->state(fn(Schedule $record) => $record->end?->format(config('app.date_time_format')))
+                        ->placeholder('-'),
+                    TextEntry::make('people')
+                        ->label(__('Participants'))
+                        ->state(fn(Schedule $record) => $record->schedule_users->pluck('user.name')->filter()->all())
+                        ->badge()
+                        ->placeholder('-')
+                        ->columnSpanFull(),
+                    TextEntry::make('details')
+                        ->label(__('Description'))
+                        ->state(fn(Schedule $record) => $record->description)
+                        ->placeholder('-')
+                        ->columnSpanFull(),
+                    TextEntry::make('history')
+                        ->label(__('Internal Note'))
+                        ->state(fn(Schedule $record) => $record->internal_note)
+                        ->visible(fn(Schedule $record) => filled($record->internal_note))
+                        ->extraAttributes(['class' => 'whitespace-pre-line'])
+                        ->columnSpanFull(),
+                ]),
+                Textarea::make('message')
+                    ->label(__('Message'))
+                    ->helperText(__('Added to the internal note of the schedule.'))
+                    ->rows(3)
+                    ->maxLength(1000),
+            ])
+            ->modalSubmitActionLabel(__('Approve'))
+            ->modalSubmitAction(fn(Action $action) => $action->color('success')->icon('heroicon-o-check'))
+            ->extraModalFooterActions(fn(Action $action) => [
+                $action->makeModalSubmitAction('reject', ['decision' => 'reject'])
+                    ->label(__('Reject'))
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger'),
+            ])
+            ->action(function (Schedule $record, array $data, array $arguments) {
+                if ($record->status !== ScheduleStatus::Pending) {
+                    Notification::make()->title(__('This schedule is no longer pending.'))->warning()->send();
+
+                    return;
+                }
+
+                if (($arguments['decision'] ?? 'approve') === 'reject') {
+                    $record->reject($data['message'] ?? null);
+                    Notification::make()->title(__('Schedule rejected'))->success()->send();
+                } else {
+                    $record->approve($data['message'] ?? null);
+                    Notification::make()->title(__('Records approved successfully'))->success()->send();
+                }
+            });
     }
 
     public function table(Table $table): Table
@@ -66,6 +150,7 @@ class PendingSchedulesWidget extends TableWidget
                     ->placeholder('-'),
             ])
             ->recordActions([
+                $this->reviewAction(),
                 Action::make('approve')
                     ->label(__('Approve'))
                     ->icon('heroicon-o-check')

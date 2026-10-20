@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Schedule;
-use App\Models\ScheduleType;
 use Carbon\CarbonInterface;
 use Filament\Notifications\Notification;
 use Filament\Support\Exceptions\Halt;
@@ -72,10 +71,10 @@ class ScheduleRulesValidator
             $errors['start'][] = __('You cannot schedule or move a schedule to a past date.');
         }
 
-        $type = $schedule->schedule_type_id ? ScheduleType::find($schedule->schedule_type_id) : null;
+        $rules = ScheduleTypeRules::for($schedule->schedule_type_id);
 
-        if ($type) {
-            static::validateAgainstType($schedule, $type, $start, $end, $errors);
+        if ($rules) {
+            static::validateAgainstType($schedule, $rules, $start, $end, $errors);
         }
 
         if ($errors) {
@@ -83,31 +82,31 @@ class ScheduleRulesValidator
         }
     }
 
+    /** The type's rules (see ScheduleTypeRules); its calendar hours are display only, never checked. */
     private static function validateAgainstType(
         Schedule $schedule,
-        ScheduleType $type,
+        ScheduleTypeRules $rules,
         CarbonInterface $start,
         ?CarbonInterface $end,
         array &$errors,
     ): void {
-        $tz = config('app.timezone');
         $typeChanged = ! $schedule->exists || $schedule->isDirty('schedule_type_id');
 
-        if (! $type->status && $typeChanged) {
+        if (! $rules->isActive() && $typeChanged) {
             $errors['schedule_type_id'][] = __('This schedule type is not active.');
         }
 
-        if ($type->range && ! $end) {
+        if ($rules->requiresEnd() && ! $end) {
             $errors['end'][] = __('This schedule type requires an end time.');
         }
 
-        if ($schedule->all_day && ! $type->all_day) {
+        if ($schedule->all_day && ! $rules->allowsAllDay()) {
             $errors['all_day'][] = __('This schedule type does not allow all-day schedules.');
         }
 
-        // Date window of the type
-        $windowStart = $type->start?->copy()->setTimezone($tz);
-        $windowEnd = $type->end?->copy()->setTimezone($tz);
+        // When schedules of the type may exist: from its start to its end
+        $windowStart = $rules->windowStart();
+        $windowEnd = $rules->windowEnd();
         $last = $end ?? $start;
 
         if ($windowStart && $start->lt($windowStart)) {
@@ -119,25 +118,6 @@ class ScheduleRulesValidator
             $errors['end'][] = __('This schedule type is only available until :date.', [
                 'date' => $windowEnd->format(config('app.date_time_format')),
             ]);
-        }
-
-        // Daily hours (not applicable to all-day schedules)
-        if ($schedule->all_day) {
-            return;
-        }
-
-        $min = $type->min_time?->format('H:i:s');
-        $max = $type->max_time?->format('H:i:s');
-        // A max of 00:00 means "until midnight"
-        if ($max === '00:00:00') {
-            $max = '24:00:00';
-        }
-
-        if ($min && $start->format('H:i:s') < $min) {
-            $errors['start'][] = __('This schedule type starts at :time.', ['time' => substr($min, 0, 5)]);
-        }
-        if ($max && ($end ?? $start)->format('H:i:s') > $max && ($end ?? $start)->format('H:i:s') !== '00:00:00') {
-            $errors['end'][] = __('This schedule type ends at :time.', ['time' => substr($max, 0, 5)]);
         }
     }
 }

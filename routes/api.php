@@ -4,20 +4,28 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\UserController;
-use Illuminate\Session\Middleware\StartSession;
 
 Route::prefix('auth')->group(function () {
     // Email + password (throttled: these are the brute-force targets)
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:6,1');
 
+    // Forgot password: email a link to the PWA's reset screen, then set the new password
+    Route::post('forgot-password', [PasswordResetController::class, 'sendLink'])->middleware('throttle:5,1');
+    Route::post('reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:10,1');
+
     // Socialite providers
-    Route::get('{provider}/redirect', [AuthController::class, 'redirectToProvider'])->middleware(StartSession::class);
-    Route::get('{provider}/callback', [AuthController::class, 'handleProviderCallback'])->middleware(StartSession::class);
+    // Stateless (no session): the OAuth state lives in the cache, see AuthController
+    Route::get('{provider}/redirect', [AuthController::class, 'redirectToProvider'])->middleware('throttle:20,1');
+    Route::get('{provider}/callback', [AuthController::class, 'handleProviderCallback'])->middleware('throttle:20,1');
 
     // Logout (requires auth, allowed even while pending so the user can always sign out)
     Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
+
+    // Renew the token while the app is in use (pending accounts too, so their session lasts)
+    Route::middleware(['auth:sanctum', 'active', 'throttle:10,1'])->post('refresh', [AuthController::class, 'refresh']);
 
 });
 
@@ -63,4 +71,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('user', [UserController::class, 'user']);
     Route::put('user', [UserController::class, 'update']);
     Route::patch('user', [UserController::class, 'patch']);
+
+    // Profile photo
+    Route::post('user/avatar', [UserController::class, 'uploadAvatar'])->middleware('throttle:10,1');
+    Route::delete('user/avatar', [UserController::class, 'deleteAvatar']);
+
+    // Signed-in devices (one API token each)
+    Route::get('user/sessions', [UserController::class, 'sessions']);
+    Route::delete('user/sessions', [UserController::class, 'revokeOtherSessions']);
+    Route::delete('user/sessions/{id}', [UserController::class, 'revokeSession'])->whereNumber('id');
 });

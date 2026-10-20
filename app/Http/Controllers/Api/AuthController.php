@@ -6,13 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Two\GoogleProvider;
 use Laravel\Socialite\Two\FacebookProvider;
+use Laravel\Sanctum\PersonalAccessToken;
+use App\Support\DeviceName;
 
 class AuthController extends Controller
 {
@@ -52,8 +57,8 @@ class AuthController extends Controller
         } else {
             $user->avatar_url = null;
         }
-        $token = $user->createToken('pwa-login')->plainTextToken;
-        $permissionsArray = $user->getPermissionNames()->toArray();
+        $token = $user->createToken(DeviceName::fromRequest($request))->plainTextToken;
+        $permissionsArray = $user->permissionNamesForApps();
         return response()->json([
             'token' => $token,
             'user' => $user,
@@ -85,7 +90,7 @@ class AuthController extends Controller
 
         event(new Login('sanctum', $user, false));
 
-        $token = $user->createToken('pwa-login')->plainTextToken;
+        $token = $user->createToken(DeviceName::fromRequest($request))->plainTextToken;
 
         return response()->json([
             'token' => $token,
@@ -94,72 +99,129 @@ class AuthController extends Controller
     }
 
 
+    private const SOCIAL_PROVIDERS = ['facebook', 'google'];
+
+    /** How long the person has to finish signing in at the provider. */
+    private const SOCIAL_STATE_MINUTES = 10;
+
+    /** How long a replaced token keeps working after a refresh. */
+    private const REFRESH_GRACE_MINUTES = 5;
+
+    /**
+     * A bare Socialite driver for the API flow: stateless (no session), with the callback
+     * pointing at this API. It bypasses the Filament plugin, which serves the admin panel.
+     */
+    private function socialDriver(string $provider)
+    {
+        $config = config("services.{$provider}");
+        $config['redirect'] = url("/api/auth/{$provider}/callback");
+
+        return Socialite::buildProvider(
+            match ($provider) {
+                'google' => GoogleProvider::class,
+                'facebook' => FacebookProvider::class,
+            },
+            $config
+        )->stateless();
+    }
+
+    private function pwaUrl(): string
+    {
+        return rtrim((string) config('app.pwa_url', 'http://localhost:3000'), '/');
+    }
+
+    /**
+     * Step 1 of the social login: the PWA asks where to send the person.
+     *
+     * The flow has no session, so the OAuth `state` is a random value remembered in the cache for a few
+     * minutes (with the language the PWA is using). The callback only accepts a state it issued, once:
+     * without it anyone could push a victim's browser through the callback with the attacker's code
+     * and sign them in as the attacker.
+     */
     public function redirectToProvider(Request $request, string $provider)
     {
-        $allowedProviders = ['facebook', 'google'];
-
-        if (! in_array($provider, $allowedProviders)) {
+        if (! in_array($provider, self::SOCIAL_PROVIDERS, true)) {
             return response()->json(['error' => __('Unsupported provider')], 400);
         }
 
-        // 1. Grab the raw config from your services.php
-        $config = config("services.{$provider}");
+        $state = Str::random(40);
+        Cache::put("social_state:{$state}", ['locale' => app()->getLocale()], now()->addMinutes(self::SOCIAL_STATE_MINUTES));
 
-        // 2. Inject your PWA callback URL directly into this config instance
-        $config['redirect'] = url("/api/auth/{$provider}/callback");
+        $url = $this->socialDriver($provider)->with(['state' => $state])->redirect()->getTargetUrl();
 
-        // 3. Build a pure, unadulterated Socialite Provider (bypassing Filament completely)
-        $providerClass = match ($provider) {
-            'google' => GoogleProvider::class,
-            'facebook' => FacebookProvider::class,
-            default => throw new \InvalidArgumentException('Unsupported provider')
-        };
-        $driver = Socialite::buildProvider($providerClass, $config);
-
-        // 4. Since this is the raw driver, stateless() works perfectly!
-        $redirectUrl = $driver->stateless()->redirect()->getTargetUrl();
-
-        return response()->json(['url' => $redirectUrl]);
+        return response()->json(['url' => $url]);
     }
 
+    /**
+     * Step 2: the provider sends the person back here. They are sent on to the PWA with a Sanctum
+     * token in the URL *fragment*, which browsers never send to servers (no logs, no Referer).
+     */
     public function handleProviderCallback(Request $request, string $provider)
     {
+        $pwaUrl = $this->pwaUrl();
+
         try {
-            // 1. Rebuild the exact same raw config for the return trip
-            $config = config("services.{$provider}");
-            $config['redirect'] = url("/api/auth/{$provider}/callback");
+            if (! in_array($provider, self::SOCIAL_PROVIDERS, true)) {
+                throw new \InvalidArgumentException('Unsupported provider');
+            }
 
-            // 2. Build the pure provider again
-            $providerClass = match ($provider) {
-                'google' => GoogleProvider::class,
-                'facebook' => FacebookProvider::class,
-                default => throw new \InvalidArgumentException('Unsupported provider')
-            };
-            $driver = Socialite::buildProvider($providerClass, $config);
+            $state = (string) $request->query('state');
+            $issued = $state !== '' ? Cache::pull("social_state:{$state}") : null;
 
-            // 3. Fetch the user statelessly!
-            $socialiteUser = $driver->stateless()->user();
+            if (! is_array($issued)) {
+                throw new \RuntimeException('Missing, expired or reused OAuth state.');
+            }
 
-            // 4. Create your user & Sanctum token
+            $socialiteUser = $this->socialDriver($provider)->user();
+
+            // The browser coming back from the provider carries its own Accept-Language;
+            // a new account gets the language the person was using in the PWA instead.
+            app()->setLocale($issued['locale']);
+
             $user = User::findOrCreateFromSocialite($socialiteUser, $provider);
 
             if (! $user->status) {
-                return redirect()->away(config('app.pwa_url', 'http://localhost:3000') . '/login?error=account_inactive');
+                return redirect()->away("{$pwaUrl}/login?error=account_inactive");
             }
 
             event(new Login('sanctum', $user, false));
 
-            $token = $user->createToken('pwa-login')->plainTextToken;
+            $token = $user->createToken(DeviceName::fromRequest($request))->plainTextToken;
 
-            // 5. Send them back to the PWA
-            $pwaUrl = config('app.pwa_url', 'http://localhost:3000');
-            return redirect()->away("{$pwaUrl}/auth/callback?token={$token}");
+            return redirect()->away("{$pwaUrl}/auth/callback#token={$token}");
         } catch (\Throwable $e) {
-            Log::error("PWA Social Login Error: " . $e->getMessage());
+            Log::error('PWA Social Login Error: ' . $e->getMessage());
 
-            $pwaUrl = config('app.pwa_url', 'http://localhost:3000');
             return redirect()->away("{$pwaUrl}/login?error=auth_failed");
         }
+    }
+
+    /**
+     * Swap the current token for a fresh one, so a session lasts as long as the app is used
+     * (each token still expires after sanctum.expiration). The PWA calls this about once a day.
+     * The old token keeps working for a few minutes: requests already on their way, or another
+     * open tab that has not picked up the new token yet, are not thrown out.
+     */
+    public function refresh(Request $request)
+    {
+        $current = $request->user()->currentAccessToken();
+
+        if (! $current instanceof PersonalAccessToken) {
+            return response()->json(['message' => __('Only API tokens can be renewed.')], 400);
+        }
+
+        $token = $request->user()->createToken($current->name)->plainTextToken;
+
+        // never extends a token: only shortens it to the grace period
+        $graceEnd = now()->addMinutes(self::REFRESH_GRACE_MINUTES);
+        if (! $current->expires_at || $current->expires_at->greaterThan($graceEnd)) {
+            $current->forceFill(['expires_at' => $graceEnd])->save();
+        }
+
+        return response()->json([
+            'token' => $token,
+            'expires_in' => (int) config('sanctum.expiration') * 60,
+        ]);
     }
 
     /**
@@ -167,7 +229,12 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        $user->currentAccessToken()->delete();
+
+        // the authentication log closes this device's entry (logout time), as for the admin panel
+        event(new Logout('sanctum', $user));
+
         return response()->json(['message' => __('Logged out')]);
     }
 

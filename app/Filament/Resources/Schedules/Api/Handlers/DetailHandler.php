@@ -33,7 +33,7 @@ class DetailHandler extends \App\Http\Handlers\ApprovedHandler
 
         if (!$model) return static::sendNotFoundResponse();
 
-        $model->load('schedule_users');
+        $model->load(ScheduleTransformer::RELATIONS);
 
         return new ScheduleTransformer($model);
     }

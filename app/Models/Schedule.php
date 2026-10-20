@@ -88,20 +88,45 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 		return $this->hasMany(ScheduleUser::class); // Relates to the new pivot model
 	}
 
-	/** Approve the schedule and any participant still waiting. */
-	public function approve(): void
+	/** Approve the schedule and any participant still waiting. A message is appended to the internal note. */
+	public function approve(?string $message = null): void
 	{
-		$this->update(['status' => ScheduleStatus::Approved]);
+		$this->update(['status' => ScheduleStatus::Approved] + $this->noteWith($message, __('Approved')));
 		$this->schedule_users()
 			->where('status', ScheduleStatus::Pending)
 			->update(['status' => ScheduleStatus::Approved]);
 	}
 
-	/** Reject the schedule and every participant. */
-	public function reject(): void
+	/** Reject the schedule and every participant. A message is appended to the internal note. */
+	public function reject(?string $message = null): void
 	{
-		$this->update(['status' => ScheduleStatus::Rejected]);
+		$this->update(['status' => ScheduleStatus::Rejected] + $this->noteWith($message, __('Rejected')));
 		$this->schedule_users()->update(['status' => ScheduleStatus::Rejected]);
+	}
+
+	/**
+	 * The note with a decision message appended below what is already there:
+	 * "[2026-10-16 14:30] Maria · Rejected: text". Nothing changes when the message is empty.
+	 *
+	 * @return array{internal_note?: string}
+	 */
+	private function noteWith(?string $message, string $decision): array
+	{
+		$message = trim((string) $message);
+
+		if ($message === '') {
+			return [];
+		}
+
+		$entry = sprintf(
+			'[%s] %s · %s: %s',
+			now()->format(config('app.date_time_format')),
+			auth()->user()?->name ?? __('System'),
+			$decision,
+			$message
+		);
+
+		return ['internal_note' => filled($this->internal_note) ? $this->internal_note . "\n" . $entry : $entry];
 	}
 
 	public static function getAllowedFields(): array
