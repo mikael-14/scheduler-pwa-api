@@ -30,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Notifications\Channels\DatabaseChannel::class,
             \App\Notifications\Channels\DatabaseChannel::class
         );
+
+        // "All notifications": remembers what was booked in this request / job only
+        $this->app->scoped(\App\Services\ScheduleActivityFeed::class);
     }
 
     /**

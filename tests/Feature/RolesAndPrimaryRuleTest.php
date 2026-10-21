@@ -81,12 +81,12 @@ class RolesAndPrimaryRuleTest extends TestCase
     }
 
     /** Stored without the model hooks: the starting situation of a test, not what it checks. */
-    private function schedule(User $owner, ScheduleType $type, string $from, string $to, ScheduleStatus $status = ScheduleStatus::Pending, int $daysAhead = 3): Schedule
+    private function schedule(User $owner, ScheduleType $type, string $from, ?string $to, ScheduleStatus $status = ScheduleStatus::Pending, int $daysAhead = 3, bool $allDay = false): Schedule
     {
         $day = now()->addDays($daysAhead)->format('Y-m-d');
         $schedule = new Schedule([
             'schedule_type_id' => $type->id, 'user_id' => $owner->id, 'status' => $status,
-            'start' => "$day $from", 'end' => "$day $to",
+            'start' => "$day $from", 'end' => $to ? "$day $to" : null, 'all_day' => $allDay,
         ]);
         $schedule->saveQuietly();
 
@@ -117,12 +117,142 @@ class RolesAndPrimaryRuleTest extends TestCase
     {
         $type = $this->type();
         $pending = $this->schedule($this->novo(), $type, '10:00', '12:00');
-        $this->schedule($this->experiente(), $type, '11:00', '13:00', ScheduleStatus::Approved);
+        $this->schedule($this->experiente(), $type, '09:30', '13:00', ScheduleStatus::Approved);
 
         Sanctum::actingAs($this->admin());
 
         $this->postJson(self::URL . "/{$pending->id}/approve")->assertOk();
         $this->assertSame(ScheduleStatus::Approved, $pending->fresh()->status);
+    }
+
+    public function test_the_responsible_must_be_there_when_the_new_volunteer_arrives(): void
+    {
+        $type = $this->type();
+        $admin = $this->admin();
+        // Experiente at 9h with no end: counts for one hour, so up to 10h
+        $this->schedule($this->experiente(), $type, '09:00', null, ScheduleStatus::Approved);
+        $at10 = $this->schedule($this->novo(), $type, '10:00', '12:00');
+        $at1030 = $this->schedule($this->novo('Nina Nova'), $type, '10:30', '12:00');
+        $at0830 = $this->schedule($this->novo('Olga Nova'), $type, '08:30', '12:00'); // alone before 9h
+
+        Sanctum::actingAs($admin);
+
+        $this->postJson(self::URL . "/{$at10->id}/approve")->assertOk();
+        $this->postJson(self::URL . "/{$at1030->id}/approve")->assertStatus(422);
+        $this->postJson(self::URL . "/{$at0830->id}/approve")->assertStatus(422);
+    }
+
+    public function test_a_new_volunteer_before_the_responsible_is_not_covered_even_when_hours_overlap(): void
+    {
+        $type = $this->type();
+        $pending = $this->schedule($this->novo(), $type, '09:00', '12:00');
+        $this->schedule($this->experiente(), $type, '10:00', '13:00', ScheduleStatus::Approved);
+
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson(self::URL . "/{$pending->id}/approve")->assertStatus(422);
+    }
+
+    public function test_when_the_responsible_cancels_a_later_arrival_within_the_hour_goes_back_to_pending(): void
+    {
+        $type = $this->type();
+        $eva = $this->schedule($this->experiente(), $type, '09:00', null, ScheduleStatus::Approved);
+        $novo = $this->schedule($this->novo(), $type, '10:00', '11:00', ScheduleStatus::Approved);
+
+        $this->actingAs($this->admin());
+        $eva->update(['status' => ScheduleStatus::Cancelled]);
+
+        $this->assertSame(ScheduleStatus::Pending, $novo->fresh()->status);
+    }
+
+    // ---- whole-day schedules
+
+    private function allDayType(bool $primary = true): ScheduleType
+    {
+        return ScheduleType::create([
+            'name' => 'Abrigo', 'color' => '#112233', 'status' => true, 'range' => false, 'all_day' => true, 'primary' => $primary,
+        ]);
+    }
+
+    private function allDayPerson(string $name = 'Arlete'): User
+    {
+        return $this->person('experiente_dia_inteiro', [...self::VOLUNTEER, 'independent_schedule', 'all_day_schedule'], $name);
+    }
+
+    public function test_only_people_with_the_permission_book_whole_days(): void
+    {
+        $type = $this->allDayType();
+        $day = now()->addDays(3)->format('Y-m-d');
+        $booking = ['schedule_type_id' => $type->id, 'start' => "$day 00:00", 'all_day' => true];
+
+        Sanctum::actingAs($this->experiente());
+        $this->postJson(self::URL, $booking)->assertStatus(422)->assertJsonValidationErrors('all_day');
+
+        Sanctum::actingAs($this->allDayPerson());
+        $this->postJson(self::URL, $booking)->assertOk();
+
+        // nor for someone else who may not (a Novo), even by someone who may
+        $novo = $this->novo();
+        Sanctum::actingAs($this->person('admin_dia', [...self::ADMIN, 'all_day_schedule'], 'Rita Admin'));
+        $this->postJson(self::URL, $booking + ['user_id' => $novo->id])->assertStatus(422)->assertJsonValidationErrors('all_day');
+
+        // the PWA only offers the switch to people who may
+        $this->assertTrue($this->getJson(self::URL . '/form-options')->json('data.can.all_day'));
+        Sanctum::actingAs($novo);
+        $this->assertFalse($this->getJson(self::URL . '/form-options')->json('data.can.all_day'));
+    }
+
+    public function test_an_approved_whole_day_takes_the_day_and_the_other_way_round(): void
+    {
+        $type = $this->allDayType();
+        $arlete = $this->schedule($this->allDayPerson(), $type, '00:00', null, ScheduleStatus::Approved, allDay: true);
+        $timed = $this->schedule($this->experiente(), $type, '10:00', null);
+        $otherDay = $this->schedule($this->experiente('Rui'), $type, '10:00', null, daysAhead: 4);
+
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson(self::URL . "/{$timed->id}/approve")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.status.0', fn($message) => str_contains($message, 'Arlete'));
+        $this->postJson(self::URL . "/{$otherDay->id}/approve")->assertOk();
+
+        // a second whole day the next day cannot be approved: Rui is approved there
+        $second = $this->schedule($this->allDayPerson('Bia'), $type, '00:00', null, daysAhead: 4, allDay: true);
+        $this->postJson(self::URL . "/{$second->id}/approve")->assertStatus(422);
+        $row = collect($this->getJson(self::URL . '/pending')->json('data'))->firstWhere('id', $second->id);
+        $this->assertNotNull($row['approval_problem']);
+
+        // once Arlete's day is cancelled, the timed one can be approved
+        $arlete->update(['status' => ScheduleStatus::Cancelled]);
+        $this->postJson(self::URL . "/{$timed->id}/approve")->assertOk();
+    }
+
+    public function test_the_whole_day_rule_is_per_type_and_applies_to_any_type(): void
+    {
+        $walks = ScheduleType::create(['name' => 'Passeios', 'color' => '#112233', 'status' => true, 'range' => false, 'all_day' => true, 'primary' => false]);
+        $shelter = $this->allDayType();
+        $this->schedule($this->allDayPerson(), $walks, '00:00', null, ScheduleStatus::Approved, allDay: true);
+        $sameType = $this->schedule($this->novo(), $walks, '10:00', null);
+        $otherType = $this->schedule($this->experiente(), $shelter, '10:00', null);
+
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson(self::URL . "/{$sameType->id}/approve")->assertStatus(422);
+        $this->postJson(self::URL . "/{$otherType->id}/approve")->assertOk();
+    }
+
+    public function test_a_whole_day_covers_no_new_volunteer_and_none_goes_on_one(): void
+    {
+        $type = $this->allDayType();
+        $novo = $this->novo();
+        $day = $this->schedule($this->allDayPerson(), $type, '00:00', null, allDay: true);
+        $day->schedule_users()->create(['user_id' => $novo->id, 'status' => ScheduleStatus::Pending]);
+
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson(self::URL . "/{$day->id}/approve")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.status.0', fn($message) => str_contains($message, 'Nuno Novo'));
     }
 
     public function test_same_day_but_other_hours_is_not_enough(): void

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\AppNotification;
 use App\Notifications\ScheduleParticipantAdded;
 use App\Notifications\ScheduleParticipantRemoved;
+use App\Services\ScheduleActivityFeed;
 
 /**
  * Tells people they were added to or removed from a schedule, whatever did it: the API (PWA),
@@ -18,11 +19,26 @@ class ScheduleUserObserver
     public function created(ScheduleUser $participant): void
     {
         $this->tell($participant, fn($schedule) => new ScheduleParticipantAdded($schedule));
+        $this->tellEveryone($participant, joined: true);
     }
 
     public function deleted(ScheduleUser $participant): void
     {
         $this->tell($participant, fn($schedule) => new ScheduleParticipantRemoved($schedule));
+        $this->tellEveryone($participant, joined: false);
+    }
+
+    /** "All notifications": someone joined or left (not when they became the owner instead). */
+    private function tellEveryone(ScheduleUser $participant, bool $joined): void
+    {
+        $schedule = $participant->schedule()->first();
+        $user = $participant->user;
+
+        if (! $schedule || ! $user || $schedule->user_id === $user->id) {
+            return;
+        }
+
+        ScheduleActivityFeed::instance()->participants($schedule, $user, $joined);
     }
 
     /** @param callable(\App\Models\Schedule): AppNotification $notification */

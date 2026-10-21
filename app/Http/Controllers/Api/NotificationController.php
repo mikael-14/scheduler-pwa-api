@@ -16,6 +16,8 @@ class NotificationController extends Controller
         \App\Notifications\ParticipationRequested::class => 'pending_approval',
         \App\Notifications\ParticipationDecided::class => 'schedule_status',
         \App\Notifications\ScheduleBackToPending::class => 'schedule_status',
+        // "all notifications": other people's schedules
+        \App\Notifications\ScheduleActivity::class => 'activity',
         \App\Notifications\ScheduleStatusChanged::class => 'schedule_status',
         \App\Notifications\ScheduleParticipantAdded::class => 'participant_added',
         \App\Notifications\ScheduleParticipantRemoved::class => 'participant_removed',

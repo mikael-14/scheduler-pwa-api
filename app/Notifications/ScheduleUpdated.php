@@ -24,6 +24,19 @@ class ScheduleUpdated extends AppNotification
 
     public function __construct(private readonly Schedule $schedule, array $changedFields)
     {
+        $this->changes = static::captureChanges($schedule, $changedFields);
+
+        $this->backToPending = $schedule->wasChanged('status') && $schedule->status === ScheduleStatus::Pending;
+    }
+
+    /**
+     * The before / after values of a change, taken while the model still knows both
+     * (also used by ScheduleActivity).
+     *
+     * @return array<string, array{0: mixed, 1: mixed}>
+     */
+    public static function captureChanges(Schedule $schedule, array $changedFields): array
+    {
         $changes = [];
         foreach ($changedFields as $field) {
             $changes[$field] = [$schedule->getOriginal($field), $schedule->getAttribute($field)];
@@ -35,9 +48,36 @@ class ScheduleUpdated extends AppNotification
                 [$schedule->start, $schedule->end, (bool) $schedule->all_day],
             ];
         }
-        $this->changes = $changes;
 
-        $this->backToPending = $schedule->wasChanged('status') && $schedule->status === ScheduleStatus::Pending;
+        return $changes;
+    }
+
+    /**
+     * "When: … → …", "Type: … → …", in the current language.
+     *
+     * @param array<string, array{0: mixed, 1: mixed}> $changes from captureChanges()
+     * @return list<string>
+     */
+    public static function changeLines(array $changes): array
+    {
+        $lines = [];
+
+        if (isset($changes['slot'])) {
+            [$before, $after] = $changes['slot'];
+            $lines[] = __('When: :before → :after', ['before' => static::slotText(...$before), 'after' => static::slotText(...$after)]);
+        }
+        if (isset($changes['schedule_type_id'])) {
+            [$before, $after] = $changes['schedule_type_id'];
+            $lines[] = __('Type: :before → :after', [
+                'before' => ScheduleType::find($before)?->name ?? '—',
+                'after' => ScheduleType::find($after)?->name ?? '—',
+            ]);
+        }
+        if (isset($changes['description'])) {
+            $lines[] = __('The description was changed.');
+        }
+
+        return $lines;
     }
 
     protected function title(): string
@@ -52,20 +92,8 @@ class ScheduleUpdated extends AppNotification
             $this->schedule->start?->format(config('app.date_time_format')),
         ]))];
 
-        if (isset($this->changes['slot'])) {
-            [$before, $after] = $this->changes['slot'];
-            $lines[] = __('When: :before → :after', ['before' => $this->slotText(...$before), 'after' => $this->slotText(...$after)]);
-        }
-        if (isset($this->changes['schedule_type_id'])) {
-            [$before, $after] = $this->changes['schedule_type_id'];
-            $lines[] = __('Type: :before → :after', [
-                'before' => ScheduleType::find($before)?->name ?? '—',
-                'after' => ScheduleType::find($after)?->name ?? '—',
-            ]);
-        }
-        if (isset($this->changes['description'])) {
-            $lines[] = __('The description was changed.');
-        }
+        $lines = [...$lines, ...static::changeLines($this->changes)];
+
         if ($this->backToPending) {
             $lines[] = __('It is waiting for approval again.');
         }
@@ -79,7 +107,7 @@ class ScheduleUpdated extends AppNotification
     }
 
     /** "22/10 10:00–12:00", "22/10 – 24/10 (all day)", in the app's date format. */
-    private function slotText(mixed $start, mixed $end, bool $allDay): string
+    private static function slotText(mixed $start, mixed $end, bool $allDay): string
     {
         $start = $start ? Carbon::parse($start) : null;
         $end = $end ? Carbon::parse($end) : null;

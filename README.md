@@ -180,6 +180,7 @@ pulling new permissions, run `php artisan db:seed --class=PermissionsSeeder`.
 | `approve_schedule` | approve / reject pending schedules and participations |
 | `update_status_schedule` | set any status (completed, not shown…) |
 | `independent_schedule` | **may go alone** on the primary type (see below) |
+| `all_day_schedule` | may book **whole-day** schedules, with no hours (see below) |
 | `send_notification_log` | send announcements |
 | `create_role`, `update_role`… | manage roles (Shield) |
 
@@ -195,16 +196,37 @@ pulling new permissions, run `php artisan db:seed --class=PermissionsSeeder`.
 
 On the schedule type marked **primary** (going to the shelter), someone without
 `independent_schedule` can book, but is only **approved** when someone with it is already
-approved at overlapping hours (as owner or approved participant of a primary schedule). People on
-the same schedule count together, so a Novo booking with an Experiente participant is approved
-in one go. Other types are not affected.
+approved and **there when they arrive** (as owner or approved participant of a primary schedule):
+starting at the same time or earlier, until their end time, or for one hour when they gave no end.
+
+| Experiente | Novo | Approved? |
+|---|---|---|
+| 9h (no end) | 10h | yes (within the hour) |
+| 9h (no end) | 10h30 | no |
+| 9h–13h | 11h | yes |
+| 10h | 9h | no (the Novo would be alone from 9h to 10h) |
+
+People on the same schedule count together, so a Novo booking with an Experiente participant is
+approved in one go. Other types are not affected.
+
+### Whole-day schedules
+
+"I can go Sunday, but I can't give hours" is a **whole-day** schedule:
+
+- only on types with "all day" allowed, and only for people with `all_day_schedule` (the owner
+  too: a Novo never gets one, not even booked for them);
+- once one is approved, **nothing else of that type** can be approved on that day, and it cannot
+  be approved while something else of that type is approved there (any type);
+- on the primary type it covers nobody: a Novo needs hours, so Novos are never approved on one.
+
+Approvers see why in `approval_problem` / the panel warning.
 
 When that person stops counting (cancels, is rejected, leaves, is deleted, moved or handed over),
 approved schedules at those hours that nobody else who may go alone covers go **back to pending**:
 their people are told ("O seu agendamento voltou a aguardar aprovação") and approvers get them to
 decide again.
 
-The rule lives in `App\Services\PrimaryScheduleRule` and runs from the models' `saving` hooks,
+The rules live in `App\Services\PrimaryScheduleRule` and `App\Services\AllDayRule` and run from the models' `saving` hooks,
 so the admin panel, the API and the PWA all obey it. Approvers see why something cannot be
 approved yet (`approval_problem` in the API, a warning in the panel and the PWA).
 
@@ -278,6 +300,22 @@ Current tasks:
 
 Check them with `php artisan schedule:list`. Without the scheduler everything still works;
 expired tokens are just not cleaned up.
+
+## Notifications
+
+Every app notification (approvals, changes, joins, coverage alerts, announcements, account
+approved…) is stored in the `notifications` table, the person's history in the bell and the PWA,
+and the admin "Notifications" log. Email and push are copies of it, per the user's settings:
+
+| Setting | What it covers |
+|---|---|
+| `email_notification`, `push_notification` | things about the person (their schedules, approvals, their account) |
+| `all_email_notification`, `all_push_notification` | "all notifications": also **other people's** schedules — booked, approved, changed, cancelled / rejected, people joining or leaving (`App\Notifications\ScheduleActivity`, sent by `App\Services\ScheduleActivityFeed`) |
+
+All four are on for new accounts. "All notifications" go to active, approved people who can open
+the agenda (`view_any_schedule`), except whoever did it and the people already told personally.
+Not stored: the password-reset email, email verification, and the "new device" email of the
+authentication log.
 
 ## Coverage alerts
 

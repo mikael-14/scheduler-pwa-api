@@ -32,7 +32,7 @@ class PwaWebPushNotification extends Notification implements ShouldQueue
     public function via(object $notifiable): array
     {
         // checked again when the job runs: push may have been turned off in the meantime
-        if (! $notifiable->push_notification) {
+        if (! \App\Observers\FilamentNotificationObserver::wantsPush($notifiable, $this->filamentNotification)) {
             DeliveryLog::pushNotSent($this->storedId());
 
             return [];
@@ -51,7 +51,10 @@ class PwaWebPushNotification extends Notification implements ShouldQueue
             ->body(strip_tags((string) ($data['body'] ?? '')))
             ->icon('/img/icons/icon-192x192.png')
             ->tag($this->storedId()) // also how DeliveryLog finds the row again
-            ->data(['url' => $data['path'] ?? '/notifications']); // route inside the PWA
+            ->data(['url' => $data['path'] ?? '/notifications']) // route inside the PWA
+            // high: delivered at once even on a locked, idle phone (Android Doze holds back
+            // "normal" pushes); TTL: the push service keeps trying for a day if the phone is off
+            ->options(['urgency' => 'high', 'TTL' => 86400]);
     }
 
     /** The queued job gave up (e.g. the push service could not be reached). */

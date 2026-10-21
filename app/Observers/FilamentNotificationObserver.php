@@ -9,7 +9,8 @@ use Illuminate\Notifications\DatabaseNotification;
 
 /**
  * Every notification stored for a user (the app's own and Filament's) is also sent as web push
- * to the PWA, but only when the user has push enabled and has a device subscribed.
+ * to the PWA, but only when the user has push enabled for it (see wantsPush) and has a device
+ * subscribed.
  */
 class FilamentNotificationObserver
 {
@@ -17,7 +18,7 @@ class FilamentNotificationObserver
     {
         $user = $notification->notifiable;
 
-        if (! $user instanceof User || ! $user->push_notification || ! $user->pushSubscriptions()->exists()) {
+        if (! $user instanceof User || ! static::wantsPush($user, $notification) || ! $user->pushSubscriptions()->exists()) {
             return;
         }
 
@@ -28,5 +29,16 @@ class FilamentNotificationObserver
             DeliveryLog::pushFailed($notification->id, $e);
             report($e);
         }
+    }
+
+    /**
+     * Agenda activity about other people's schedules (ScheduleActivity) follows
+     * all_push_notification; everything else follows push_notification.
+     */
+    public static function wantsPush(User $user, DatabaseNotification $notification): bool
+    {
+        return isset($notification->data['activity'])
+            ? (bool) $user->all_push_notification
+            : (bool) $user->push_notification;
     }
 }

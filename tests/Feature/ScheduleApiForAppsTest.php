@@ -71,7 +71,7 @@ class ScheduleApiForAppsTest extends TestCase
         $rows = collect($this->getJson(self::URL)->assertOk()->json('data'))->keyBy('id');
 
         $this->assertSame(['id' => $type->id, 'name' => 'Cleaning', 'color' => '#112233', 'all_day' => false, 'range' => true], $rows[$mine->id]['schedule_type']);
-        $this->assertSame(['id' => $me->id, 'name' => 'Me Myself'], $rows[$mine->id]['user']);
+        $this->assertSame(['id' => $me->id, 'name' => 'Me Myself', 'avatar_url' => null], $rows[$mine->id]['user']);
         $this->assertSame('Friend', $rows[$mine->id]['schedule_users'][0]['name']);
 
         // my pending schedule: edit, cancel, delete; never approve my own without the permission
@@ -137,7 +137,7 @@ class ScheduleApiForAppsTest extends TestCase
         $this->assertSame(['Me'], array_column($data['people'], 'name'));
         // a member may only leave it pending or cancel it
         $this->assertSame(['pending', 'cancelled'], array_column($data['statuses'], 'value'));
-        $this->assertSame(['book_for_others' => false, 'past_dates' => false, 'internal_note' => false], $data['can']);
+        $this->assertSame(['book_for_others' => false, 'past_dates' => false, 'all_day' => false, 'internal_note' => false], $data['can']);
         $this->assertSame(config('app.timezone'), $data['timezone']);
     }
 

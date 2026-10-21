@@ -543,6 +543,21 @@ class NotificationsTest extends TestCase
         $this->assertSame([], $push->via($user));
     }
 
+    public function test_push_is_sent_with_high_urgency_so_a_locked_phone_gets_it_at_once(): void
+    {
+        $user = $this->user(['push_notification' => true]);
+        $stored = $user->notifications()->create([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'type' => ScheduleStatusChanged::class,
+            'data' => ['title' => 'T', 'body' => 'B', 'path' => '/schedules/1'],
+        ]);
+
+        $message = (new PwaWebPushNotification($stored))->toWebPush($user, null);
+
+        $this->assertSame(['urgency' => 'high', 'TTL' => 86400], $message->getOptions());
+        $this->assertSame('T', $message->toArray()['title']);
+    }
+
     public function test_new_accounts_start_with_email_and_push_on(): void
     {
         $this->postJson('/api/auth/register', [

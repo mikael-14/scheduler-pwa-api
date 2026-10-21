@@ -47,7 +47,7 @@ class ScheduleRulesValidator
     /** @throws ValidationException */
     public static function validate(Schedule $schedule): void
     {
-        if ($schedule->exists && ! $schedule->isDirty(self::SLOT_FIELDS)) {
+        if ($schedule->exists && ! $schedule->isDirty(self::SLOT_FIELDS) && ! ($schedule->all_day && $schedule->isDirty('user_id'))) {
             return;
         }
 
@@ -69,6 +69,17 @@ class ScheduleRulesValidator
         $startChanged = ! $schedule->exists || $schedule->isDirty('start');
         if ($actor && $startChanged && $start->lt(now($tz)->startOfDay()) && ! $actor->can('update_past_schedule')) {
             $errors['start'][] = __('You cannot schedule or move a schedule to a past date.');
+        }
+
+        // Whole-day schedules: only for people allowed to give no hours (AllDayRule)
+        if ($schedule->all_day && (! $schedule->exists || $schedule->isDirty('all_day') || $schedule->isDirty('user_id'))) {
+            $owner = $schedule->user_id ? \App\Models\User::find($schedule->user_id) : null;
+
+            if ($actor && ! AllDayRule::mayBook($actor)) {
+                $errors['all_day'][] = __('You may not book whole-day schedules: please give a start time.');
+            } elseif ($owner && ! AllDayRule::mayBook($owner)) {
+                $errors['all_day'][] = __(':name may not have whole-day schedules: please give a start time.', ['name' => $owner->name]);
+            }
         }
 
         $rules = ScheduleTypeRules::for($schedule->schedule_type_id);

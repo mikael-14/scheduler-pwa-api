@@ -200,6 +200,8 @@ return [
                 'cancel_participation',
                 // may go alone on the primary type (see App\Services\PrimaryScheduleRule)
                 'independent',
+                // may book whole-day schedules, with no hours (see App\Services\AllDayRule)
+                'all_day',
                 'update_status',
                 'approve',
             ],

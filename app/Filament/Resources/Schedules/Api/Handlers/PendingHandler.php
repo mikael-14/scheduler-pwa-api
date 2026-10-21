@@ -5,6 +5,7 @@ use App\Enums\ScheduleStatus;
 use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Http\Handlers\ApprovedHandler;
 use App\Models\ScheduleUser;
+use App\Models\User;
 use App\Services\PrimaryScheduleRule;
 use Illuminate\Http\Request;
 
@@ -34,7 +35,7 @@ class PendingHandler extends ApprovedHandler
     {
         $schedules = static::getModel()::query()
             ->where('status', ScheduleStatus::Pending)
-            ->with(['user:id,name', 'schedule_type:id,name,color', 'schedule_users.user:id,name'])
+            ->with(['user:id,name,avatar_url', 'schedule_type:id,name,color', 'schedule_users.user:id,name,avatar_url'])
             ->orderBy('start')
             ->limit(200)
             ->get();
@@ -47,12 +48,17 @@ class PendingHandler extends ApprovedHandler
                 'all_day' => $schedule->all_day,
                 'description' => $schedule->description,
                 'status' => $schedule->status,
-                'user' => $schedule->user ? ['id' => $schedule->user->id, 'name' => $schedule->user->name] : null,
+                'user' => $this->person($schedule->user),
                 'schedule_type' => $schedule->schedule_type
                     ? $schedule->schedule_type->only(['id', 'name', 'color'])
                     : null,
                 'participants' => $schedule->schedule_users
                     ->map(fn($su) => $su->user?->name)
+                    ->filter()
+                    ->values(),
+                // the same people with their photos (`participants` stays names only for older apps)
+                'participant_people' => $schedule->schedule_users
+                    ->map(fn($su) => $this->person($su->user))
                     ->filter()
                     ->values(),
                 // primary type: why it cannot be approved yet (null = it can)
@@ -63,24 +69,40 @@ class PendingHandler extends ApprovedHandler
                 ->where('status', ScheduleStatus::Pending)
                 // on a pending schedule they are decided with it
                 ->whereHas('schedule', fn($query) => $query->where('status', ScheduleStatus::Approved))
-                ->with(['user:id,name', 'schedule.user:id,name', 'schedule.schedule_type:id,name,color,primary'])
+                ->with(['user:id,name,avatar_url', 'schedule.user:id,name,avatar_url', 'schedule.schedule_type:id,name,color,primary'])
                 ->limit(200)
                 ->get()
                 ->filter(fn(ScheduleUser $participant) => $participant->schedule)
                 ->sortBy(fn(ScheduleUser $participant) => $participant->schedule->start)
                 ->map(fn(ScheduleUser $participant) => [
                     'schedule_id' => $participant->schedule_id,
-                    'user' => $participant->user ? ['id' => $participant->user->id, 'name' => $participant->user->name] : null,
+                    'user' => $this->person($participant->user),
                     'start' => $participant->schedule->start,
                     'end' => $participant->schedule->end,
                     'all_day' => $participant->schedule->all_day,
                     'schedule_status' => $participant->schedule->status,
-                    'owner' => $participant->schedule->user ? ['id' => $participant->schedule->user->id, 'name' => $participant->schedule->user->name] : null,
+                    'owner' => $this->person($participant->schedule->user),
                     'schedule_type' => $participant->schedule->schedule_type
                         ? $participant->schedule->schedule_type->only(['id', 'name', 'color'])
                         : null,
                     'approval_problem' => PrimaryScheduleRule::participantProblem($participant),
                 ])->values(),
         ]);
+    }
+
+    /** Id, name and photo (as a full URL; null = the app shows initials), nothing else about the person. */
+    private function person(?User $user): ?array
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $avatar = $user->getFilamentAvatarUrl();
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'avatar_url' => $avatar ? asset($avatar) : null,
+        ];
     }
 }

@@ -44,6 +44,9 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         'building_key',
         'push_notification',
         'email_notification',
+        // "all notifications": other people's schedules too (ScheduleActivity)
+        'all_push_notification',
+        'all_email_notification',
     ];
 
     /**
@@ -68,10 +71,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         'remember_token',
     ];
 
-    /** New accounts get both notification kinds (same as the column defaults). */
+    /** New accounts get every notification kind (same as the column defaults). */
     protected $attributes = [
         'push_notification' => true,
         'email_notification' => true,
+        'all_push_notification' => true,
+        'all_email_notification' => true,
     ];
 
     /**
@@ -99,6 +104,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
             'status' => 'boolean',
             'push_notification' => 'boolean',
             'email_notification' => 'boolean',
+            'all_push_notification' => 'boolean',
+            'all_email_notification' => 'boolean',
         ];
     }
 

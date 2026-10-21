@@ -88,7 +88,9 @@ class ScheduleForm
                 Toggle::make('all_day')
                     ->inline(false)
                     ->live()
-                    ->visible(fn(Get $get) => self::rules($get)?->allowsAllDay() ?? false)
+                    // only on types that allow it, for people who may give no hours (AllDayRule)
+                    ->visible(fn(Get $get, $record) => (self::rules($get)?->allowsAllDay() ?? false)
+                        && (\App\Services\AllDayRule::mayBook(Filament::auth()->user()) || $record?->all_day))
                     ->default(false),
                 Textarea::make('description')->autosize(),
                 Textarea::make('internal_note')->autosize(),

@@ -3,6 +3,7 @@ namespace App\Filament\Resources\Schedules\Api\Transformers;
 
 use App\Enums\ScheduleStatus;
 use App\Models\Schedule;
+use App\Models\User;
 use App\Services\PrimaryScheduleRule;
 use App\Services\ScheduleAccess;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -14,9 +15,9 @@ class ScheduleTransformer extends JsonResource
 {
     /** Relations the transformer reads; load them with the query to avoid one query per row. */
     public const RELATIONS = [
-        'schedule_users.user:id,name',
+        'schedule_users.user:id,name,avatar_url',
         'schedule_type:id,name,color,all_day,range',
-        'user:id,name',
+        'user:id,name,avatar_url',
     ];
 
     /**
@@ -40,7 +41,9 @@ class ScheduleTransformer extends JsonResource
         $type = $this->resource->schedule_type;
         $data['schedule_type'] = $type ? $type->only(['id', 'name', 'color', 'all_day', 'range']) : null;
         $owner = $this->resource->user;
-        $data['user'] = $owner ? ['id' => $owner->id, 'name' => $owner->name] : null;
+        $data['user'] = $owner
+            ? ['id' => $owner->id, 'name' => $owner->name, 'avatar_url' => $this->avatarUrl($owner)]
+            : null;
 
         $approver = $user && ScheduleAccess::canApprove($user);
 
@@ -49,6 +52,7 @@ class ScheduleTransformer extends JsonResource
                 'id' => $scheduleUser->id,
                 'user_id' => $scheduleUser->user_id,
                 'name' => $scheduleUser->user?->name,
+                'avatar_url' => $scheduleUser->user ? $this->avatarUrl($scheduleUser->user) : null,
                 'status' => $scheduleUser->status,
                 'description' => $scheduleUser->description,
             ];
@@ -69,6 +73,14 @@ class ScheduleTransformer extends JsonResource
         }
 
         return $data;
+    }
+
+    /** A person's photo as a full URL (null = the app shows their initials). */
+    private function avatarUrl(User $person): ?string
+    {
+        $avatar = $person->getFilamentAvatarUrl();
+
+        return $avatar ? asset($avatar) : null;
     }
 
     /**

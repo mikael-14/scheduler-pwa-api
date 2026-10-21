@@ -44,7 +44,17 @@ class FormOptionsHandler extends ApprovedHandler
             ->where('status', true)
             ->whereNotNull('approved_at')
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'avatar_url'])
+            // the photo as a full URL, like the PWA's own user (null = show initials)
+            ->map(function (User $person) {
+                $avatar = $person->getFilamentAvatarUrl();
+
+                return [
+                    'id' => $person->id,
+                    'name' => $person->name,
+                    'avatar_url' => $avatar ? asset($avatar) : null,
+                ];
+            });
 
         return response()->json([
             'data' => [
@@ -57,6 +67,8 @@ class FormOptionsHandler extends ApprovedHandler
                 'can' => [
                     'book_for_others' => $actor->can('create_any_schedule'),
                     'past_dates' => $actor->can('update_past_schedule'),
+                    // whole-day schedules (no hours), on types that allow them
+                    'all_day' => \App\Services\AllDayRule::mayBook($actor),
                     'internal_note' => ScheduleAccess::isStaff($actor),
                 ],
                 // dates without a timezone are read in this one

@@ -35,7 +35,7 @@ class ShieldPermissionsTest extends TestCase
             'view_any_notification_log', 'view_notification_log',
             // custom, declared under resources.manage
             'create_any_schedule', 'update_any_schedule', 'delete_any_schedule', 'update_past_schedule',
-            'participate_schedule', 'independent_schedule', 'update_status_schedule', 'approve_schedule',
+            'participate_schedule', 'independent_schedule', 'all_day_schedule', 'update_status_schedule', 'approve_schedule',
             'approve_user', 'impersonate_user', 'view_owned_user', 'update_owned_user', 'update_any_user',
             'restore_audit', 'send_notification_log',
         ];

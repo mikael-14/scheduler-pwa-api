@@ -89,6 +89,16 @@ class CreateUser extends CreateRecord
                                     ->inline(false)
                                     ->default(true)
                                     ->helperText(__('Receive push notifications on the devices where you enabled them in the app.')),
+                                Toggle::make('all_email_notification')
+                                    ->label(__('All notifications by email'))
+                                    ->inline(false)
+                                    ->default(true)
+                                    ->helperText(__('Also other people\'s schedules.')),
+                                Toggle::make('all_push_notification')
+                                    ->label(__('All notifications by push'))
+                                    ->inline(false)
+                                    ->default(true)
+                                    ->helperText(__('Also other people\'s schedules.')),
                             ]),
                         Select::make('role')
                             ->label(__('Roles'))

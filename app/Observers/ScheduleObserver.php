@@ -8,7 +8,9 @@ use App\Models\User;
 use App\Notifications\ScheduleBookedForYou;
 use App\Notifications\SchedulePendingApproval;
 use App\Notifications\ScheduleStatusChanged;
+use App\Notifications\ScheduleActivity;
 use App\Notifications\ScheduleUpdated;
+use App\Services\ScheduleActivityFeed;
 use Spatie\Permission\Models\Permission;
 
 /**
@@ -34,10 +36,15 @@ class ScheduleObserver
         }
 
         $this->notifyOwnerBookedBySomeoneElse($schedule);
+
+        // "all notifications": everyone else who wants to know
+        ScheduleActivityFeed::instance()->booked($schedule);
     }
 
     public function updated(Schedule $schedule): void
     {
+        $this->tellEveryone($schedule);
+
         // handed over to another owner (update_any_schedule)
         if ($schedule->wasChanged('user_id')) {
             $this->notifyOwnerBookedBySomeoneElse($schedule);
@@ -78,6 +85,35 @@ class ScheduleObserver
                     report($e);
                 }
             });
+    }
+
+    /**
+     * "All notifications": approved, cancelled, rejected, or a change of time / type /
+     * description (one notice per save; a decision says enough).
+     */
+    private function tellEveryone(Schedule $schedule): void
+    {
+        $feed = ScheduleActivityFeed::instance();
+
+        if ($schedule->wasChanged('status')) {
+            $event = match ($schedule->status) {
+                ScheduleStatus::Approved => ScheduleActivity::APPROVED,
+                ScheduleStatus::Cancelled => ScheduleActivity::CANCELLED,
+                ScheduleStatus::Rejected => ScheduleActivity::REJECTED,
+                default => null,
+            };
+
+            if ($event) {
+                $feed->decided($schedule, $event);
+
+                return;
+            }
+        }
+
+        $changed = array_values(array_intersect(array_keys($schedule->getChanges()), self::WATCHED));
+        if ($changed !== []) {
+            $feed->changed($schedule, $changed);
+        }
     }
 
     /**

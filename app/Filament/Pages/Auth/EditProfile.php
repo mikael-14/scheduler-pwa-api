@@ -37,6 +37,14 @@ class EditProfile extends BaseEditProfile
                             ->label(__('Push notifications'))
                             ->helperText(__('Receive push notifications on the devices where you enabled them in the app.')),
                     ]),
+                Section::make(__('All notifications'))
+                    ->description(__('Also hear about other people\'s schedules: booked, approved, changed, cancelled, and people joining or leaving.'))
+                    ->schema([
+                        Toggle::make('all_email_notification')
+                            ->label(__('By email')),
+                        Toggle::make('all_push_notification')
+                            ->label(__('By push')),
+                    ]),
                 $this->getPasswordFormComponent(),
                 $this->getPasswordConfirmationFormComponent(),
                 $this->getCurrentPasswordFormComponent(),
