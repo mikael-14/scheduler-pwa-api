@@ -151,7 +151,38 @@ class AllNotificationsTest extends TestCase
         $this->assertTrue($user->fresh()->all_email_notification);
 
         Sanctum::actingAs($user);
+        // the app reads all four settings
+        $this->getJson('/api/user')
+            ->assertOk()
+            ->assertJsonPath('user.email_notification', true)
+            ->assertJsonPath('user.push_notification', true)
+            ->assertJsonPath('user.all_email_notification', true)
+            ->assertJsonPath('user.all_push_notification', true);
+
         $this->patchJson('/api/user', ['all_email_notification' => false])->assertOk();
         $this->assertFalse($user->fresh()->all_email_notification);
+
+        $this->patchJson('/api/user', ['all_push_notification' => false])
+            ->assertOk()
+            ->assertJsonPath('user.all_push_notification', false)
+            ->assertJsonPath('user.all_email_notification', false);
+        $this->patchJson('/api/user', ['all_push_notification' => 'maybe'])->assertStatus(422);
+    }
+
+    public function test_permissions_are_listed_for_the_app_but_cannot_be_changed_through_the_profile(): void
+    {
+        $user = $this->volunteer();
+        Sanctum::actingAs($user);
+
+        $before = $this->getJson('/api/user')->assertOk()->json('permissions');
+        $this->assertContains('view_any_schedule', $before);
+        $this->assertNotContains('approve_schedule', $before);
+
+        // unknown fields are ignored by the profile endpoint
+        $this->patchJson('/api/user', ['permissions' => ['approve_schedule'], 'roles' => ['Super Admin'], 'status' => false])->assertOk();
+
+        $this->assertFalse($user->fresh()->can('approve_schedule'));
+        $this->assertTrue($user->fresh()->status);
+        $this->assertSame($before, $this->getJson('/api/user')->json('permissions'));
     }
 }
