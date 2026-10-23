@@ -75,12 +75,13 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                CheckPendingApproval::class,
             ])
             ->authMiddleware([
                 // Filament's Authenticate + signs out users deactivated mid-session
                 \App\Http\Middleware\AuthenticatePanel::class,
             ])
+            // after authentication; persistent so Livewire requests are checked too
+            ->authMiddleware([CheckPendingApproval::class], isPersistent: true)
             ->plugins([
                 FilamentShieldPlugin::make(),
                 FilamentAuditingPlugin::make(),
