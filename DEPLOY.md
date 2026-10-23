@@ -184,17 +184,22 @@ Add the same callback URLs in the Google and Facebook developer consoles.
 In **Cron Jobs**, add this job set to run **every minute** (`* * * * *`):
 
 ```
-cd ~/scheduler-api && php artisan schedule:run >> /dev/null 2>&1
+cd ~/scheduler-api && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
 ```
 
 It runs the daily tasks **and** sends the queued emails and push notifications (within a
-minute). If nothing happens, `php` may need its full path: cPanel's PHP page shows it, e.g.
-`/usr/local/bin/php` or `/opt/cpanel/ea-php82/root/usr/bin/php`.
+minute). Cron jobs must call PHP by its full path, `/usr/local/bin/php` (a bare `php` in a cron
+job is not the site's PHP version and does nothing). If that path does not exist on another
+host, cPanel's PHP page shows the right one, e.g. `/opt/cpanel/ea-php83/root/usr/bin/php`.
+
+`QUEUE_WORK_VIA_SCHEDULER=true` (2.4) is what makes this cron send the emails, password reset
+included. If `php artisan config:cache` was ever run, run `/usr/local/bin/php artisan config:clear`
+once (as a one-time cron job, like below) after changing `.env`.
 
 **Profile photos** need a link that can only be made by a command. Add a second cron job, once:
 
 ```
-cd ~/scheduler-api && php artisan storage:link
+cd ~/scheduler-api && /usr/local/bin/php artisan storage:link
 ```
 
 Wait a minute, check in File Manager that `scheduler-api/public/storage` exists, then **delete
@@ -233,7 +238,7 @@ If something fails, `scheduler-api/storage/logs/laravel-*.log` (File Manager) sa
 2. **New database changes** (new files in `database/migrations`) need a one-time cron job, like
    the photo link:
    ```
-   cd ~/scheduler-api && php artisan migrate --force && php artisan db:seed --class=PermissionsSeeder --force
+   cd ~/scheduler-api && /usr/local/bin/php artisan migrate --force && /usr/local/bin/php artisan db:seed --class=PermissionsSeeder --force
    ```
    Wait a minute, check the log, then delete the cron job. New permissions then have to be given
    to the roles in Shield → Roles.
