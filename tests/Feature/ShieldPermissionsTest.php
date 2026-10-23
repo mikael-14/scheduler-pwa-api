@@ -84,6 +84,8 @@ class ShieldPermissionsTest extends TestCase
         $this->assertSame(0, Permission::where('name', 'like', '%schedule_calendar%')->count());
         $this->assertSame(0, Permission::where('name', 'like', '%schedules_widget%')->count());
         $this->assertSame(0, Permission::where('name', 'like', '%headcount_chart%')->count());
+        // every widget decides its own visibility: a new one must be added to widgets.exclude
+        $this->assertSame([], Permission::where('name', 'like', '%widget')->pluck('name')->all());
     }
 
     public function test_super_admin_command_grants_every_permission(): void

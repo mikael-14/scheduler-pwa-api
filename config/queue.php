@@ -15,6 +15,9 @@ return [
 
     'default' => env('QUEUE_CONNECTION', 'database'),
 
+    // Shared hosting without Supervisor: the scheduler runs the worker every minute (routes/console.php)
+    'work_via_scheduler' => (bool) env('QUEUE_WORK_VIA_SCHEDULER', false),
+
     /*
     |--------------------------------------------------------------------------
     | Queue Connections

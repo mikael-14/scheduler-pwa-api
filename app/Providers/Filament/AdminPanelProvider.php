@@ -94,14 +94,14 @@ class AdminPanelProvider extends PanelProvider
                     ->showFlags(false),
                 FilamentSocialitePlugin::make()
                     ->providers([
-                        Provider::make('facebook')
-                            ->label('Facebook')
-                            ->color(Color::hex('#1e12a0ff'))
-                            ->outlined(false)
-                            ->stateless(false),
                         Provider::make('google')
                             ->label('Google')
                             ->color(Color::hex('#208a0fff'))
+                            ->outlined(false)
+                            ->stateless(false),
+                         Provider::make('facebook')
+                            ->label('Facebook')
+                            ->color(Color::hex('#1e12a0ff'))
                             ->outlined(false)
                             ->stateless(false),
                     ])

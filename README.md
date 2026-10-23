@@ -124,6 +124,84 @@ php artisan migrate
 - App: http://localhost:9000
 - phpMyAdmin: http://localhost:9081
 
+## Shared hosting (cPanel)
+
+**Without terminal access**: follow [DEPLOY.md](DEPLOY.md) (everything is prepared on your PC; the
+server gets files, a database import and cron jobs). The steps below are for hosts **with** SSH or
+cPanel "Terminal".
+
+Needs **HTTPS** on both domains (service worker and push only work over HTTPS). Example: API +
+panel on `api.example.pt`, PWA on `app.example.pt`.
+
+**1. PHP** (cPanel → MultiPHP Manager / Select PHP Version): 8.2 or later, with `intl`, `zip`,
+`mbstring`, `openssl`, `curl`, `pdo_mysql`, `fileinfo`, `dom`, `xmlreader`, `gd` (and `gmp` if
+offered: faster web push).
+
+**2. Database** (cPanel → MySQL Databases): create a database and a user with all privileges.
+
+**3. API files.** Build locally, then upload everything except `node_modules`, `.env`, `tests`:
+
+```bash
+composer install --no-dev --optimize-autoloader   # vendor/ (if the host has no composer)
+npm ci && npm run build                           # public/build (the host has no Node)
+```
+
+Upload to a folder **outside** `public_html` (e.g. `~/scheduler-api`) and point the subdomain's
+document root at `~/scheduler-api/public` (cPanel → Domains). Include
+`storage/app/GeoLite2-City.mmdb` (sign-in locations).
+
+**4. `.env`** on the server, from `.env.example`:
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://api.example.pt
+PWA_URL=https://app.example.pt
+DB_HOST=localhost                 # plus DB_DATABASE / DB_USERNAME / DB_PASSWORD from step 2
+MAIL_HOST=mail.example.pt         # a cPanel email account (port 465 + MAIL_ENCRYPTION=ssl)
+MAIL_FROM_ADDRESS=no-reply@example.pt
+QUEUE_WORK_VIA_SCHEDULER=true     # no Supervisor here: the cron also sends emails / pushes
+SUPER_ADMIN_EMAIL=you@example.pt
+GOOGLE_REDIRECT_URL=https://api.example.pt/api/auth/google/callback   # and Facebook; also in their consoles
+```
+
+New VAPID keys: `php artisan webpush:vapid` (writes them into `.env`).
+
+**5. Install** (Terminal, in `~/scheduler-api`):
+
+```bash
+php artisan key:generate
+php artisan migrate --force
+php artisan storage:link
+php artisan db:seed --force          # permissions + super_admin role
+php artisan app:create-admin         # your account: active, approved, super admin
+php artisan config:cache && php artisan route:cache && php artisan event:cache
+php artisan filament:optimize
+```
+
+Then create the roles in the panel (Shield → Roles, see "Suggested roles") and mark the primary
+schedule type. If `storage:link` is not allowed by the host, profile photos will not show: ask
+for symlinks or copy `storage/app/public` into `public/storage`.
+
+**6. Cron** (cPanel → Cron Jobs, every minute):
+
+```
+* * * * * cd ~/scheduler-api && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Use the full PHP path if `php` is not found (e.g. `/usr/local/bin/php` or
+`/opt/cpanel/ea-php83/root/usr/bin/php`). This one line runs the scheduled tasks **and** the
+queue (emails and pushes leave within a minute).
+
+**7. PWA**: in `pwa-scheduler`, set `VITE_API_URL=https://api.example.pt/api` in `.env`, run
+`npm run build`, and upload the **contents** of `dist/` (including the hidden `.htaccess`) to the
+PWA subdomain's document root.
+
+**Updating later**: upload the changed files, then `php artisan migrate --force`,
+`php artisan db:seed --class=PermissionsSeeder --force` (new permissions) and the three cache
+commands again. After changing `.env`, run `php artisan config:cache` (the cached copy is what
+counts). The queue picks up the new code by itself (it restarts every minute).
+
 ## Filament Shield - Roles & Permissions
 
 Filament Shield integrates role-based access control (RBAC) with Filament using Spatie Laravel Permission.
@@ -268,7 +346,8 @@ Two processes must run next to the web server.
 ### Queue worker
 
 Emails and web push notifications are queued (the in-app notification is written at once), so
-they are only sent while a worker runs:
+they are only sent while a worker runs (on shared hosting without Supervisor, set
+`QUEUE_WORK_VIA_SCHEDULER=true` instead: the scheduler cron then runs it every minute):
 
 ```bash
 php artisan queue:work

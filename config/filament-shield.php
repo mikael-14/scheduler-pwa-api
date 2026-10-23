@@ -261,12 +261,13 @@ return [
             \Filament\Widgets\FilamentInfoWidget::class,
             \App\Filament\Widgets\UserWelcomeWidget::class,
             // Dashboard widgets decide their own visibility in canView() from the schedule/user permissions
-            \App\Filament\Widgets\TodaySchedulesWidget::class,
+            /*\App\Filament\Widgets\TodaySchedulesWidget::class,
             \App\Filament\Widgets\ScheduleHeadcountChart::class,
             \App\Filament\Widgets\SchedulesByTypeChart::class,
             \App\Filament\Widgets\PendingSchedulesWidget::class,
+            \App\Filament\Widgets\PendingParticipationsWidget::class,
             \App\Filament\Widgets\SchedulePendingWidget::class,
-            \App\Filament\Widgets\UserPendingCounterWidget::class,
+            \App\Filament\Widgets\UserPendingCounterWidget::class,*/
         ],
     ],
 
