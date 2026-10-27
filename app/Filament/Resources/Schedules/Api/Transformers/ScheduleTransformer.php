@@ -47,7 +47,7 @@ class ScheduleTransformer extends JsonResource
 
         $approver = $user && ScheduleAccess::canApprove($user);
 
-        $data['schedule_users'] = $this->resource->schedule_users->map(function ($scheduleUser) use ($approver) {
+        $data['schedule_users'] = $this->resource->schedule_users->map(function ($scheduleUser) use ($approver, $user) {
             $row = [
                 'id' => $scheduleUser->id,
                 'user_id' => $scheduleUser->user_id,
@@ -55,6 +55,9 @@ class ScheduleTransformer extends JsonResource
                 'avatar_url' => $scheduleUser->user ? $this->avatarUrl($scheduleUser->user) : null,
                 'status' => $scheduleUser->status,
                 'description' => $scheduleUser->description,
+                // the owner (or update_status_schedule), once it started: this person did not come
+                'can_mark_not_shown' => $user
+                    && ScheduleAccess::canMarkParticipantNotShown($user, $this->resource, $scheduleUser),
             ];
 
             // approvers: why a pending participation cannot be approved yet (primary rule), or null
@@ -92,14 +95,14 @@ class ScheduleTransformer extends JsonResource
         $schedule = $this->resource;
         $status = $schedule->status;
         $update = $user->can('update_schedule') && ScheduleAccess::canUpdate($user, $schedule);
-        $deletable = $user->can('delete_any_schedule')
-            || in_array($status, [ScheduleStatus::Pending, ScheduleStatus::Cancelled], true);
 
         return [
             'update' => $update,
-            'cancel' => $update && in_array($status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true),
-            'delete' => $user->can('delete_schedule') && ScheduleAccess::canDelete($user, $schedule) && $deletable,
+            // its creator, before it starts (deleting is only done in the admin panel)
+            'cancel' => ScheduleAccess::canCancel($user, $schedule),
             'approve' => ScheduleAccess::canApprove($user) && $status === ScheduleStatus::Pending,
+            // update_status_schedule, once it started: its owner did not come
+            'not_shown' => ScheduleAccess::canMarkNotShown($user, $schedule),
             // join / leave someone else's schedule (participate_schedule / cancel_participation_schedule)
             'join' => ScheduleAccess::canJoin($user, $schedule),
             'leave' => ScheduleAccess::canLeave($user, $schedule),

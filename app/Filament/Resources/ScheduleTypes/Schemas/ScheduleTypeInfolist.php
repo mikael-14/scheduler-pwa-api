@@ -36,9 +36,9 @@ class ScheduleTypeInfolist
                                     ->boolean()
                                     ->tooltip(__('Indicates if this schedule type has to have specific times slots.')),
                                 IconEntry::make('all_day')
-                                    ->label(__('All Day'))
+                                    ->label(__('No time'))
                                     ->boolean()
-                                    ->tooltip(__('Indicates if this schedule type is can have an all-day event.')),
+                                    ->tooltip(__('Whether schedules of this type can be booked without hours.')),
                             ]),
                         // Dates
                         TextEntry::make('start')

@@ -16,6 +16,15 @@ enum ScheduleStatus: string implements HasLabel, HasColor, HasDescription, HasIc
     case Completed = 'completed';
     case NotShown = 'not_shown';
 
+    /**
+     * What happened, recorded once the schedule's time has come: completed (set by
+     * schedules:complete) or not shown. Not a change to the plan, so nothing is re-checked.
+     */
+    public function isOutcome(): bool
+    {
+        return $this === self::Completed || $this === self::NotShown;
+    }
+
     public function getLabel(): ?string
     {
         return match ($this) {

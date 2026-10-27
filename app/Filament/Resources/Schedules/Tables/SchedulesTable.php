@@ -65,7 +65,7 @@ class SchedulesTable
                 TextColumn::make('start')
                     ->label(__('Start'))
                     ->date(fn($record) => $record->all_day ? config('app.date_format') : config('app.date_time_format'))
-                    ->description(fn($record) => $record->all_day ? 'All Day' : null)
+                    ->description(fn($record) => $record->all_day ? __('No time') : null)
                     ->sortable(),
                 TextColumn::make('end')
                     ->label(__('End'))
@@ -74,7 +74,7 @@ class SchedulesTable
                     ->sortable(),
                 IconColumn::make('all_day')
                     ->boolean()
-                    ->label(__('All Day'))
+                    ->label(__('No time'))
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
                 TextColumn::make('status')
@@ -177,7 +177,7 @@ class SchedulesTable
                     ->multiple()
                     ->columnSpan(3),
                 TernaryFilter::make('all_day')
-                    ->label(__('All Day')),
+                    ->label(__('No time')),
                 TrashedFilter::make(),
             ])
             ->filtersLayout(FiltersLayout::AboveContentCollapsible)

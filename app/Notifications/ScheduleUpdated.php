@@ -106,7 +106,7 @@ class ScheduleUpdated extends AppNotification
         return "/schedules/{$this->schedule->id}";
     }
 
-    /** "22/10 10:00–12:00", "22/10 – 24/10 (all day)", in the app's date format. */
+    /** "22/10 10:00–12:00", "22/10 – 24/10 (no time)", in the app's date format. */
     private static function slotText(mixed $start, mixed $end, bool $allDay): string
     {
         $start = $start ? Carbon::parse($start) : null;
@@ -123,7 +123,7 @@ class ScheduleUpdated extends AppNotification
                 $text .= ' – ' . $end->format($dateFormat);
             }
 
-            return $text . ' (' . __('all day') . ')';
+            return $text . ' (' . __('no time') . ')';
         }
 
         $text = $start->format(config('app.date_time_format'));

@@ -182,7 +182,8 @@ class PrimaryScheduleRule
         $wasApproved = ($schedule->getOriginal('status') ?? $schedule->status) === ScheduleStatus::Approved;
         $changed = $deleted || $schedule->wasChanged(['status', 'start', 'end', 'all_day', 'schedule_type_id', 'user_id']);
 
-        if (! $wasApproved || ! $changed) {
+        // completed / not shown only records what happened: the others at those hours stay as they are
+        if (! $wasApproved || ! $changed || (! $deleted && $schedule->status->isOutcome())) {
             return;
         }
 
@@ -203,7 +204,7 @@ class PrimaryScheduleRule
     {
         $wasApproved = ($participant->getOriginal('status') ?? $participant->status) === ScheduleStatus::Approved;
 
-        if (! $wasApproved || (! $deleted && ! $participant->wasChanged('status'))) {
+        if (! $wasApproved || (! $deleted && (! $participant->wasChanged('status') || $participant->status->isOutcome()))) {
             return;
         }
 

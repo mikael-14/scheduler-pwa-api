@@ -105,8 +105,8 @@ class ScheduleTypeForm
                             Checkbox::make('all_day')
                                 ->inline(false)
                                 ->default(false)
-                                ->label(__('All Day'))
-                                ->helperText(__('Indicates if this schedule type is can have an all-day event.')),
+                                ->label(__('No time'))
+                                ->helperText(__('Whether schedules of this type can be booked without hours.')),
                         ])->columns(2)
                     ])
                     ->columns(2)

@@ -46,7 +46,7 @@ class ScheduleInfolist
                             ->dateTime(fn($record) => $record->all_day ? config('app.date_format') : config('app.date_time_format'))
                             ->placeholder('-'),
                         IconEntry::make('all_day')
-                            ->label(__('All Day'))
+                            ->label(__('No time'))
                             ->visible(fn(Schedule $record) => $record->all_day)
                             ->boolean(),
                         TextEntry::make('end')

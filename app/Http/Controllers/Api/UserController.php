@@ -4,16 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AvatarImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class UserController extends Controller
 {
-    /** Largest profile photo accepted, in KB. */
-    private const AVATAR_MAX_KB = 2048;
+    /** Largest profile photo accepted, in KB (it is stored much smaller, see AvatarImage). */
+    private const AVATAR_MAX_KB = 10240;
 
     public function user(Request $request)
     {
@@ -41,7 +43,8 @@ class UserController extends Controller
     }
 
     /**
-     * Upload a new profile photo (jpg, png or webp, up to 2 MB). Replaces the previous one.
+     * Upload a new profile photo (jpg, png or webp, up to 10 MB), stored shrunk to avatar size.
+     * Replaces the previous one.
      */
     public function uploadAvatar(Request $request)
     {
@@ -52,7 +55,11 @@ class UserController extends Controller
         $user = $request->user();
         $previous = $user->avatar_url;
 
-        $user->update(['avatar_url' => $request->file('avatar')->store('avatars', 'public')]);
+        $image = AvatarImage::fromFile($request->file('avatar')->getRealPath());
+        $path = 'avatars/' . Str::random(40) . '.' . $image['extension'];
+        Storage::disk('public')->put($path, $image['contents']);
+
+        $user->update(['avatar_url' => $path]);
         $this->deleteStoredAvatar($previous);
 
         return response()->json(['message' => __('Profile photo updated.'), 'user' => $this->present($user->fresh())]);

@@ -51,7 +51,7 @@ class TodaySchedulesWidget extends TableWidget
                     ->label(__('Time'))
                     ->formatStateUsing(function ($state, Schedule $record) {
                         if ($record->all_day) {
-                            return __('All Day');
+                            return __('No time');
                         }
 
                         $time = config('app.time_format');

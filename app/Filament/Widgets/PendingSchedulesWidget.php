@@ -57,7 +57,7 @@ class PendingSchedulesWidget extends TableWidget
                         ->state(fn(Schedule $record) => $record->start?->format($record->all_day
                             ? config('app.date_format')
                             : config('app.date_time_format')))
-                        ->helperText(fn(Schedule $record) => $record->all_day ? __('All Day') : null),
+                        ->helperText(fn(Schedule $record) => $record->all_day ? __('No time') : null),
                     TextEntry::make('period_end')
                         ->label(__('End'))
                         ->state(fn(Schedule $record) => $record->end?->format(config('app.date_time_format')))
@@ -150,7 +150,7 @@ class PendingSchedulesWidget extends TableWidget
                     ->dateTime(fn(Schedule $record) => $record->all_day
                         ? config('app.date_format')
                         : config('app.date_time_format'))
-                    ->description(fn(Schedule $record) => $record->all_day ? __('All Day') : null)
+                    ->description(fn(Schedule $record) => $record->all_day ? __('No time') : null)
                     ->sortable(),
                 TextColumn::make('end')
                     ->label(__('End'))

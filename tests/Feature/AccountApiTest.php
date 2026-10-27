@@ -87,12 +87,29 @@ class AccountApiTest extends TestCase
         // not an image, or too big
         $this->post('/api/user/avatar', ['avatar' => UploadedFile::fake()->create('cv.pdf', 10, 'application/pdf')], ['Accept' => 'application/json'])
             ->assertUnprocessable()->assertJsonValidationErrors('avatar');
-        $this->post('/api/user/avatar', ['avatar' => UploadedFile::fake()->image('huge.jpg')->size(3000)], ['Accept' => 'application/json'])
+        $this->post('/api/user/avatar', ['avatar' => UploadedFile::fake()->image('huge.jpg')->size(11000)], ['Accept' => 'application/json'])
             ->assertUnprocessable();
 
         $secondPath = $user->fresh()->avatar_url;
         $this->deleteJson('/api/user/avatar')->assertOk()->assertJsonPath('user.avatar_url', null);
         Storage::disk('public')->assertMissing($secondPath);
+    }
+
+    public function test_a_big_profile_photo_is_stored_at_avatar_size(): void
+    {
+        Storage::fake('public');
+        $user = $this->user();
+        Sanctum::actingAs($user);
+
+        // a phone photo of several MB is accepted...
+        $this->post('/api/user/avatar', ['avatar' => UploadedFile::fake()->image('phone.jpg', 2000, 1000)->size(8000)], ['Accept' => 'application/json'])
+            ->assertOk();
+
+        // ...and kept small, with its proportions
+        $stored = Storage::disk('public')->get($user->fresh()->avatar_url);
+        [$width, $height] = getimagesizefromstring($stored);
+        $this->assertSame([512, 256], [$width, $height]);
+        $this->assertLessThan(100 * 1024, strlen($stored));
     }
 
     public function test_devices_are_listed_and_others_can_be_signed_out(): void

@@ -170,6 +170,8 @@ class CalendarWidget extends FullCalendarWidget
                 'center' => 'title',
                 'right' => 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
             ],
+            // the week/day row and the list's label for schedules without hours, as the rest of the panel
+            'allDayText' => __('No time'),
             'slotDuration' => '01:00:00',
             'eventTimeFormat' => [
                 'hour' => '2-digit',

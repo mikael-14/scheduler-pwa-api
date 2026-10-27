@@ -64,6 +64,8 @@ class ScheduleUser extends Model implements Auditable
 	#API
 	protected static function booted(): void
 	{
+		// Completed only by schedules:complete; not shown by the owner once it started
+		static::saving(fn(ScheduleUser $participant) => \App\Services\ScheduleAccess::enforceParticipantStatusChange($participant));
 		// The owner of a schedule is never also one of its participants
 		static::saving(function (ScheduleUser $participant) {
 			$ownerId = Schedule::withTrashed()->whereKey($participant->schedule_id)->value('user_id');

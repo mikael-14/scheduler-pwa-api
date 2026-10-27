@@ -68,7 +68,7 @@ class ScheduleTypesTable
                     ->sortable()
                     ->toggleable(),
                 IconColumn::make('all_day')
-                    ->label(__('All Day'))
+                    ->label(__('No time'))
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('created_at')
@@ -87,7 +87,7 @@ class ScheduleTypesTable
                 TernaryFilter::make('range')
                     ->label(__('Range')),
                 TernaryFilter::make('all_day')
-                    ->label(__('All Day')),
+                    ->label(__('No time')),
                 Filter::make('description')
                     ->schema([
                         TextInput::make('description')

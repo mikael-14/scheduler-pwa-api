@@ -50,7 +50,7 @@ class CreateHandler extends ApprovedHandler
             $schedule = new Schedule();
             $schedule->fill(Arr::only($data, ['start', 'end', 'all_day', 'description', 'schedule_type_id']));
             $schedule->user_id = ScheduleAccess::ownerForCreate($actor, $data['user_id'] ?? null);
-            $schedule->status = ScheduleAccess::resolveStatus($actor, $data['status'] ?? null);
+            $schedule->status = ScheduleAccess::resolveStatus($actor, $data['status'] ?? null, null, $schedule);
 
             if (ScheduleAccess::isStaff($actor) && array_key_exists('internal_note', $data)) {
                 $schedule->internal_note = $data['internal_note'];

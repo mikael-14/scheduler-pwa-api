@@ -80,7 +80,7 @@ class UpdateHandler extends ApprovedHandler
             }
 
             if (array_key_exists('status', $data) && $data['status'] !== null) {
-                $schedule->status = ScheduleAccess::resolveStatus($actor, $data['status'], $originalStatus);
+                $schedule->status = ScheduleAccess::resolveStatus($actor, $data['status'], $originalStatus, $schedule);
             } elseif (
                 ! $canApprove
                 && $originalStatus === ScheduleStatus::Approved

@@ -33,3 +33,8 @@ Schedule::command('coverage:check')
     ->dailyAt(config('coverage.run_at', '09:00'))
     ->timezone(config('app.timezone'))
     ->when(fn() => (bool) config('coverage.enabled'));
+
+// Approved schedules that are over become completed (nobody else sets that status)
+Schedule::command('schedules:complete')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(10);

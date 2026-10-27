@@ -193,8 +193,6 @@ class ScheduleApiHardeningTest extends TestCase
 
         Sanctum::actingAs($stranger);
         $this->patchJson(self::URL . "/{$schedule->id}", ['description' => 'hijack'])->assertStatus(403);
-        $this->deleteJson(self::URL . "/{$schedule->id}")->assertStatus(403);
-
         Sanctum::actingAs($owner);
         $this->patchJson(self::URL . "/{$schedule->id}", ['description' => 'mine'])->assertOk();
         $this->assertSame('mine', $schedule->fresh()->description);
@@ -217,9 +215,8 @@ class ScheduleApiHardeningTest extends TestCase
         $this->patchJson(self::URL . "/{$schedule->id}", ['start' => "$day 09:00", 'end' => "$day 10:00"])->assertOk();
         $this->assertSame(ScheduleStatus::Pending, $schedule->fresh()->status);
 
-        // approved schedules are cancelled, not deleted, by their owner
-        $schedule->fresh()->update(['status' => ScheduleStatus::Approved]);
-        $this->deleteJson(self::URL . "/{$schedule->id}")->assertStatus(422)->assertJsonPath('code', 'cancel_instead');
+        // the apps cannot delete at all (only the admin panel can): the owner cancels instead
+        $this->deleteJson(self::URL . "/{$schedule->id}")->assertStatus(405);
     }
 
     private function approver(): User
@@ -241,10 +238,9 @@ class ScheduleApiHardeningTest extends TestCase
 
         Sanctum::actingAs($this->approver());
 
-        // cannot edit content, delete, create, or put arbitrary statuses
+        // cannot edit content, create, or put arbitrary statuses
         $this->patchJson(self::URL . "/{$schedule->id}", ['description' => 'x'])->assertStatus(403);
         $this->patchJson(self::URL . "/{$schedule->id}", ['status' => 'completed'])->assertStatus(403);
-        $this->deleteJson(self::URL . "/{$schedule->id}")->assertStatus(403);
         $this->postJson(self::URL, $this->payload($type))->assertStatus(403);
 
         // can approve: the pending participant follows
@@ -314,8 +310,12 @@ class ScheduleApiHardeningTest extends TestCase
         $manager->assignRole($this->role('status-manager', ['view_any_schedule', 'view_schedule', 'update_status_schedule']));
         Sanctum::actingAs($manager);
 
-        $this->patchJson(self::URL . "/{$schedule->id}", ['status' => 'completed'])->assertOk();
-        $this->assertSame(ScheduleStatus::Completed, $schedule->fresh()->status);
+        $this->patchJson(self::URL . "/{$schedule->id}", ['status' => 'cancelled'])->assertOk();
+        $this->assertSame(ScheduleStatus::Cancelled, $schedule->fresh()->status);
+
+        // except completed (only schedules:complete sets it) and not shown before it starts
+        $this->patchJson(self::URL . "/{$schedule->id}", ['status' => 'completed'])->assertStatus(422);
+        $this->patchJson(self::URL . "/{$schedule->id}", ['status' => 'not_shown'])->assertStatus(422);
 
         $this->patchJson(self::URL . "/{$schedule->id}", ['status' => 'not_shown', 'description' => 'x'])->assertStatus(403);
     }

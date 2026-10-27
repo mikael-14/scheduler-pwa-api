@@ -69,6 +69,8 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 
 	protected static function booted(): void
 	{
+		// Who may set which status, and when (ScheduleAccess::mayChangeStatus), on every path
+		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleAccess::enforceStatusChange($schedule));
 		// Type rules and the past-date rule must hold on every path (panel, calendar modals, API)
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleRulesValidator::enforce($schedule));
 		// Primary type: who may be approved without someone who may go alone
@@ -113,6 +115,12 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 	{
 		$this->update(['status' => ScheduleStatus::Rejected] + $this->noteWith($message, __('Rejected')));
 		$this->schedule_users()->update(['status' => ScheduleStatus::Rejected]);
+	}
+
+	/** Its owner did not come (participants keep their own status). A message is appended to the internal note. */
+	public function markNotShown(?string $message = null): void
+	{
+		$this->update(['status' => ScheduleStatus::NotShown] + $this->noteWith($message, __('Not shown')));
 	}
 
 	/**

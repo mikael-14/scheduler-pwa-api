@@ -205,6 +205,10 @@ cd ~/scheduler-api && /usr/local/bin/php artisan storage:link
 Wait a minute, check in File Manager that `scheduler-api/public/storage` exists, then **delete
 this cron job**.
 
+Photos up to 10 MB are accepted (the API shrinks them to avatar size), but PHP often refuses
+uploads over 2 MB before the API sees them. In **MultiPHP INI Editor**, pick the API's domain and
+set `upload_max_filesize` and `post_max_size` to `12M` (and `memory_limit` to at least `256M`).
+
 ### 2.6 PWA
 
 1. Create `app.example.pt` (Domains / Subdomains), e.g. with document root `app.example.pt`.

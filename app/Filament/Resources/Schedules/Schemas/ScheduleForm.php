@@ -86,6 +86,7 @@ class ScheduleForm
                     ->time24hr(true)
                     ->required(),
                 Toggle::make('all_day')
+                    ->label(__('No time'))
                     ->inline(false)
                     ->live()
                     // only on types that allow it, for people who may give no hours (AllDayRule)
@@ -99,15 +100,20 @@ class ScheduleForm
                     ->default(ScheduleStatus::Pending->value)
                     ->options(ScheduleStatus::class)
                     ->required()
-                    ->disableOptionWhen(function ($value, Get $get) {
-                        if (Filament::auth()->user()->can('update_status_schedule')) return false;
-                        if (Filament::auth()->user()->can('approve_schedule')) {
-                            if ($value === ScheduleStatus::Approved->value || $value === ScheduleStatus::Rejected->value) {
-                                return false;
-                            } else {
-                                return true;
-                            }
-                        }
+                    // the same rules as everywhere (ScheduleAccess::mayChangeStatus, enforced on save):
+                    // completed only by the system, cancelled by its creator before it starts,
+                    // not shown by admins once it started, approved / rejected by approvers
+                    ->disableOptionWhen(function ($value, $record) {
+                        $schedule = $record instanceof \App\Models\Schedule
+                            ? $record
+                            : new \App\Models\Schedule(['user_id' => Filament::auth()->id()]);
+
+                        return ! \App\Services\ScheduleAccess::mayChangeStatus(
+                            Filament::auth()->user(),
+                            $schedule,
+                            $schedule->exists ? $schedule->status : null,
+                            $value instanceof ScheduleStatus ? $value : ScheduleStatus::from($value),
+                        );
                     }, merge: true)
                     ->columnSpanFull(),
                 Repeater::make('schedules')
@@ -133,6 +139,17 @@ class ScheduleForm
                             ->native(false)
                             ->live()
                             ->options(ScheduleStatus::class)
+                            // completed only by the system; not shown by the owner once it started
+                            ->disableOptionWhen(function ($value, $record) {
+                                $participant = $record instanceof ScheduleUser ? $record : new ScheduleUser();
+
+                                return ! \App\Services\ScheduleAccess::mayChangeParticipantStatus(
+                                    Filament::auth()->user(),
+                                    $participant,
+                                    $participant->exists ? $participant->status : null,
+                                    $value instanceof ScheduleStatus ? $value : ScheduleStatus::from($value),
+                                );
+                            }, merge: true)
                             ->suffixIcon(fn($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getIcon() ?? Heroicon::QuestionMarkCircle)
                             ->suffixIconColor(fn($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getColor() ?? 'gray')
                             ->required(),
