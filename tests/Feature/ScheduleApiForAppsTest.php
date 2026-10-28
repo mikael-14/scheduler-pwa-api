@@ -187,6 +187,46 @@ class ScheduleApiForAppsTest extends TestCase
             ->assertJsonPath('data.hours', ['min' => null, 'max' => null]);
     }
 
+    public function test_calendar_filters_by_type_status_and_person(): void
+    {
+        $cleaning = $this->type();
+        $walks = $this->type(['name' => 'Walks', 'color' => '#445566']);
+        $retired = $this->type(['name' => 'Retired', 'status' => false]);
+        $ana = $this->user(self::MEMBER, ['name' => 'Ana']);
+        $rui = $this->user(self::MEMBER, ['name' => 'Rui']);
+        $eva = $this->user(self::MEMBER, ['name' => 'Eva']);
+        $anaCleaning = $this->schedule($ana, $cleaning);
+        $ruiWalks = $this->schedule($rui, $walks, ScheduleStatus::Approved);
+        $ruiWalks->schedule_users()->create(['user_id' => $eva->id, 'status' => ScheduleStatus::Approved]);
+        $evaRetired = $this->schedule($eva, $retired, ScheduleStatus::Approved);
+
+        Sanctum::actingAs($ana);
+        $ids = fn(array $filter) => collect($this->getJson(self::URL . '?' . http_build_query(['filter' => $filter]))
+            ->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
+
+        $this->assertSame([$anaCleaning->id, $ruiWalks->id], $ids(['schedule_type_id' => "{$cleaning->id},{$walks->id}"]));
+        $this->assertSame([$ruiWalks->id, $evaRetired->id], $ids(['status' => 'approved']));
+        // a person: what they own and what they take part in
+        $this->assertSame([$ruiWalks->id, $evaRetired->id], $ids(['person' => (string) $eva->id]));
+        $this->assertSame([$anaCleaning->id, $ruiWalks->id], $ids(['person' => "{$ana->id},{$rui->id}"]));
+        // together they narrow down
+        $this->assertSame([$ruiWalks->id], $ids(['person' => (string) $eva->id, 'schedule_type_id' => (string) $walks->id]));
+
+        $filters = $this->getJson(self::URL . '/calendar-options')->assertOk()->json('data.filters');
+        // every type, also those switched off (older schedules use them)
+        $this->assertSame(['Cleaning', 'Retired', 'Walks'], array_column($filters['types'], 'name'));
+        $this->assertSame(['Ana', 'Eva', 'Rui'], array_column($filters['people'], 'name'));
+        $this->assertSame(array_map(fn($s) => $s->value, ScheduleStatus::cases()), array_column($filters['statuses'], 'value'));
+        // others' cancelled, rejected... schedules are not shown to members: those only find their own
+        $everyone = array_column($filters['statuses'], 'everyone', 'value');
+        $this->assertTrue($everyone['approved']);
+        $this->assertFalse($everyone['cancelled']);
+
+        Sanctum::actingAs($this->user([...self::MEMBER, 'view_inactive_schedule']));
+        $everyone = array_column($this->getJson(self::URL . '/calendar-options')->json('data.filters.statuses'), 'everyone', 'value');
+        $this->assertTrue($everyone['cancelled']);
+    }
+
     public function test_admin_panel_calendar_shows_the_same_hours(): void
     {
         $walks = $this->type(['name' => 'Walks', 'min_time' => '09:00', 'max_time' => '17:00']);

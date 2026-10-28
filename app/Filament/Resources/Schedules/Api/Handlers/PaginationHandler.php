@@ -29,7 +29,7 @@ class PaginationHandler extends ApprovedHandler
             AllowedFilter::exact('status'),
             AllowedFilter::exact('schedule_type_id'),
 
-            // "My agenda": schedules I own or take part in
+            // "Only mine": schedules I own or take part in
             AllowedFilter::callback('mine', function ($query, $value) {
                 if (! filter_var($value, FILTER_VALIDATE_BOOLEAN)) {
                     return;
@@ -38,6 +38,19 @@ class PaginationHandler extends ApprovedHandler
                 $query->where(function ($q) use ($userId) {
                     $q->where('user_id', $userId)
                         ->orWhereHas('schedule_users', fn($su) => $su->where('user_id', $userId));
+                });
+            }),
+
+            // Schedules of these people (comma separated ids): owned by them or with them taking part
+            AllowedFilter::callback('person', function ($query, $value) {
+                $ids = collect(is_array($value) ? $value : explode(',', (string) $value))
+                    ->map(fn($id) => (int) $id)->filter()->unique()->values();
+                if ($ids->isEmpty()) {
+                    return;
+                }
+                $query->where(function ($q) use ($ids) {
+                    $q->whereIn('user_id', $ids)
+                        ->orWhereHas('schedule_users', fn($su) => $su->whereIn('user_id', $ids));
                 });
             }),
 
@@ -63,9 +76,10 @@ class PaginationHandler extends ApprovedHandler
     #[QueryParameter('filter[start_from]', description: 'Schedules ending on/after this date', type: 'string', example: '2026-10-01')]
     #[QueryParameter('filter[start_to]', description: 'Schedules starting on/before this date', type: 'string', example: '2026-10-31')]
     #[QueryParameter('filter[mine]', description: 'Only schedules I own or take part in', type: 'boolean', example: 'true')]
-    #[QueryParameter('filter[status]', description: 'Exact status', type: 'string', example: 'approved')]
+    #[QueryParameter('filter[status]', description: 'Statuses, comma separated', type: 'string', example: 'pending,approved')]
     #[QueryParameter('filter[user_id]', description: 'Owner user id', type: 'integer', example: '1')]
-    #[QueryParameter('filter[schedule_type_id]', description: 'Schedule type id', type: 'integer', example: '1')]
+    #[QueryParameter('filter[schedule_type_id]', description: 'Schedule type ids, comma separated', type: 'string', example: '1,2')]
+    #[QueryParameter('filter[person]', description: 'User ids, comma separated: schedules they own or take part in', type: 'string', example: '3,7')]
     public function handler()
     {
         $perPage = min(max((int) request()->query('per_page', 25), 1), self::MAX_PER_PAGE);
