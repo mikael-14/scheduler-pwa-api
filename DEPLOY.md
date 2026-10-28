@@ -246,8 +246,10 @@ If something fails, `scheduler-api/storage/logs/laravel-*.log` (File Manager) sa
    ```
    Wait a minute, check the log, then delete the cron job. New permissions then have to be given
    to the roles in Shield → Roles.
-3. The PWA: replace the folder's contents with the new `pwa.zip`. Open apps pick up the new
-   version on their next start.
+3. The PWA: replace the folder's contents with the new `pwa.zip` (with its `version.json`).
+   Open apps check that file when they start, when they come back to the screen and every
+   30 minutes, and reload into the new version by themselves (someone filling in the schedule
+   form first finishes or leaves it). Settings shows the version a device runs.
 
 Never copy your PC's database over the server's after the start: the server has the real
 schedules and accounts.
