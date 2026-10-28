@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\ScheduleTypes\Schemas;
 
 use Coolsam\Flatpickr\Forms\Components\Flatpickr;
-use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -41,14 +40,9 @@ class ScheduleTypeForm
                                 Toggle::make('status')
                                     ->inline(false)
                                     ->default(true)
-                                    ->label(__('Status'))
+                                    ->label(__('Active'))
                                     ->helperText(__('Enable or disable this schedule type.')),
-                                Toggle::make('primary')
-                                    ->inline(false)
-                                    ->default(false)
-                                    ->label(__('Primary'))
-                                    ->helperText(__('Set this as the primary schedule type.'))
-                                    ->hintIcon('heroicon-m-question-mark-circle', tooltip: __('Only one schedule type can be primary at a time.'))
+                                // "primary" is not edited here: it is set in the database (only one type has it)
                             ]),
                         Flatpickr::make('start')
                             ->allowInput()
@@ -97,12 +91,12 @@ class ScheduleTypeForm
                         Textarea::make('description')
                             ->placeholder(__('Description')),
                         Flex::make([
-                            Checkbox::make('range')
+                            Toggle::make('range')
                                 ->inline(false)
-                                ->default(false)
-                                ->label(__('Range'))
-                                ->helperText(__('Indicates if this schedule type has to have specific times slots.')),
-                            Checkbox::make('all_day')
+                                ->default(true)
+                                ->label(__('Needs an end time'))
+                                ->helperText(__('Schedules of this type have a start and an end time.')),
+                            Toggle::make('all_day')
                                 ->inline(false)
                                 ->default(false)
                                 ->label(__('No time'))

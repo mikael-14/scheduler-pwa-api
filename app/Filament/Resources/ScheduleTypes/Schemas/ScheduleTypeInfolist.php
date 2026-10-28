@@ -26,15 +26,15 @@ class ScheduleTypeInfolist
                                 ColorEntry::make('color')
                                     ->label(__('Color')),
                                 IconEntry::make('status')
-                                    ->label(__('Status'))
+                                    ->label(__('Active'))
                                     ->boolean(),
                             ]),
                         Grid::make(2)
                             ->schema([
                                 IconEntry::make('range')
-                                    ->label(__('Range'))
+                                    ->label(__('Needs an end time'))
                                     ->boolean()
-                                    ->tooltip(__('Indicates if this schedule type has to have specific times slots.')),
+                                    ->tooltip(__('Schedules of this type have a start and an end time.')),
                                 IconEntry::make('all_day')
                                     ->label(__('No time'))
                                     ->boolean()

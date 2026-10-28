@@ -48,7 +48,7 @@ class ScheduleTypesTable
                         'schedules' => fn(Builder $query) => $query->where('status', ScheduleStatus::Pending),
                     ]),
                 IconColumn::make('status')
-                    ->label(__('Status'))
+                    ->label(__('Active'))
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('description')
@@ -64,7 +64,7 @@ class ScheduleTypesTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('range')
-                    ->label(__('Range'))
+                    ->label(__('Needs an end time'))
                     ->sortable()
                     ->toggleable(),
                 IconColumn::make('all_day')
@@ -83,9 +83,9 @@ class ScheduleTypesTable
             ->filters([
                 // Row 1: Quick Toggle Filters (4 Columns)
                 TernaryFilter::make('status')
-                    ->label(__('Status')),
+                    ->label(__('Active')),
                 TernaryFilter::make('range')
-                    ->label(__('Range')),
+                    ->label(__('Needs an end time')),
                 TernaryFilter::make('all_day')
                     ->label(__('No time')),
                 Filter::make('description')
