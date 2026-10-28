@@ -60,6 +60,14 @@ class ScheduleTypeRules
         return $this->type->end?->copy()->setTimezone(config('app.timezone'));
     }
 
+    /** Its last moment has passed: no new schedules (only people who may book the past record some afterwards). */
+    public function hasEnded(): bool
+    {
+        $end = $this->windowEnd();
+
+        return $end !== null && $end->lt(now());
+    }
+
     public function allowsAllDay(): bool
     {
         return (bool) $this->type->all_day;
@@ -123,6 +131,8 @@ class ScheduleTypeRules
             'all_day' => $this->allowsAllDay(),
             'start' => $this->type->start,
             'end' => $this->type->end,
+            // its end has passed: the PWA offers it only to people who may book the past
+            'ended' => $this->hasEnded(),
             // display only: the calendar's visible hours
             'min_time' => $hours['min'] ? substr($hours['min'], 0, 5) : null,
             'max_time' => $hours['max'] ? substr($hours['max'], 0, 5) : null,

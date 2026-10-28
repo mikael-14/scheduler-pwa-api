@@ -1,5 +1,6 @@
 {
     "Not shown": "Não compareceu",
+    "Ended": "Terminado",
     "This status cannot be set": "Não é possível definir este estado",
     "Completed is set automatically once a schedule is over.": "O estado concluído é definido automaticamente quando o agendamento termina.",
     "Only its creator can cancel a schedule, before it starts.": "Só quem criou o agendamento o pode cancelar, antes de começar.",

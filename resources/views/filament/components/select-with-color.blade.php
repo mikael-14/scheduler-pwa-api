@@ -16,4 +16,8 @@
     <span class='fi-select-input-item-label text-sm text-gray-950 dark:text-white'>
         {{$name}}
     </span>
+    {{-- its end date has passed: no new schedules, except ones recorded afterwards --}}
+    @if(!empty($ended))
+        <x-filament::badge color="gray" size="sm">{{ __('Ended') }}</x-filament::badge>
+    @endif
 </div>

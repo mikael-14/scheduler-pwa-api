@@ -204,13 +204,17 @@ class ScheduleForm
         return $moment?->format(self::pickerFormat($get));
     }
 
+    /** Each type with its colour; those whose end has passed last, tagged "Ended" (still selectable). */
     public static function getOptionWithColor(\Illuminate\Database\Eloquent\Collection $model)
     {
-        return $model->mapWithKeys(function ($item) {
-            return [$item['id'] => view('filament.components.select-with-color')
-                ->with('name', $item['name'])
-                ->with('color', $item['color'])
-                ->render()];
-        });
+        return $model
+            ->sortBy(fn(ScheduleType $type) => (new ScheduleTypeRules($type))->hasEnded() ? 1 : 0)
+            ->mapWithKeys(function (ScheduleType $item) {
+                return [$item['id'] => view('filament.components.select-with-color')
+                    ->with('name', $item['name'])
+                    ->with('color', $item['color'])
+                    ->with('ended', (new ScheduleTypeRules($item))->hasEnded())
+                    ->render()];
+            });
     }
 }

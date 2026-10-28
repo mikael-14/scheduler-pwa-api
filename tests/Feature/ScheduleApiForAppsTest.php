@@ -227,6 +227,24 @@ class ScheduleApiForAppsTest extends TestCase
         $this->assertTrue($everyone['cancelled']);
     }
 
+    public function test_types_whose_end_has_passed_are_marked_ended(): void
+    {
+        $over = $this->type(['name' => 'Summer camp', 'end' => now()->subDay()]);
+        $running = $this->type(['name' => 'Walks', 'end' => now()->addMonth()]);
+        $open = $this->type(['name' => 'Cleaning']);
+        Sanctum::actingAs($this->user(self::MEMBER));
+
+        $ended = array_column($this->getJson(self::URL . '/form-options')->assertOk()->json('data.types'), 'ended', 'name');
+        $this->assertSame(['Cleaning' => false, 'Summer camp' => true, 'Walks' => false], Arr::sortRecursive($ended));
+
+        // the panel lists it last, tagged
+        $options = \App\Filament\Resources\Schedules\Schemas\ScheduleForm::getOptionWithColor(ScheduleType::all());
+        $this->assertSame($over->id, $options->keys()->last());
+        $this->assertStringContainsString(__('Ended'), $options[$over->id]);
+        $this->assertStringNotContainsString(__('Ended'), $options[$running->id]);
+        $this->assertStringNotContainsString(__('Ended'), $options[$open->id]);
+    }
+
     public function test_admin_panel_calendar_shows_the_same_hours(): void
     {
         $walks = $this->type(['name' => 'Walks', 'min_time' => '09:00', 'max_time' => '17:00']);
