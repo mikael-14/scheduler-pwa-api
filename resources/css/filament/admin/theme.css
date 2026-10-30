@@ -2,3 +2,12 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+/* FullCalendar: follow the panel's dark theme (sticky headers and list-day rows default to white) */
+.dark .fc {
+    --fc-page-bg-color: var(--gray-900);
+    --fc-neutral-bg-color: var(--gray-800);
+    --fc-neutral-text-color: var(--gray-400);
+    --fc-list-event-hover-bg-color: var(--gray-800);
+    --fc-border-color: var(--gray-700);
+}
