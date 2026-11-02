@@ -108,6 +108,8 @@ class SchedulesTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('internal_note')
                     ->label(__('Internal Note'))
+                    // staff only (ScheduleAccess::seesInternalNote): hidden, it is not searched either
+                    ->visible(fn() => \App\Services\ScheduleAccess::seesInternalNote(Filament::auth()->user()))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')

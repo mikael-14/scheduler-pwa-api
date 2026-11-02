@@ -62,7 +62,8 @@ class ScheduleTypeResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            // the type's audit log, on its view page (view_any_audit)
+            RelationManagers\AuditsRelationManager::class,
         ];
     }
 

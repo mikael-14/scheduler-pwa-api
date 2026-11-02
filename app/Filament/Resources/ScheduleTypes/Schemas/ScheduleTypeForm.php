@@ -48,6 +48,7 @@ class ScheduleTypeForm
                             ->allowInput()
                             ->placeholder(__('Start Date'))
                             ->helperText(__('Optional: Set a start date for this schedule type.'))
+                            ->time(true) // the date and the hour (without it the picker only shows days)
                             ->hourIncrement(1) // Intervals of incrementing hours in a time picker
                             ->minuteIncrement(5) // Intervals of minute increment in a time picker
                             ->seconds(false) // Enable seconds in a time picker
@@ -58,6 +59,7 @@ class ScheduleTypeForm
                             ->allowInput()
                             ->placeholder(__('End Date'))
                             ->helperText(__('Optional: Set an end date for this schedule type.'))
+                            ->time(true)
                             ->hourIncrement(1)
                             ->minuteIncrement(5)
                             ->seconds(false)

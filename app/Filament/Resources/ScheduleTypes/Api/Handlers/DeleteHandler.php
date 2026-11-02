@@ -23,6 +23,9 @@ class DeleteHandler extends \App\Http\Handlers\ApprovedHandler
     /**
      * Delete ScheduleType
      *
+     * Refused while the type has schedules (same rule as the admin panel). The audit log
+     * keeps the deleted type's values.
+     *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
@@ -33,6 +36,13 @@ class DeleteHandler extends \App\Http\Handlers\ApprovedHandler
         $model = static::getModel()::find($id);
 
         if (!$model) return static::sendNotFoundResponse();
+
+        if (! $model->canBeDeleted()) {
+            return response()->json([
+                'message' => __('This record has related schedules and cannot be deleted.'),
+                'code' => 'has_schedules',
+            ], 422);
+        }
 
         $model->delete();
 

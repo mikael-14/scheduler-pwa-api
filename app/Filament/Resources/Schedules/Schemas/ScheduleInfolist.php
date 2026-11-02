@@ -59,6 +59,7 @@ class ScheduleInfolist
                             ->placeholder('-'),
                         TextEntry::make('internal_note')
                             ->label(__('Internal Note'))
+                            ->visible(fn() => \App\Services\ScheduleAccess::seesInternalNote(\Filament\Facades\Filament::auth()->user()))
                             ->placeholder('-'),
                         TextEntry::make('created_at')
                             ->label(__('Created At'))

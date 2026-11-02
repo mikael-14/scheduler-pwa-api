@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use Rupadana\ApiService\Http\Handlers;
 use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
 use App\Filament\Resources\ScheduleTypes\Api\Requests\CreateScheduleTypeRequest;
+use App\Filament\Resources\ScheduleTypes\Api\Transformers\ScheduleTypeTransformer;
 
 class CreateHandler extends \App\Http\Handlers\ApprovedHandler
 {
@@ -31,10 +32,11 @@ class CreateHandler extends \App\Http\Handlers\ApprovedHandler
     {
         $model = new (static::getModel());
 
-        $model->fill($request->all());
+        // only the validated fields: anything else (e.g. 'primary') is ignored
+        $model->fill($request->validated());
 
         $model->save();
 
-        return static::sendSuccessResponse($model, "Successfully Create Resource");
+        return static::sendSuccessResponse(new ScheduleTypeTransformer($model), "Successfully Create Resource");
     }
 }

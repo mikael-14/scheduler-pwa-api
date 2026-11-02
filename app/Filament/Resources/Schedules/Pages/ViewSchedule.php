@@ -18,6 +18,16 @@ class ViewSchedule extends ViewRecord
 {
     protected static string $resource = ScheduleResource::class;
 
+    /** The page sends the record's columns to the browser: the internal note only to staff. */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        if (! ScheduleAccess::seesInternalNote(Filament::auth()->user())) {
+            unset($data['internal_note']);
+        }
+
+        return $data;
+    }
+
     protected function getHeaderActions(): array
     {
         $canDecide = fn(Schedule $record): bool => $record->status === ScheduleStatus::Pending

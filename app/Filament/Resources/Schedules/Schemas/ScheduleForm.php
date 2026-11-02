@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Schedules\Schemas;
 use App\Enums\ScheduleStatus;
 use App\Models\ScheduleType;
 use App\Models\User;
+use App\Services\ScheduleAccess;
 use App\Services\ScheduleTypeRules;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -94,7 +95,10 @@ class ScheduleForm
                         && (\App\Services\AllDayRule::mayBook(Filament::auth()->user()) || $record?->all_day))
                     ->default(false),
                 Textarea::make('description')->autosize(),
-                Textarea::make('internal_note')->autosize(),
+                // staff only; hidden fields are not saved, so others cannot change it either
+                Textarea::make('internal_note')
+                    ->autosize()
+                    ->visible(fn() => ScheduleAccess::seesInternalNote(Filament::auth()->user())),
                 ToggleButtons::make('status')
                     ->inline()
                     ->default(ScheduleStatus::Pending->value)

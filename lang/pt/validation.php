@@ -182,5 +182,9 @@ return [
         'primary' => 'principal',
         'min_time' => 'hora mínima',
         'max_time' => 'hora máxima',
+        // API (PWA): profile photo, the note on a decision, the password reset link
+        'avatar' => 'fotografia de perfil',
+        'message' => 'mensagem',
+        'token' => 'código de redefinição',
     ],
 ];

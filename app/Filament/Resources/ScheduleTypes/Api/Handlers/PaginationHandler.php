@@ -22,7 +22,11 @@ class PaginationHandler extends \App\Http\Handlers\ApprovedHandler
      */
     public function handler()
     {
-        $query = static::getEloquentQuery();
+        // each type's active schedules (whether it can be deleted), in one query; by name unless sorted
+        $query = static::getEloquentQuery()->withCount('schedules');
+        if (! request()->query('sort')) {
+            $query->orderBy('name');
+        }
 
         $query = QueryBuilder::for($query)
         ->allowedFields($this->getAllowedFields() ?? [])

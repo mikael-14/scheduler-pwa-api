@@ -32,6 +32,12 @@ class ScheduleAccess
             || $user->can('update_any_schedule');
     }
 
+    /** The internal note is read and written by staff only (API, admin panel, calendar). */
+    public static function seesInternalNote(mixed $user): bool
+    {
+        return $user instanceof User && static::isStaff($user);
+    }
+
     /**
      * What the shared agenda shows. With `view_inactive_schedule`, everything. Otherwise only
      * pending and approved schedules, plus the person's own and the ones they take part in

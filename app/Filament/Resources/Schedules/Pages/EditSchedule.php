@@ -8,12 +8,24 @@ use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
 use App\Services\PrimaryScheduleRule;
+use App\Services\ScheduleAccess;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
 class EditSchedule extends EditRecord
 {
     protected static string $resource = ScheduleResource::class;
+
+    /** The page sends the record's columns to the browser: the internal note only to staff. */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        if (! ScheduleAccess::seesInternalNote(Filament::auth()->user())) {
+            unset($data['internal_note']);
+        }
+
+        return $data;
+    }
 
     /** The participants in the form are saved after the schedule; the primary rule counts them already. */
     protected function handleRecordUpdate(Model $record, array $data): Model

@@ -6,6 +6,7 @@ use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Schedule;
 use App\Models\ScheduleType;
+use App\Services\ScheduleAccess;
 use App\Services\ScheduleTypeRules;
 use Filament\Schemas\Components\Grid;
 use Carbon\Carbon;
@@ -37,6 +38,8 @@ class CalendarWidget extends FullCalendarWidget
         return [
             CreateAction::make()
                 ->model(Schedule::class)
+                // the modal's title and buttons say "â€¦ agendamento", not the class name
+                ->modelLabel(mb_strtolower(__('Schedule')))
                 ->label(__('Create Schedule'))
                 ->schema([
                     Grid::make(2)
@@ -56,6 +59,7 @@ class CalendarWidget extends FullCalendarWidget
         return [
             EditAction::make('edit')
                 ->model(Schedule::class)
+                ->modelLabel(mb_strtolower(__('Schedule')))
                 ->record(fn(array $arguments) => Schedule::with('schedule_users')->find($arguments['event']))
                 ->schema([
                     Grid::make(2)
@@ -70,7 +74,8 @@ class CalendarWidget extends FullCalendarWidget
                         'end'              => $record->end,
                         'all_day'          => $record->all_day,
                         'description'      => $record->description,
-                        'internal_note'    => $record->internal_note,
+                        // staff only: for others it never reaches the browser
+                        ...(ScheduleAccess::seesInternalNote(auth()->user()) ? ['internal_note' => $record->internal_note] : []),
                         'status'           => $record->status,
                     ]);
                 }),
@@ -135,14 +140,14 @@ class CalendarWidget extends FullCalendarWidget
                     $title .= ' +' . ($names->count() - 1);
                 }
                 if ($event->all_day) {
-                    $title = '⌛ ' . $title;
+                    $title = 'âŒ› ' . $title;
                 }
                 if (!empty($event->description)) {
-                    $title .= ' 💬';
+                    $title .= ' ðŸ’¬';
                 }
                 // On the central calendar, say which type each event belongs to
                 if (!$this->record && $type) {
-                    $title .= ' · ' . $type->name;
+                    $title .= ' Â· ' . $type->name;
                 }
 
                 return [

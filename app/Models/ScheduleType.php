@@ -74,4 +74,13 @@ class ScheduleType extends Model implements Auditable
 	{
 		return $this->hasMany(Schedule::class);
 	}
+
+	/**
+	 * A type with schedules can't be deleted (admin panel and API). Only active schedules count:
+	 * deleted ones (soft deleted) don't block, and lose their type (the foreign key nulls it).
+	 */
+	public function canBeDeleted(): bool
+	{
+		return ! $this->schedules()->exists();
+	}
 }

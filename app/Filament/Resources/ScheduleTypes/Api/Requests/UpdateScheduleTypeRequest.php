@@ -25,7 +25,7 @@ class UpdateScheduleTypeRequest extends FormRequest
             'name' => 'required|string|max:50',
             'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'status' => 'required|boolean',
-            'primary' => 'sometimes|boolean',
+            // no 'primary': it is set in the database only (as in the admin panel)
             'range' => 'required|boolean',
             'all_day' => 'required|boolean',
             'start' => 'nullable|date',

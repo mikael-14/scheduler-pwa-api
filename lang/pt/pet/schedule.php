@@ -6,7 +6,7 @@ return [
         'rejected' => 'Rejeitado',
         'cancelled' => 'Cancelado',
         'completed' => 'Concluído',
-        'not_shown' => 'Não apareceu',
+        'not_shown' => 'Não compareceu',
     ],
     'description' => [
         'pending' => 'O agendamento está a aguardar revisão e aprovação.',

@@ -125,7 +125,7 @@ class ScheduleTypesTable
                     DeleteAction::make()
                         ->before(function (DeleteAction $action) {
                             $record = $action->getRecord();
-                            if ($record->schedules()->count() > 0) {
+                            if (! $record->canBeDeleted()) {
                                 Notification::make()
                                     ->title(__('Cannot delete record'))
                                     ->body(__('This record has related schedules and cannot be deleted.'))
@@ -141,7 +141,7 @@ class ScheduleTypesTable
                     DeleteBulkAction::make()
                         ->action(function (Collection $records) {
                             $recordsWithoutSchedules = $records->filter(function (Model $record) {
-                                return $record->schedules()->count() == 0;
+                                return $record->canBeDeleted();
                             });
                             if ($recordsWithoutSchedules->count() != $records->count()) {
                                 Notification::make()
