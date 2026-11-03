@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Spatie\Permission\Models\Permission;
 
 /**
  * Finds days without enough approved schedules of a type and warns everyone
@@ -121,14 +122,23 @@ class CoverageChecker
             ->exists();
     }
 
-    /** 'everyone' or ['roles' => [...]]; always only accounts that can use the app. */
+    /**
+     * 'everyone' or ['roles' => [...]]; always only accounts that can use the app and book
+     * (`create_schedule`): the alert asks them to book, so e.g. an Externo, who only joins, is not told.
+     */
     private function audience(mixed $audience)
     {
-        return User::query()
+        if (! Permission::where('name', 'create_schedule')->exists()) {
+            return collect();
+        }
+
+        return User::permission('create_schedule')
             ->where('status', true)
             ->whereNotNull('approved_at')
             ->when(is_array($audience) && ! empty($audience['roles']), fn($query) => $query->role($audience['roles']))
-            ->get();
+            ->get()
+            ->unique('id')
+            ->values();
     }
 
     private function send(string $rule, ScheduleType $type, CarbonInterface $date, int $days, array $row, $recipients): void

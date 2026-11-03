@@ -60,6 +60,9 @@ class ShieldPermissionsTest extends TestCase
         $admin = User::factory()->create(['email' => 'boss@x.test', 'approved_at' => now(), 'status' => true]);
         putenv('SUPER_ADMIN_EMAIL=boss@x.test');
         $_ENV['SUPER_ADMIN_EMAIL'] = 'boss@x.test';
+        // .env may set it too, and $_SERVER is read first
+        $before = $_SERVER['SUPER_ADMIN_EMAIL'] ?? null;
+        $_SERVER['SUPER_ADMIN_EMAIL'] = 'boss@x.test';
 
         $this->seed(\Database\Seeders\PermissionsSeeder::class);
 
@@ -74,6 +77,7 @@ class ShieldPermissionsTest extends TestCase
 
         putenv('SUPER_ADMIN_EMAIL');
         unset($_ENV['SUPER_ADMIN_EMAIL']);
+        $before === null ? (function () { unset($_SERVER['SUPER_ADMIN_EMAIL']); })() : $_SERVER['SUPER_ADMIN_EMAIL'] = $before;
     }
 
     public function test_the_seeder_removes_old_permissions_and_keeps_renamed_access(): void

@@ -312,6 +312,40 @@ menu) changes their language and notifications, and the PWA's profile also their
 A schedule's internal note is only seen by staff (`approve_schedule`, `update_status_schedule`
 or `update_any_schedule`), in the panel, the API and the PWA.
 
+#### Notifications
+
+Nobody is told about what they did themselves, and only **active, approved** accounts are told
+anything (in the app; by email / push only when they have those on, except account messages and
+announcements with "email everyone").
+
+| Who is told | What | Decided by |
+|---|---|---|
+| the owner and participants | approved, rejected, cancelled, changed, booked for you, added / removed, marked "não compareceu" | being on the schedule |
+| approvers | a schedule waiting for approval, someone joined / left, someone marked "não compareceu" | `approve_schedule` or `update_status_schedule` |
+| who turned on "all notifications" | what happens on the agenda | `view_any_schedule` (approvers are not told twice) |
+| coverage alerts ("nobody yet for …") | a day nobody is approved for | `create_schedule` (they are asked to book), plus the rule's roles in `config/coverage.php` |
+| announcements | a message from an admin to everyone, some roles or some people | sent by `send_notification_log` |
+
+Each person only reads and marks as read their own notifications (API and panel bell). The log of
+everything sent (`/admin/notifications`) needs `view_any_notification_log`.
+
+#### Audits (change history)
+
+| What | Needs |
+|---|---|
+| the Audits page and an audit's details | `view_any_audit` / `view_audit` |
+| the "History" tab of a schedule or a type (read only) | `view_any_audit` |
+| the login history (`/admin/authentication-logs`, a user's "logins" tab) | `view_any_audit` |
+| put a schedule / type / user back as an audit recorded it ("Restore", on changes only) | `restore_audit` |
+
+Recorded, with who did it and when: schedules, participants, schedule types, users (never the
+password or its token), roles (created, renamed) and — through `App\Listeners\RecordRoleChanges`
+(needs `permission.events_enabled`) — **a user's roles** ("roles: Voluntário Novo → Voluntário
+Experiente", one entry per change, also when given on approval) and **a role's permissions**
+("permissions: before → after", the Roles screen included; "before" is the list last recorded).
+Changes made from the console (seeders, `schedules:complete`) are not audited, except role and
+permission changes.
+
 #### In the API
 
 Every route is closed by default (`tests/Feature/ApiRouteGuardsTest.php` fails on a new route that

@@ -11,6 +11,7 @@ use Illuminate\Console\Scheduling\Schedule as Scheduler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -32,9 +33,17 @@ class CoverageAlertsTest extends TestCase
         Notification::fake();
     }
 
-    private function user(array $attributes = []): User
+    /** Someone who can book (the alert asks them to); $canBook false: e.g. an Externo, who only joins. */
+    private function user(array $attributes = [], bool $canBook = true): User
     {
-        return User::factory()->create(array_merge(['approved_at' => now(), 'status' => true], $attributes));
+        $user = User::factory()->create(array_merge(['approved_at' => now(), 'status' => true], $attributes));
+        $role = $canBook ? 'booker' : 'joiner';
+        $permission = $canBook ? 'create_schedule' : 'participate_schedule';
+        Role::firstOrCreate(['name' => $role, 'guard_name' => 'web'])
+            ->givePermissionTo(Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']));
+        $user->assignRole($role);
+
+        return $user;
     }
 
     private function scheduleOn(string $day, ScheduleStatus $status, array $attributes = []): Schedule
@@ -50,6 +59,8 @@ class CoverageAlertsTest extends TestCase
         $volunteer = $this->user(['locale' => 'pt']);
         $inactive = $this->user(['status' => false]);
         $pending = $this->user(['approved_at' => null]);
+        // only joins: "book it" is not for them
+        $externo = $this->user([], canBook: false);
 
         $this->artisan('coverage:check')->assertSuccessful();
 
@@ -57,6 +68,7 @@ class CoverageAlertsTest extends TestCase
         Notification::assertSentToTimes($volunteer, CoverageAlert::class, 2);
         Notification::assertNotSentTo($inactive, CoverageAlert::class);
         Notification::assertNotSentTo($pending, CoverageAlert::class);
+        Notification::assertNotSentTo($externo, CoverageAlert::class);
         $this->assertSame(['2026-10-21', '2026-10-27'], DB::table('coverage_alerts')->orderBy('date')->pluck('date')->all());
 
         // what it says, and where it leads

@@ -24,7 +24,8 @@ return [
          * `Spatie\Permission\Contracts\Role` contract.
          */
 
-        'role' => Spatie\Permission\Models\Role::class,
+        // the app's model: Spatie's role, audited (App\Models\Role)
+        'role' => App\Models\Role::class,
 
     ],
 
@@ -118,8 +119,11 @@ return [
      * \Spatie\Permission\Events\PermissionDetached
      *
      * To enable, set to true, and then create listeners to watch these events.
+     *
+     * On: App\Listeners\RecordRoleChanges writes who gave / took which role or permission into
+     * the audits.
      */
-    'events_enabled' => false,
+    'events_enabled' => true,
 
     /*
      * Teams Feature.

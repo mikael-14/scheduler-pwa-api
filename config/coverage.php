@@ -36,7 +36,8 @@ return [
         // how many days ahead to warn: a week before and the day before
         'notify_days_before' => [7, 1],
 
-        // who is told: 'everyone' (active, approved accounts) or ['roles' => ['volunteer', ...]]
+        // who is told: 'everyone' or ['roles' => ['volunteer', ...]]; always only active, approved
+        // accounts that can book (create_schedule): an Externo, who only joins, is never told
         'audience' => 'everyone',
     ],
 
