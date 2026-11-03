@@ -246,6 +246,46 @@ class ScheduleAccess
         }
     }
 
+    /** Whether the user may choose the owner: `create_any_schedule` on a new one, `update_any_schedule` after. */
+    public static function maySetOwner(?User $user, ?Schedule $schedule = null): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $schedule?->exists
+            ? $user->can('update_any_schedule')
+            : $user->can('create_any_schedule');
+    }
+
+    /**
+     * From Schedule::saving: who owns it, on every path (admin form, calendar, API). A signed-in
+     * person books for themselves unless they have `create_any_schedule` (no owner given: them),
+     * and hands a schedule over only with `update_any_schedule`. Tasks without a user are not limited.
+     */
+    public static function enforceOwner(Schedule $schedule): void
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User) {
+            return;
+        }
+
+        if (! $schedule->exists) {
+            if (! $schedule->user_id) {
+                $schedule->user_id = $user->id;
+            } elseif ((int) $schedule->user_id !== $user->id && ! static::maySetOwner($user, $schedule)) {
+                static::fail('user_id', __('This action is unauthorized.'), __('Only you can be the owner of your schedules.'));
+            }
+
+            return;
+        }
+
+        if ($schedule->isDirty('user_id') && ! static::maySetOwner($user, $schedule)) {
+            static::fail('user_id', __('This action is unauthorized.'), __('Only you can be the owner of your schedules.'));
+        }
+    }
+
     private static function statusProblem(ScheduleStatus $to): string
     {
         return match ($to) {
@@ -262,9 +302,14 @@ class ScheduleAccess
      */
     private static function failStatus(string $problem): void
     {
+        static::fail('status', __('This status cannot be set'), $problem);
+    }
+
+    private static function fail(string $field, string $title, string $problem): void
+    {
         if (request()->hasHeader('X-Livewire') && class_exists(Halt::class)) {
             Notification::make()
-                ->title(__('This status cannot be set'))
+                ->title($title)
                 ->body($problem)
                 ->danger()
                 ->send();
@@ -272,7 +317,7 @@ class ScheduleAccess
             throw new Halt();
         }
 
-        throw ValidationException::withMessages(['status' => [$problem]]);
+        throw ValidationException::withMessages([$field => [$problem]]);
     }
 
     public static function canDelete(User $user, Schedule $schedule): bool

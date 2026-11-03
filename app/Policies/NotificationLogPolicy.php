@@ -52,4 +52,35 @@ class NotificationLogPolicy
     {
         return false;
     }
+
+    // not soft deleted, copied or reordered: every Filament ability answers, so none is open by default
+    public function restore(AuthUser $authUser, NotificationLog $notificationLog): bool
+    {
+        return false;
+    }
+
+    public function restoreAny(AuthUser $authUser): bool
+    {
+        return false;
+    }
+
+    public function forceDelete(AuthUser $authUser, NotificationLog $notificationLog): bool
+    {
+        return false;
+    }
+
+    public function forceDeleteAny(AuthUser $authUser): bool
+    {
+        return false;
+    }
+
+    public function replicate(AuthUser $authUser, NotificationLog $notificationLog): bool
+    {
+        return false;
+    }
+
+    public function reorder(AuthUser $authUser): bool
+    {
+        return false;
+    }
 }

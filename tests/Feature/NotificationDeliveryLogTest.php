@@ -57,10 +57,10 @@ class NotificationDeliveryLogTest extends TestCase
         $type = ScheduleType::create(['name' => 'Cleaning', 'color' => '#112233', 'status' => true, 'range' => true, 'all_day' => false]);
         $day = now()->addDays(3)->format('Y-m-d');
 
-        return Schedule::create([
+        return $this->asSystem(fn() => Schedule::create([
             'schedule_type_id' => $type->id, 'user_id' => $owner->id, 'status' => ScheduleStatus::Pending,
             'start' => "$day 10:00", 'end' => "$day 12:00",
-        ]);
+        ]));
     }
 
     /** The push service answers per device: endpoint => HTTP status (201 = delivered). */

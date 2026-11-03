@@ -47,6 +47,12 @@ class AuditPolicy
         return $authUser->can('force_delete_audit');
     }
 
+    /** The history is never bulk deleted (without this method Filament would allow it). */
+    public function deleteAny(AuthUser $authUser): bool
+    {
+        return false;
+    }
+
     public function forceDeleteAny(AuthUser $authUser): bool
     {
         return $authUser->can('force_delete_any_audit');

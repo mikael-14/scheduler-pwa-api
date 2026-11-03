@@ -46,9 +46,13 @@ class ScheduleForm
                     ->native(false)
                     ->preload(true)
                     ->required(),
+                // the owner: you, unless you may book for / hand over to others (also enforced on save)
                 UserSelect::make('user_id')
                     ->label(__('Select User'))
                     ->relationship('user', 'name')
+                    ->default(fn() => Filament::auth()->id())
+                    ->disabled(fn($record) => ! ScheduleAccess::maySetOwner(Filament::auth()->user(), $record instanceof \App\Models\Schedule ? $record : null))
+                    ->dehydrated(fn($record) => ScheduleAccess::maySetOwner(Filament::auth()->user(), $record instanceof \App\Models\Schedule ? $record : null))
                     ->live()
                     ->searchable()
                     ->preload(true),

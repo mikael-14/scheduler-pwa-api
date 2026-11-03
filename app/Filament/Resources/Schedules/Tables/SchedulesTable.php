@@ -214,9 +214,11 @@ class SchedulesTable
             ->columnManagerColumns(2)
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
+                    // each selected schedule as if alone (e.g. past ones need update_past_schedule);
+                    // Filament only checks deleteAny / forceDeleteAny / restoreAny otherwise
+                    DeleteBulkAction::make()->authorizeIndividualRecords(),
+                    ForceDeleteBulkAction::make()->authorizeIndividualRecords(),
+                    RestoreBulkAction::make()->authorizeIndividualRecords(),
                     BulkAction::make('approve')
                         ->label(__('Approve selected'))
                         ->icon('heroicon-o-check')

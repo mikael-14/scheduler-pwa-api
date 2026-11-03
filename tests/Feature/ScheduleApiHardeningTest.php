@@ -251,14 +251,14 @@ class ScheduleApiHardeningTest extends TestCase
         // an already decided schedule is not re-decided with this permission alone
         $this->postJson(self::URL . "/{$schedule->id}/reject")->assertStatus(422)->assertJsonPath('code', 'not_pending');
 
-        $second = Schedule::create(array_merge($this->payload($type), ['user_id' => $owner->id, 'status' => ScheduleStatus::Pending, 'internal_note' => 'earlier']));
+        $second = $this->asSystem(fn() => Schedule::create(array_merge($this->payload($type), ['user_id' => $owner->id, 'status' => ScheduleStatus::Pending, 'internal_note' => 'earlier'])));
         $this->postJson(self::URL . "/{$second->id}/reject", ['message' => 'Full that day'])->assertOk();
         $this->assertSame(ScheduleStatus::Rejected, $second->fresh()->status);
         $this->assertStringStartsWith("earlier\n[", $second->fresh()->internal_note);
         $this->assertStringEndsWith(': Full that day', $second->fresh()->internal_note);
 
         // the message is optional but bounded
-        $third = Schedule::create(array_merge($this->payload($type), ['user_id' => $owner->id, 'status' => ScheduleStatus::Pending]));
+        $third = $this->asSystem(fn() => Schedule::create(array_merge($this->payload($type), ['user_id' => $owner->id, 'status' => ScheduleStatus::Pending])));
         $this->postJson(self::URL . "/{$third->id}/approve", ['message' => str_repeat('x', 1001)])->assertStatus(422);
         $this->postJson(self::URL . "/{$third->id}/approve")->assertOk();
         $this->assertNull($third->fresh()->internal_note);

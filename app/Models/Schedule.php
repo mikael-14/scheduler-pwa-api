@@ -71,6 +71,8 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 	{
 		// Who may set which status, and when (ScheduleAccess::mayChangeStatus), on every path
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleAccess::enforceStatusChange($schedule));
+		// Who owns it: booking for / handing over to someone else needs create_any / update_any_schedule
+		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleAccess::enforceOwner($schedule));
 		// Type rules and the past-date rule must hold on every path (panel, calendar modals, API)
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleRulesValidator::enforce($schedule));
 		// Primary type: who may be approved without someone who may go alone

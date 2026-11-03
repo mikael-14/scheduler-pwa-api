@@ -37,6 +37,12 @@ class RolePolicy
         return $authUser->can('delete_role');
     }
 
+    /** The bulk delete: without this method Filament would let anyone who sees the list use it. */
+    public function deleteAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('delete_role');
+    }
+
     public function restore(AuthUser $authUser, Role $role): bool
     {
         return $authUser->can('restore_role');

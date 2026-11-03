@@ -33,10 +33,10 @@ class ReviewPendingScheduleTest extends TestCase
         $owner = User::factory()->create(['approved_at' => now(), 'status' => true]);
         $type = ScheduleType::create(['name' => 'Cleaning', 'color' => '#112233', 'status' => true, 'range' => true, 'all_day' => false]);
         $day = now()->addDays(3)->format('Y-m-d');
-        $schedule = Schedule::create([
+        $schedule = $this->asSystem(fn() => Schedule::create([
             'schedule_type_id' => $type->id, 'user_id' => $owner->id, 'status' => ScheduleStatus::Pending,
             'start' => "$day 10:00", 'end' => "$day 12:00", 'internal_note' => 'first note',
-        ]);
+        ]));
 
         return [$schedule, $approver];
     }

@@ -1,4 +1,4 @@
-﻿<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 # Scheduler API
 
@@ -260,10 +260,10 @@ needed and take part.
 | `view_any_schedule`, `view_schedule` | open the shared agenda / a schedule |
 | `view_inactive_schedule` | also see other people's rejected, cancelled, completed and not-shown schedules (without it: only pending / approved, plus your own and the ones you take part in) |
 | `create_schedule` | book for yourself |
-| `create_any_schedule` | book for someone else |
+| `create_any_schedule` | book for someone else (without it the owner field is locked to you, everywhere) |
 | `update_schedule` | edit (and cancel, before it starts) your own schedules, add / remove their participants, mark one of them "não compareceu" once it started |
-| `update_any_schedule` | the same on anyone's |
-| `delete_schedule` / `delete_any_schedule` | delete your own / anyone's (admin panel) |
+| `update_any_schedule` | the same on anyone's, and hand a schedule over to another owner |
+| `delete_schedule` / `delete_any_schedule` | delete your own / anyone's (admin panel). Bulk delete needs `delete_any_schedule` and skips the selected ones you could not delete one by one (e.g. past ones without `update_past_schedule`) |
 | `restore_schedule`, `restore_any_schedule`, `force_delete_schedule`, `force_delete_any_schedule` | bring back / delete forever deleted schedules (admin panel) |
 | `update_past_schedule` | anything on schedules before today (without it, from today on only) |
 | `participate_schedule` | add **yourself** to someone else's pending / approved schedule, from today on; never a whole-day one. You get the schedule's status (joining an approved one keeps it approved; on the primary type the "may go alone" rule still applies) |
@@ -277,11 +277,18 @@ People added by the owner or an admin need no permission of their own. A partici
 always the schedule's (approve / reject / cancel it and its participants follow), except
 "não compareceu", which is per person.
 
+The admin panel follows the same rules as the API. The owner rule is checked whenever a schedule
+is saved, so no screen can skip it. Clicking a schedule on the calendar opens the edit popup
+only for those who may edit it; anyone else who may see it gets its page. Schedules you may not see
+don't open (`ScheduleAdminAccessTest`).
+
 #### Schedule types, users and administration
 
 | Permission | Allows |
 |---|---|
-| `view_any_schedule_type`, `view_schedule_type`, `create_schedule_type`, `update_schedule_type`, `delete_schedule_type` | manage schedule types |
+| `view_any_schedule_type` / `view_schedule_type` | the types list / a type's page (its calendar; its History tab also needs `view_any_audit`) |
+| `create_schedule_type`, `update_schedule_type` | create / edit types (the "primary" type is set in the database only, never in the form or the API) |
+| `delete_schedule_type` | delete types, one or in bulk: never a type that still has schedules (the others selected are deleted) |
 | `view_any_user` / `view_owned_user` | the users list / the list with only your own row (anyone else's page: 404) |
 | `update_any_user` / `update_owned_user` | edit anyone / only yourself (name, email, avatar, language, notifications, password) |
 | `create_user`, `delete_user`, `restore_user`, `restore_any_user` | create, delete (not someone with schedules, nor yourself in bulk), bring back users |
@@ -294,6 +301,11 @@ always the schedule's (approve / reject / cancel it and its participants follow)
 | `view_any_notification_log`, `view_notification_log` | the notifications sent |
 | `send_notification_log` | send announcements |
 | `view_any_token`, `view_token`, `create_token`, `update_token`, `delete_token` | the API plugin's tokens page (the PWA's own devices don't need it) |
+
+Every delete in bulk needs the same permission as deleting one (`delete_schedule_type`, `delete_user`,
+`delete_role`, `delete_token`; schedules: `delete_any_schedule`, each row checked as if alone). Every screen's policy answers every
+action Filament asks about, because Filament allows an action whose policy method is missing
+(`AccessHolesTest` checks this for every admin resource).
 
 On the user edit page, the account switches are kept apart from the rest:
 

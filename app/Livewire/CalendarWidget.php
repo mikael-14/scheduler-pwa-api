@@ -15,6 +15,8 @@ use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Saade\FilamentFullCalendar\Actions\CreateAction;
 use Saade\FilamentFullCalendar\Actions\EditAction;
+use App\Filament\Resources\Schedules\ScheduleResource;
+use Illuminate\Support\Facades\Gate;
 
 class CalendarWidget extends FullCalendarWidget
 {
@@ -44,6 +46,8 @@ class CalendarWidget extends FullCalendarWidget
                 // the modal's title and buttons say "â€¦ agendamento", not the class name
                 ->modelLabel(mb_strtolower(__('Schedule')))
                 ->label(__('Create Schedule'))
+                // a date click / select opens it too: the same permission as the Create page
+                ->authorize(fn() => Gate::allows('create', Schedule::class))
                 ->schema([
                     Grid::make(2)
                         ->schema(ScheduleForm::formSchema())
@@ -63,7 +67,9 @@ class CalendarWidget extends FullCalendarWidget
             EditAction::make('edit')
                 ->model(Schedule::class)
                 ->modelLabel(mb_strtolower(__('Schedule')))
-                ->record(fn(array $arguments) => Schedule::with('schedule_users')->find($arguments['event']))
+                ->record(fn(array $arguments) => $this->visibleSchedule($arguments['event'] ?? null))
+                // also reached by drag / resize requests: only who may edit it (SchedulePolicy::update)
+                ->authorize(fn(?Schedule $record) => $record && Gate::allows('update', $record))
                 ->schema([
                     Grid::make(2)
                         ->schema(ScheduleForm::formSchema())
@@ -222,10 +228,41 @@ class CalendarWidget extends FullCalendarWidget
         JS;
     }
 
+    /**
+     * A click opens the edit popup for who may edit the schedule (SchedulePolicy::update: their own
+     * from today on, or anyone's with update_any_schedule); anyone else who may see it gets its page.
+     */
     public function onEventClick(array $info): void
     {
-        $this->mountAction('edit', [
-            'event' => $info['id'],
-        ]);
+        $schedule = $this->visibleSchedule($info['id'] ?? null);
+
+        if (! $schedule) {
+            return;
+        }
+
+        if (Gate::allows('update', $schedule)) {
+            $this->mountAction('edit', [
+                'event' => $schedule->id,
+            ]);
+
+            return;
+        }
+
+        if (Gate::allows('view', $schedule)) {
+            $this->redirect(ScheduleResource::getUrl('infolist', ['record' => $schedule]));
+        }
+    }
+
+    /** The schedule behind a calendar event (an id, or FullCalendar's event object), if the user sees it. */
+    private function visibleSchedule(mixed $event): ?Schedule
+    {
+        $id = is_array($event) ? ($event['id'] ?? null) : $event;
+        $user = auth()->user();
+
+        if (! $id || ! $user) {
+            return null;
+        }
+
+        return ScheduleAccess::scopeVisible(Schedule::query(), $user)->with('schedule_users')->find($id);
     }
 }

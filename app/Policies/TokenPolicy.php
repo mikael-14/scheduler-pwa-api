@@ -37,6 +37,12 @@ class TokenPolicy
         return $authUser->can('delete_token');
     }
 
+    /** The bulk delete: without this method Filament would let anyone who sees the list use it. */
+    public function deleteAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('delete_token');
+    }
+
     public function restore(AuthUser $authUser, Token $token): bool
     {
         return $authUser->can('restore_token');

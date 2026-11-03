@@ -39,6 +39,32 @@ class AccessHolesTest extends TestCase
         return $user;
     }
 
+    /**
+     * Filament lets anyone through when a resource's policy lacks the method for an action (e.g.
+     * deleteAny, the bulk delete), so every resource's policy must have all of them.
+     */
+    public function test_every_admin_resource_has_a_policy_with_every_ability(): void
+    {
+        $abilities = ['viewAny', 'view', 'create', 'update', 'delete', 'deleteAny', 'restore', 'restoreAny', 'forceDelete', 'forceDeleteAny', 'replicate', 'reorder'];
+
+        foreach (Filament::getPanel('admin')->getResources() as $resource) {
+            $policy = \Illuminate\Support\Facades\Gate::getPolicyFor($resource::getModel());
+            $this->assertNotNull($policy, "$resource has no policy: it would be open to everyone");
+            foreach ($abilities as $ability) {
+                $this->assertTrue(method_exists($policy, $ability), $policy::class . " has no $ability()");
+            }
+        }
+    }
+
+    public function test_bulk_deleting_users_needs_delete_user(): void
+    {
+        Filament::setCurrentPanel('admin');
+        $this->actingAs($this->userWith($this->role('lister', ['view_any_user'])));
+
+        Livewire::test(\App\Filament\Resources\Users\Pages\ListUsers::class)
+            ->assertActionHidden(\Filament\Actions\Testing\TestAction::make('delete')->table()->bulk());
+    }
+
     public function test_the_login_history_is_only_for_who_sees_the_audits(): void
     {
         $volunteer = $this->userWith($this->role('volunteer', ['view_any_schedule']));

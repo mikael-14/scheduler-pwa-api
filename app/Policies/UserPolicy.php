@@ -52,6 +52,12 @@ class UserPolicy
         return $authUser->can('delete_user');
     }
 
+    /** The bulk delete: without this method Filament would let anyone who sees the list use it. */
+    public function deleteAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('delete_user');
+    }
+
     public function restore(AuthUser $authUser): bool
     {
         return $authUser->can('restore_user');
