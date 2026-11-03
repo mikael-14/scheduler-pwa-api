@@ -31,12 +31,12 @@ class ShieldPermissionsTest extends TestCase
             // standard
             'view_any_schedule', 'view_schedule', 'create_schedule', 'update_schedule', 'delete_schedule',
             'view_any_schedule_type', 'view_schedule_type', 'create_schedule_type', 'update_schedule_type', 'delete_schedule_type',
-            'view_any_user', 'create_user', 'update_user', 'delete_user',
+            'view_any_user', 'create_user', 'delete_user', 'restore_user',
             'view_any_notification_log', 'view_notification_log',
             // custom, declared under resources.manage
             'create_any_schedule', 'update_any_schedule', 'delete_any_schedule', 'update_past_schedule',
-            'participate_schedule', 'independent_schedule', 'all_day_schedule', 'update_status_schedule', 'approve_schedule',
-            'approve_user', 'impersonate_user', 'view_owned_user', 'update_owned_user', 'update_any_user',
+            'participate_schedule', 'cancel_participation_schedule', 'view_inactive_schedule', 'independent_schedule', 'all_day_schedule', 'update_status_schedule', 'approve_schedule',
+            'approve_user', 'impersonate_user', 'view_owned_user', 'update_owned_user', 'update_any_user', 'assign_role_user',
             'restore_audit', 'send_notification_log',
         ];
 
@@ -68,13 +68,27 @@ class ShieldPermissionsTest extends TestCase
         $this->assertSame(Permission::count(), $role->permissions()->count());
         $this->assertTrue($admin->fresh()->can('create_any_schedule'));
 
-        // A permission added later (e.g. a new resource) reaches super_admin on the next run
-        Permission::create(['name' => 'brand_new_permission', 'guard_name' => 'web']);
-        $this->seed(\Database\Seeders\PermissionsSeeder::class);
-        $this->assertTrue($role->fresh()->hasPermissionTo('brand_new_permission'));
+        // nothing the code does not declare: no replicate / reorder, no audits to edit
+        $this->assertSame(0, Permission::where('name', 'like', 'replicate_%')->orWhere('name', 'like', 'reorder_%')->count());
+        $this->assertFalse(Permission::where('name', 'update_audit')->exists());
 
         putenv('SUPER_ADMIN_EMAIL');
         unset($_ENV['SUPER_ADMIN_EMAIL']);
+    }
+
+    public function test_the_seeder_removes_old_permissions_and_keeps_renamed_access(): void
+    {
+        $this->generate();
+        $staff = Role::create(['name' => 'staff', 'guard_name' => 'web']);
+        $staff->givePermissionTo(Permission::create(['name' => 'update_user', 'guard_name' => 'web']));
+        $staff->givePermissionTo(Permission::create(['name' => 'view_user_pending_counter_widget', 'guard_name' => 'web']));
+
+        $this->seed(\Database\Seeders\PermissionsSeeder::class);
+
+        $this->assertFalse(Permission::where('name', 'update_user')->exists());
+        $this->assertFalse(Permission::where('name', 'view_user_pending_counter_widget')->exists());
+        // who could edit users still can
+        $this->assertTrue($staff->fresh()->hasPermissionTo('update_any_user'));
     }
 
     public function test_no_orphan_permissions_for_self_gated_pages_and_widgets(): void

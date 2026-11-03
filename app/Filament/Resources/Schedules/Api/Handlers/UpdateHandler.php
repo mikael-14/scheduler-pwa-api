@@ -96,16 +96,7 @@ class UpdateHandler extends ApprovedHandler
                 fn() => $schedule->save()
             );
 
-            // Participants follow the schedule when it is approved or rejected
-            if ($schedule->wasChanged('status')) {
-                if ($schedule->status === ScheduleStatus::Approved) {
-                    $schedule->schedule_users()->where('status', ScheduleStatus::Pending)
-                        ->update(['status' => ScheduleStatus::Approved]);
-                } elseif ($schedule->status === ScheduleStatus::Rejected) {
-                    $schedule->schedule_users()->update(['status' => ScheduleStatus::Rejected]);
-                }
-            }
-
+            // participants follow the schedule's status by themselves (Schedule::shareStatusWithParticipants)
             if (array_key_exists('schedule_users', $data) && $data['schedule_users'] !== null) {
                 $this->syncParticipants($schedule, $data['schedule_users'], $actor, true);
             }

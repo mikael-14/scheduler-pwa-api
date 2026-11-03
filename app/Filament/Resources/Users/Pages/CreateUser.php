@@ -4,7 +4,7 @@ namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\UserResource;
-use Spatie\Permission\Models\Role;
+use App\Services\RoleAssignment;
 use App\Models\User;
 use Filament\Actions;
 use Filament\Facades\Filament;
@@ -69,7 +69,10 @@ class CreateUser extends CreateRecord
                                     ->label(__('Approved'))
                                     ->inline(false)
                                     ->helperText(__('Approve account'))
-                                    ->default(0),
+                                    ->default(0)
+                                    // approving needs approve_user, as the Approve action
+                                    ->disabled(fn() => ! Filament::auth()->user()->can('approve_user'))
+                                    ->dehydrated(fn() => Filament::auth()->user()->can('approve_user')),
                                 Toggle::make('building_key')
                                     ->label(__('Building Key'))
                                     ->inline(false)
@@ -102,13 +105,11 @@ class CreateUser extends CreateRecord
                             ]),
                         Select::make('role')
                             ->label(__('Roles'))
-                            ->options(
-                                Role::all()->pluck('name', 'id')
-                                    ->toArray()
-                            )
+                            // only with assign_role_user; super admin only by a super admin (RoleAssignment)
+                            ->options(fn() => RoleAssignment::options(Filament::auth()->user()))
                             ->multiple()
                             ->native(false)
-                            ->visible(Filament::auth()->user()->can('view_any_role')),
+                            ->visible(fn() => RoleAssignment::canAssign(Filament::auth()->user())),
                     ]),
                 Section::make()
                     ->schema([
@@ -130,7 +131,9 @@ class CreateUser extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         // Set the "approved_at" field based on the "approved" toggle value
-        $data['approved_at'] = $data['approved'] ? now() : null;
+        // (absent when the creator may not approve: the account waits for approval)
+        $data['approved_at'] = ! empty($data['approved']) ? now() : null;
+        unset($data['approved']);
 
         // Update the form state with the modified values
         return $data;
@@ -141,10 +144,8 @@ class CreateUser extends CreateRecord
         // Runs after the form fields are saved to the database.
         //assign role
         $state = $this->form->getState();
-        if (isset($state['role'])) {
-            foreach ($state['role'] as $roleId) {
-                $this->record->assignRole($roleId);
-            }
+        if (! empty($state['role'])) {
+            RoleAssignment::sync(Filament::auth()->user(), $this->record, $state['role']);
         }
     }
 }

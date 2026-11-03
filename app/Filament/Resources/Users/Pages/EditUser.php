@@ -7,6 +7,7 @@ use App\Filament\Resources\Users\UserResource;
 use App\Models\ModelHasRole;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\RoleAssignment;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
@@ -58,11 +59,28 @@ class EditUser extends EditRecord
         return $data;
     }
 
+    /** Active / building key: who edits other people (`update_any_user`), never on their own record. */
+    public static function managesAccount(?User $record): bool
+    {
+        $me = Filament::auth()->user();
+
+        return $me && $record && ! $record->is($me) && $me->can('update_any_user');
+    }
+
+    /** Approved: also `approve_user`, the same as the Approve action. */
+    public static function mayApprove(?User $record): bool
+    {
+        return self::managesAccount($record) && Filament::auth()->user()->can('approve_user');
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (isset($data['approved'])) {
-            $data['approved_at'] = $data['approved'] ? now() : null;
+        // only when the toggle was saved (see mayApprove); keeps the original approval date
+        if (array_key_exists('approved', $data)) {
+            $data['approved_at'] = $data['approved'] ? ($this->record->approved_at ?? now()) : null;
         }
+        unset($data['approved']);
+
         return $data;
     }
 
@@ -100,18 +118,26 @@ class EditUser extends EditRecord
                                 Grid::make()
                                     ->columns(3)
                                     ->schema([
+                                        // the account itself: only by who manages others, never on one's own;
+                                        // disabled ones are not saved, whatever the browser sends
                                         Toggle::make('status')
                                             ->label(__('Active'))
                                             ->inline(false)
-                                            ->helperText(__('Admin panel access')),
+                                            ->helperText(__('Admin panel access'))
+                                            ->disabled(fn($record) => ! self::managesAccount($record))
+                                            ->dehydrated(fn($record) => self::managesAccount($record)),
                                         Toggle::make('approved')
                                             ->label(__('Approved'))
                                             ->inline(false)
-                                            ->helperText(fn($record) => __('Account approved') . ' ' . $record->approved_at),
+                                            ->helperText(fn($record) => __('Account approved') . ' ' . $record->approved_at)
+                                            ->disabled(fn($record) => ! self::mayApprove($record))
+                                            ->dehydrated(fn($record) => self::mayApprove($record)),
                                         Toggle::make('building_key')
                                             ->label(__('Building Key'))
                                             ->inline(false)
-                                            ->helperText(__('User has a building key')),
+                                            ->helperText(__('User has a building key'))
+                                            ->disabled(fn($record) => ! self::managesAccount($record))
+                                            ->dehydrated(fn($record) => self::managesAccount($record)),
                                     ]),
                                 Grid::make()
                                     ->columns(2)
@@ -133,11 +159,17 @@ class EditUser extends EditRecord
                                             ->inline(false)
                                             ->helperText(__('Also other people\'s schedules.')),
                                     ]),
+                                // shown to who may see or give roles; changed only as RoleAssignment allows
+                                // (never one's own, super admin only by a super admin)
                                 Select::make('role')
-                                    ->options(Role::all()->pluck('name', 'id')->toArray())
+                                    ->label(__('Roles'))
+                                    ->options(fn($record) => RoleAssignment::canAssign(auth()->user(), $record)
+                                        ? RoleAssignment::options(auth()->user())
+                                        : Role::query()->pluck('name', 'id')->all())
                                     ->multiple()
-                                    ->hidden(!auth()->user()->can('view_any_role'))
-                                    ->dehydrated(auth()->user()->can('view_any_role')),
+                                    ->visible(fn() => auth()->user()->can('view_any_role') || auth()->user()->can(RoleAssignment::PERMISSION))
+                                    ->disabled(fn($record) => ! RoleAssignment::canAssign(auth()->user(), $record))
+                                    ->dehydrated(fn($record) => RoleAssignment::canAssign(auth()->user(), $record)),
                             ])
                             // Logic: If same user, take 2 columns. If different, take all 3.
                             ->columnSpan(fn($record): int => ($record && auth()->id() === $record->id) ? 2 : 3),
@@ -180,14 +212,11 @@ class EditUser extends EditRecord
             $state['password'] = '';
             $state['confirm_password'] = '';
         }
-        //change role
-        if (isset($state['role'])) {
-            foreach ($state['role'] as $roleId) {
-                $this->record->assignRole($roleId);
-            }
-        } else {
-            $this->record->roles()->detach();
+        // roles: exactly the chosen ones (unticked ones removed), when this person may change them
+        if (array_key_exists('role', $state)) {
+            RoleAssignment::sync(Filament::auth()->user(), $this->record, $state['role'] ?? []);
         }
+        $state['role'] = $this->record->roles()->pluck('id')->all();
         $this->form->fill($state);
     }
 }

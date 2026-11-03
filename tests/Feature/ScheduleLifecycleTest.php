@@ -126,9 +126,17 @@ class ScheduleLifecycleTest extends TestCase
         $this->patchJson(self::URL . "/{$future->id}", ['status' => 'not_shown'])->assertStatus(422);
 
         $this->assertTrue($this->getJson(self::URL . "/{$started->id}")->json('data.can.not_shown'));
+        $otherApprover = $this->user(self::ADMIN);
+        \Illuminate\Support\Facades\Notification::fake();
         $this->postJson(self::URL . "/{$started->id}/not-shown", ['message' => 'Phoned in sick'])
             ->assertOk()->assertJsonPath('data.status', 'not_shown');
         $this->assertStringEndsWith(': Phoned in sick', $started->fresh()->internal_note);
+
+        // the owner is told, and the approvers; not the admin who marked it
+        \Illuminate\Support\Facades\Notification::assertSentTo($this->owner, \App\Notifications\MarkedNotShown::class);
+        \Illuminate\Support\Facades\Notification::assertSentTo($otherApprover, \App\Notifications\NotShownRecorded::class);
+        \Illuminate\Support\Facades\Notification::assertNotSentTo($admin, \App\Notifications\NotShownRecorded::class);
+        \Illuminate\Support\Facades\Notification::assertNotSentTo($this->owner, \App\Notifications\NotShownRecorded::class);
 
         // a pending one (nobody decided on it) is not a no-show
         $pending = $this->startedAnHourAgo(ScheduleStatus::Pending);
@@ -153,10 +161,18 @@ class ScheduleLifecycleTest extends TestCase
         $this->postJson(self::URL . "/{$future->id}/participants/{$friend->id}/not-shown")->assertStatus(422);
 
         $this->assertTrue($this->getJson(self::URL . "/{$started->id}")->json('data.schedule_users.0.can_mark_not_shown'));
+        $approver = $this->user(self::ADMIN);
+        \Illuminate\Support\Facades\Notification::fake();
         $this->postJson(self::URL . "/{$started->id}/participants/{$friend->id}/not-shown")
             ->assertOk()->assertJsonPath('data.schedule_users.0.status', 'not_shown');
         // the schedule itself keeps its status
         $this->assertSame(ScheduleStatus::Approved, $started->fresh()->status);
+
+        // the person marked is told; the owner, who did it, is not
+        \Illuminate\Support\Facades\Notification::assertSentTo($friend, \App\Notifications\MarkedNotShown::class);
+        \Illuminate\Support\Facades\Notification::assertNotSentTo($this->owner, \App\Notifications\MarkedNotShown::class);
+        \Illuminate\Support\Facades\Notification::assertSentTo($approver, \App\Notifications\NotShownRecorded::class);
+        \Illuminate\Support\Facades\Notification::assertNotSentTo($friend, \App\Notifications\NotShownRecorded::class);
     }
 
     public function test_the_same_rules_hold_for_saves_in_the_admin_panel(): void

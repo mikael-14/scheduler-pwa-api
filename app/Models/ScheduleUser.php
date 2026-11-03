@@ -64,6 +64,15 @@ class ScheduleUser extends Model implements Auditable
 	#API
 	protected static function booted(): void
 	{
+		// Nobody is approved on their own: a person added gets the schedule's status
+		// (joining an approved schedule keeps it approved; Schedule::shareStatusWithParticipants)
+		static::saving(function (ScheduleUser $participant) {
+			if (! $participant->exists && $participant->schedule_id) {
+				$participant->status = Schedule::statusForNewParticipant($participant->schedule_id)
+					?? $participant->status
+					?? ScheduleStatus::Pending;
+			}
+		});
 		// Completed only by schedules:complete; not shown by the owner once it started
 		static::saving(fn(ScheduleUser $participant) => \App\Services\ScheduleAccess::enforceParticipantStatusChange($participant));
 		// The owner of a schedule is never also one of its participants

@@ -82,12 +82,14 @@ class ScheduleAccess
 
     /**
      * `participate_schedule`: join someone else's pending or approved schedule, from today on.
-     * The participation starts pending and is approved like a schedule.
+     * The participation has the schedule's status: joining an approved one keeps it approved.
+     * Whole-day schedules are not joined: their owner or an admin adds the people.
      */
     public static function canJoin(User $user, Schedule $schedule): bool
     {
         return $user->can('participate_schedule')
             && $schedule->user_id !== $user->id
+            && ! $schedule->all_day
             && in_array($schedule->status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true)
             && ! static::isPastLocked($user, $schedule)
             && ! static::participation($user, $schedule);
@@ -184,19 +186,24 @@ class ScheduleAccess
         };
     }
 
-    /** Participants: completed only by schedules:complete, not shown by the owner once it started. */
+    /**
+     * Participants: completed only by schedules:complete, not shown by the owner once it started.
+     * Otherwise they are not decided on their own: only the schedule's own status is allowed.
+     */
     public static function mayChangeParticipantStatus(User $user, ScheduleUser $participant, ?ScheduleStatus $from, ScheduleStatus $to): bool
     {
         if ($to === $from) {
             return true;
         }
 
+        $schedule = $participant->schedule_id ? $participant->schedule()->first() : null;
+
         return match ($to) {
             ScheduleStatus::Completed => false,
             ScheduleStatus::NotShown => $from !== null
-                && ($schedule = $participant->schedule()->first())
+                && $schedule
                 && static::canMarkParticipantNotShown($user, $schedule, $participant, $from),
-            default => true,
+            default => $schedule === null || $schedule->status === $to,
         };
     }
 

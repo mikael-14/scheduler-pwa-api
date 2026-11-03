@@ -136,9 +136,11 @@ class ScheduleForm
                             ->searchable()
                             ->required()
                             ->preload(true),
+                        // Participants share the schedule's status: a new one gets it when saved, and
+                        // for the others only "not shown" (once it started) can be chosen here
                         Select::make('status')
+                            ->visible(fn($record) => $record instanceof ScheduleUser && $record->exists)
                             ->searchable()
-                            ->default(ScheduleStatus::Pending->value)
                             ->selectablePlaceholder(false)
                             ->native(false)
                             ->live()

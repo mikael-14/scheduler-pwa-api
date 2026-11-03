@@ -37,7 +37,7 @@ class UserPolicy
 
     public function update(AuthUser $authUser, User $user): bool
     {
-        if ($authUser->can('update_user') || $authUser->can('update_any_user'))
+        if ($authUser->can('update_any_user'))
             {
             return true;
         }
@@ -105,6 +105,12 @@ class UserPolicy
     public function approve(AuthUser $authUser): bool
     {
         return $authUser->can('approve_user');
+    }
+
+    /** Give roles to others (App\Services\RoleAssignment has the rest of the rules). */
+    public function assignRole(AuthUser $authUser): bool
+    {
+        return $authUser->can('assign_role_user');
     }
 
 }

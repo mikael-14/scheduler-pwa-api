@@ -119,7 +119,8 @@ return [
 
     'policies' => [
         'path' => app_path('Policies'),
-        'merge' => true,
+        // false: a resource listed in resources.manage gets exactly its list (no unused checkboxes)
+        'merge' => false,
         'generate' => true,
         'methods' => [
             'viewAny',
@@ -131,8 +132,6 @@ return [
             'forceDelete',
             'forceDeleteAny',
             'restoreAny',
-            'replicate',
-            'reorder',
         ],
         'single_parameter_methods' => [
             'viewAny',
@@ -173,6 +172,8 @@ return [
 
     'resources' => [
         'subject' => 'model',
+        // Each resource's full list: only what a policy or rule really checks (see PermissionsSeeder,
+        // which deletes permissions no longer listed here)
         'manage' => [
             \BezhanSalleh\FilamentShield\Resources\Roles\RoleResource::class => [
                 'view_any',
@@ -182,13 +183,31 @@ return [
                 'delete',
             ],
             App\Filament\Resources\Users\UserResource::class => [
+                // the whole list, or only oneself
+                'view_any',
                 'view_owned',
-                'update_owned',
+                'create',
                 'update_any',
+                'update_owned',
+                'delete',
+                'restore',
+                'restore_any',
                 'impersonate',
                 'approve',
+                // give roles to others (see App\Services\RoleAssignment)
+                'assign_role',
             ],
             App\Filament\Resources\Schedules\ScheduleResource::class => [
+                'view_any',
+                'view',
+                'create',
+                'update',
+                'delete',
+                'restore',
+                'restore_any',
+                'force_delete',
+                'force_delete_any',
+                // for / of other people
                 'create_any',
                 'update_any',
                 'delete_any',
@@ -205,11 +224,31 @@ return [
                 'update_status',
                 'approve',
             ],
-            Tapp\FilamentAuditing\Filament\Resources\Audits\AuditResource::class =>[
-                'restore_audit',
+            App\Filament\Resources\ScheduleTypes\ScheduleTypeResource::class => [
+                'view_any',
+                'view',
+                'create',
+                'update',
+                'delete',
+            ],
+            // read-only history; restore = put a schedule / type back as it was
+            App\Filament\Resources\Audits\AuditResource::class => [
+                'view_any',
+                'view',
+                'restore',
             ],
             App\Filament\Resources\NotificationLogs\NotificationLogResource::class => [
+                'view_any',
+                'view',
                 'send',
+            ],
+            // the API plugin's tokens page
+            \Rupadana\ApiService\Resources\TokenResource::class => [
+                'view_any',
+                'view',
+                'create',
+                'update',
+                'delete',
             ],
         ],
         'exclude' => [
@@ -234,6 +273,7 @@ return [
         'prefix' => 'view',
         'exclude' => [
             \Filament\Pages\Dashboard::class,
+            \App\Filament\Pages\Dashboard::class,
             \App\Filament\Pages\PendingApproval::class,
             // Access is `view_any_schedule`, checked in the page itself
             \App\Filament\Pages\ScheduleCalendar::class,
@@ -259,15 +299,12 @@ return [
         'exclude' => [
             \Filament\Widgets\AccountWidget::class,
             \Filament\Widgets\FilamentInfoWidget::class,
-            \App\Filament\Widgets\UserWelcomeWidget::class,
             // Dashboard widgets decide their own visibility in canView() from the schedule/user permissions
             \App\Filament\Widgets\TodaySchedulesWidget::class,
             \App\Filament\Widgets\ScheduleHeadcountChart::class,
-            \App\Filament\Widgets\SchedulesByTypeChart::class,
             \App\Filament\Widgets\PendingSchedulesWidget::class,
-            \App\Filament\Widgets\PendingParticipationsWidget::class,
-            \App\Filament\Widgets\SchedulePendingWidget::class,
-            \App\Filament\Widgets\UserPendingCounterWidget::class,
+            \App\Filament\Widgets\DashboardCounters::class,
+            \App\Filament\Widgets\WeekOverviewWidget::class,
         ],
     ],
 

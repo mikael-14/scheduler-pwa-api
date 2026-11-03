@@ -28,7 +28,7 @@ trait WritesSchedules
             }
             $rules["schedule_users.*.$key"] = $rule;
         }
-        // Participant status is optional: new participants start as pending
+        // Accepted from older apps and ignored: participants have the schedule's status
         $rules['schedule_users.*.status'] = ['nullable', \Illuminate\Validation\Rule::enum(ScheduleStatus::class)];
 
         if ($partial) {
@@ -42,14 +42,13 @@ trait WritesSchedules
     }
 
     /**
-     * Create or update the participants of a schedule.
-     * Staff may set participant statuses; everyone else only adds pending participants.
+     * Create or update the participants of a schedule. Their status is the schedule's (see
+     * ScheduleUser): a status sent per participant is ignored.
      *
      * @param array<int, array<string, mixed>> $incoming
      */
     protected function syncParticipants(Schedule $schedule, array $incoming, User $actor, bool $removeMissing): void
     {
-        $staff = ScheduleAccess::isStaff($actor);
         $kept = [];
 
         foreach ($incoming as $row) {
@@ -62,17 +61,9 @@ trait WritesSchedules
 
             $existing = $schedule->schedule_users()->where('user_id', $userId)->first();
 
-            $status = $existing?->status ?? ScheduleStatus::Pending;
-            if ($staff && ! empty($row['status'])) {
-                $status = ScheduleStatus::from($row['status']);
-            }
-
             $record = $schedule->schedule_users()->updateOrCreate(
                 ['user_id' => $userId],
-                [
-                    'status' => $status,
-                    'description' => $row['description'] ?? $existing?->description,
-                ]
+                ['description' => $row['description'] ?? $existing?->description]
             );
 
             $kept[$userId] = $record->id;

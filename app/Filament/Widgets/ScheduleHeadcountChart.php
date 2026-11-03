@@ -2,30 +2,40 @@
 
 namespace App\Filament\Widgets;
 
-use App\Enums\ScheduleStatus;
-use App\Models\Schedule;
+use App\Models\ScheduleType;
+use App\Services\AgendaSummary;
 use Carbon\CarbonImmutable;
 use Filament\Facades\Filament;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Contracts\Support\Htmlable;
 
 /**
- * People expected per day, split by approved vs. waiting for approval.
- * This is the "scale" view: how many people are at the shelter on each day.
+ * People expected per day over the next two weeks, approved vs. waiting for approval, for one
+ * schedule type: the primary one (the shelter) by default, another or all of them from the select.
  */
 class ScheduleHeadcountChart extends ChartWidget
 {
-    protected static ?int $sort = 4;
+    private const DAYS = 14;
 
-    protected int | string | array $columnSpan = 'full';
+    private const ALL = 'all';
 
-    protected ?string $maxHeight = '300px';
+    protected int | string | array $columnSpan = ['default' => 'full', 'lg' => 1];
 
-    public ?string $filter = '14';
+    protected ?string $maxHeight = '260px';
+
+    public ?string $filter = null;
 
     public static function canView(): bool
     {
         return (bool) Filament::auth()->user()?->can('view_any_schedule');
+    }
+
+    public function mount(): void
+    {
+        // the primary type first; with none, every type
+        $this->filter ??= (string) (AgendaSummary::primaryType()?->id ?? self::ALL);
+
+        parent::mount();
     }
 
     public function getHeading(): string | Htmlable | null
@@ -35,16 +45,19 @@ class ScheduleHeadcountChart extends ChartWidget
 
     public function getDescription(): string | Htmlable | null
     {
-        return __('Approved and pending people expected on each day.');
+        return __('Next :count days, approved and pending.', ['count' => self::DAYS]);
     }
 
     protected function getFilters(): ?array
     {
-        return [
-            '7' => __('Next 7 days'),
-            '14' => __('Next 14 days'),
-            '30' => __('Next 30 days'),
-        ];
+        $types = ScheduleType::query()
+            ->orderByDesc('primary')
+            ->orderBy('name')
+            ->get(['id', 'name', 'primary'])
+            ->mapWithKeys(fn(ScheduleType $type) => [(string) $type->id => $type->name])
+            ->all();
+
+        return $types + [self::ALL => __('All types')];
     }
 
     protected function getType(): string
@@ -64,68 +77,23 @@ class ScheduleHeadcountChart extends ChartWidget
 
     protected function getData(): array
     {
-        $days = max(1, (int) $this->filter);
-        $first = CarbonImmutable::today();
-        $last = $first->addDays($days - 1)->endOfDay();
-
-        $schedules = Schedule::query()
-            ->with('schedule_users')
-            ->whereNotIn('status', [ScheduleStatus::Rejected, ScheduleStatus::Cancelled, ScheduleStatus::NotShown])
-            ->where('start', '<=', $last)
-            ->whereRaw('COALESCE(`end`, `start`) >= ?', [$first])
-            ->get();
-
-        $labels = [];
-        $approved = [];
-        $pending = [];
-
-        for ($i = 0; $i < $days; $i++) {
-            $dayStart = $first->addDays($i)->startOfDay();
-            $dayEnd = $dayStart->endOfDay();
-
-            $labels[] = $dayStart->translatedFormat('D d/m');
-
-            $approvedPeople = [];
-            $pendingPeople = [];
-
-            foreach ($schedules as $schedule) {
-                if ($schedule->start > $dayEnd || ($schedule->end ?? $schedule->start) < $dayStart) {
-                    continue;
-                }
-
-                $people = collect([$schedule->user_id])
-                    ->merge(
-                        $schedule->schedule_users
-                            ->whereNotIn('status', [ScheduleStatus::Rejected, ScheduleStatus::Cancelled])
-                            ->pluck('user_id')
-                    )
-                    ->filter();
-
-                if ($schedule->status === ScheduleStatus::Pending) {
-                    $pendingPeople = array_merge($pendingPeople, $people->all());
-                } else {
-                    $approvedPeople = array_merge($approvedPeople, $people->all());
-                }
-            }
-
-            $approved[] = count(array_unique($approvedPeople));
-            $pending[] = count(array_diff(array_unique($pendingPeople), $approvedPeople));
-        }
+        $typeId = $this->filter && $this->filter !== self::ALL ? (int) $this->filter : null;
+        $days = AgendaSummary::days(CarbonImmutable::today(), self::DAYS, $typeId);
 
         return [
             'datasets' => [
                 [
                     'label' => __('Approved'),
-                    'data' => $approved,
+                    'data' => array_column($days, 'approved'),
                     'backgroundColor' => '#10b981',
                 ],
                 [
                     'label' => __('Pending'),
-                    'data' => $pending,
+                    'data' => array_column($days, 'pending'),
                     'backgroundColor' => '#f59e0b',
                 ],
             ],
-            'labels' => $labels,
+            'labels' => array_map(fn(array $day) => $day['date']->translatedFormat('D d/m'), $days),
         ];
     }
 }

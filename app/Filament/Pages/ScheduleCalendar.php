@@ -40,8 +40,16 @@ class ScheduleCalendar extends Page
     {
         return [
             CalendarLegendWidget::make(['showTypeFilter' => true]),
-            CalendarWidget::make(),
+            // ?date=YYYY-MM-DD (the dashboard's day links) opens that day
+            CalendarWidget::make(['initialDate' => $this->requestedDate()]),
         ];
+    }
+
+    private function requestedDate(): ?string
+    {
+        $date = request()->query('date');
+
+        return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && strtotime($date) ? $date : null;
     }
 
     public function getHeaderWidgetsColumns(): int|array

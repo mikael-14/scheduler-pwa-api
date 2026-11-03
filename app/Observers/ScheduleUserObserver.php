@@ -2,10 +2,14 @@
 
 namespace App\Observers;
 
+use App\Enums\ScheduleStatus;
 use App\Models\ScheduleUser;
+use App\Notifications\MarkedNotShown;
+use App\Notifications\NotShownRecorded;
 use App\Models\User;
 use App\Notifications\AppNotification;
 use App\Notifications\ScheduleParticipantAdded;
+use App\Notifications\ScheduleJoinedOrLeft;
 use App\Notifications\ScheduleParticipantRemoved;
 use App\Services\ScheduleActivityFeed;
 
@@ -19,13 +23,75 @@ class ScheduleUserObserver
     public function created(ScheduleUser $participant): void
     {
         $this->tell($participant, fn($schedule) => new ScheduleParticipantAdded($schedule));
+        $this->tellAround($participant, joined: true);
         $this->tellEveryone($participant, joined: true);
+    }
+
+    /**
+     * Marked as not shown by the owner or an admin (API or admin panel): the person is told, and
+     * so are the approvers.
+     */
+    public function updated(ScheduleUser $participant): void
+    {
+        if (! $participant->wasChanged('status') || $participant->status !== ScheduleStatus::NotShown || ! auth()->check()) {
+            return;
+        }
+
+        $this->tell($participant, fn($schedule) => new MarkedNotShown($schedule));
+
+        $schedule = $participant->schedule()->with(['schedule_type', 'user'])->first();
+        if ($schedule) {
+            NotShownRecorded::tellApprovers($schedule, $participant->user);
+        }
     }
 
     public function deleted(ScheduleUser $participant): void
     {
         $this->tell($participant, fn($schedule) => new ScheduleParticipantRemoved($schedule));
+        $this->tellAround($participant, joined: false);
         $this->tellEveryone($participant, joined: false);
+    }
+
+    /**
+     * Someone joined or was added, left or was removed: the owner, the other people on the
+     * schedule and the approvers are told (never whoever did it, nor the person, who gets
+     * tell() when it was done to them). Not for the people booked together with a new schedule:
+     * that is the booking itself.
+     */
+    private function tellAround(ScheduleUser $participant, bool $joined): void
+    {
+        $user = $participant->user;
+        $schedule = $participant->schedule()->with(['schedule_type', 'user', 'schedule_users.user'])->first();
+
+        // handed the schedule itself (becomes its owner), or the schedule is gone
+        if (! $user || ! $schedule || $schedule->user_id === $user->id) {
+            return;
+        }
+
+        if ($joined && ScheduleActivityFeed::instance()->bookedInThisRequest($schedule)) {
+            return;
+        }
+
+        $byOthers = auth()->id() !== $user->id;
+
+        $recipients = collect([$schedule->user])
+            ->merge($schedule->schedule_users->pluck('user'))
+            ->merge(ScheduleObserver::approvers())
+            ->filter(fn(?User $person) => $person
+                && $person->id !== $user->id
+                && $person->id !== auth()->id()
+                && $person->status
+                && $person->approved_at)
+            ->unique('id');
+
+        foreach ($recipients as $person) {
+            try {
+                $person->notify(new ScheduleJoinedOrLeft($schedule, $user, $joined, yours: $person->id === $schedule->user_id, byOthers: $byOthers));
+            } catch (\Throwable $e) {
+                // a mail server hiccup must never undo or block saving the schedule
+                report($e);
+            }
+        }
     }
 
     /** "All notifications": someone joined or left (not when they became the owner instead). */

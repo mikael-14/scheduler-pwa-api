@@ -47,8 +47,9 @@ class ScheduleTransformer extends JsonResource
 
         $approver = $user && ScheduleAccess::canApprove($user);
 
-        $data['schedule_users'] = $this->resource->schedule_users->map(function ($scheduleUser) use ($approver, $user) {
-            $row = [
+        // participants have the schedule's status: nobody decides on them one by one
+        $data['schedule_users'] = $this->resource->schedule_users->map(function ($scheduleUser) use ($user) {
+            return [
                 'id' => $scheduleUser->id,
                 'user_id' => $scheduleUser->user_id,
                 'name' => $scheduleUser->user?->name,
@@ -59,13 +60,6 @@ class ScheduleTransformer extends JsonResource
                 'can_mark_not_shown' => $user
                     && ScheduleAccess::canMarkParticipantNotShown($user, $this->resource, $scheduleUser),
             ];
-
-            // approvers: why a pending participation cannot be approved yet (primary rule), or null
-            if ($approver && $scheduleUser->status === ScheduleStatus::Pending) {
-                $row['approval_problem'] = PrimaryScheduleRule::participantProblem($scheduleUser);
-            }
-
-            return $row;
         });
 
         $data['can'] = $user ? $this->abilities($user) : [];
@@ -106,9 +100,6 @@ class ScheduleTransformer extends JsonResource
             // join / leave someone else's schedule (participate_schedule / cancel_participation_schedule)
             'join' => ScheduleAccess::canJoin($user, $schedule),
             'leave' => ScheduleAccess::canLeave($user, $schedule),
-            // decide on pending participants (people who joined)
-            'approve_participants' => ScheduleAccess::canApprove($user)
-                && $schedule->schedule_users->contains('status', ScheduleStatus::Pending),
         ];
     }
 }

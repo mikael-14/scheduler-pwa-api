@@ -29,7 +29,10 @@ class JoinHandler extends ApprovedHandler
      * Join a schedule
      *
      * Adds the signed-in user as a participant of someone else's pending or approved schedule,
-     * from today on. The participation starts pending; approvers are told.
+     * from today on (not whole-day ones: their owner adds the people). The participation has the
+     * schedule's status, so joining an approved schedule keeps it approved; someone the primary
+     * rule does not allow there gets 422 with the reason in `errors.status`. The owner, the other
+     * people on it and the approvers are told.
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse

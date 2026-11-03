@@ -43,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         DatabaseNotification::observe(FilamentNotificationObserver::class);
         $this->trackNotificationDelivery();
         Gate::policy(Audit::class, AuditPolicy::class);
+        Gate::policy(\Rappasoft\LaravelAuthenticationLog\Models\AuthenticationLog::class, \App\Policies\AuthenticationLogPolicy::class);
         // Saving the language chosen in the panel's switcher is done by the
         // App\Listeners\PersistUserLocale listener (auto-discovered); it used to be duplicated here.
 

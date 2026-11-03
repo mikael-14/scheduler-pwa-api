@@ -28,6 +28,9 @@ class CalendarWidget extends FullCalendarWidget
     public array $filterTypeIds = [];
     public string $colorBy = 'status'; // 'status' | 'type'
 
+    // A day to open on, in day view (YYYY-MM-DD, from the dashboard's links); null = today, week view
+    public ?string $initialDate = null;
+
     public function getModel(): string
     {
         return Schedule::class;
@@ -197,6 +200,10 @@ class CalendarWidget extends FullCalendarWidget
         }
         if ($hours['max']) {
             $allConfig['slotMaxTime'] = $hours['max'];
+        }
+        if ($this->initialDate) {
+            $allConfig['initialDate'] = $this->initialDate;
+            $allConfig['initialView'] = 'timeGridDay';
         }
         return $allConfig;
     }

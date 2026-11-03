@@ -239,10 +239,21 @@ php artisan shield:generate --all
 
 For detailed documentation, visit: https://github.com/bezhansalleh/filament-shield
 
-### Schedule permissions and suggested roles
+### Permissions and roles
 
-Roles are created in the admin panel (Shield → Roles); the code only checks permissions. After
-pulling new permissions, run `php artisan db:seed --class=PermissionsSeeder`.
+Roles are created in the admin panel (Shield → Roles); the code only checks permissions, never a
+role's name (except `super_admin`). `config/filament-shield.php` (`resources.manage`) lists exactly
+the permissions each resource has, and only ones something checks. After pulling changes, run
+`php artisan db:seed --class=PermissionsSeeder --force`: it creates new permissions, **deletes the
+ones no longer declared** (moving renamed ones onto the roles that had them first) and gives
+`super_admin` all of them.
+
+Only **approved, active** accounts use the app: before approval an account cannot open the agenda
+(API and panel), and switching "active" off blocks it on its next request. Every approved person
+sees the pending / approved schedules, with names — on purpose, so people see where they are
+needed and take part.
+
+#### Schedules
 
 | Permission | Allows |
 |---|---|
@@ -250,25 +261,139 @@ pulling new permissions, run `php artisan db:seed --class=PermissionsSeeder`.
 | `view_inactive_schedule` | also see other people's rejected, cancelled, completed and not-shown schedules (without it: only pending / approved, plus your own and the ones you take part in) |
 | `create_schedule` | book for yourself |
 | `create_any_schedule` | book for someone else |
-| `update_schedule` | edit your own schedules |
-| `update_any_schedule` | edit anyone's |
+| `update_schedule` | edit (and cancel, before it starts) your own schedules, add / remove their participants, mark one of them "não compareceu" once it started |
+| `update_any_schedule` | the same on anyone's |
+| `delete_schedule` / `delete_any_schedule` | delete your own / anyone's (admin panel) |
+| `restore_schedule`, `restore_any_schedule`, `force_delete_schedule`, `force_delete_any_schedule` | bring back / delete forever deleted schedules (admin panel) |
 | `update_past_schedule` | anything on schedules before today (without it, from today on only) |
-| `participate_schedule` | join someone else's pending / approved schedule (waits for approval) |
-| `cancel_participation_schedule` | leave a schedule you joined |
-| `approve_schedule` | approve / reject pending schedules and participations |
-| `update_status_schedule` | set any status (completed, not shown…) |
+| `participate_schedule` | add **yourself** to someone else's pending / approved schedule, from today on; never a whole-day one. You get the schedule's status (joining an approved one keeps it approved; on the primary type the "may go alone" rule still applies) |
+| `cancel_participation_schedule` | remove yourself from a schedule you take part in, from today on. Always give it together with `participate_schedule` |
+| `approve_schedule` | approve / reject pending schedules (their participants follow). Approvers may approve their own |
+| `update_status_schedule` | everything `approve_schedule` does, plus cancel at any time (also after the start) and mark "não compareceu". Never "completed": the nightly `schedules:complete` sets it |
 | `independent_schedule` | **may go alone** on the primary type (see below) |
-| `all_day_schedule` | may book **whole-day** schedules, with no hours (see below) |
-| `send_notification_log` | send announcements |
-| `create_role`, `update_role`… | manage roles (Shield) |
+| `all_day_schedule` | may book **whole-day** schedules, with no hours, on types that allow them (see below) |
 
-| Role | Permissions |
+People added by the owner or an admin need no permission of their own. A participant's status is
+always the schedule's (approve / reject / cancel it and its participants follow), except
+"não compareceu", which is per person.
+
+#### Schedule types, users and administration
+
+| Permission | Allows |
 |---|---|
-| Super Admin | everything (the seeder keeps it complete) |
-| Admin | `approve_schedule`, `create_any_schedule`, `update_any_schedule`, `view_any_schedule`, `view_schedule`, `view_inactive_schedule`, `create_schedule`, `update_schedule`, `independent_schedule`, `send_notification_log` (+ participate / cancel participation) |
-| Voluntário Experiente | `view_any_schedule`, `view_schedule`, `create_schedule`, `update_schedule`, `participate_schedule`, `cancel_participation_schedule`, `independent_schedule` |
-| Voluntário Novo | the same, **without** `independent_schedule` |
-| Externo | `view_any_schedule`, `view_schedule`, `participate_schedule`, `cancel_participation_schedule` |
+| `view_any_schedule_type`, `view_schedule_type`, `create_schedule_type`, `update_schedule_type`, `delete_schedule_type` | manage schedule types |
+| `view_any_user` / `view_owned_user` | the users list / the list with only your own row (anyone else's page: 404) |
+| `update_any_user` / `update_owned_user` | edit anyone / only yourself (name, email, avatar, language, notifications, password) |
+| `create_user`, `delete_user`, `restore_user`, `restore_any_user` | create, delete (not someone with schedules, nor yourself in bulk), bring back users |
+| `approve_user` | approve new accounts: the Approve action (gives a role, never `super_admin` unless you are one, and tells the person), the dashboard counter and the users list filter |
+| `assign_role_user` | give roles to **others**: never your own, and `super_admin` (or a super admin's roles) only by a super admin. Seeing the roles (`view_any_role`) is not enough |
+| `impersonate_user` | sign in as someone else (never a super admin) |
+| `view_any_role`, `view_role`, `create_role`, `update_role`, `delete_role` | manage roles (Shield) |
+| `view_any_audit`, `view_audit` | the change history (audits) and the login history |
+| `restore_audit` | put a schedule / type back as an audit recorded it |
+| `view_any_notification_log`, `view_notification_log` | the notifications sent |
+| `send_notification_log` | send announcements |
+| `view_any_token`, `view_token`, `create_token`, `update_token`, `delete_token` | the API plugin's tokens page (the PWA's own devices don't need it) |
+
+On the user edit page, the account switches are kept apart from the rest:
+
+| Switch | Who can change it |
+|---|---|
+| Active, Building Key | `update_any_user`, and never on your own record (not even an admin) |
+| Approved | the same, plus `approve_user`. On the create page only with `approve_user`, otherwise the account is created waiting for approval |
+| Roles | `assign_role_user` (see above) |
+
+For everyone else they are greyed out and ignored when saving, whatever the browser sends.
+Saving an approved user keeps the date it was first approved.
+
+Volunteers and Externos don't need any user permission: the panel's **Profile** page (avatar
+menu) changes their language and notifications, and the PWA's profile also their password.
+
+A schedule's internal note is only seen by staff (`approve_schedule`, `update_status_schedule`
+or `update_any_schedule`), in the panel, the API and the PWA.
+
+#### In the API
+
+Every route is closed by default (`tests/Feature/ApiRouteGuardsTest.php` fails on a new route that
+forgets it):
+
+| Routes | Needs |
+|---|---|
+| sign in, register, forgot / reset password, Google / Facebook | nobody (rate limited) |
+| `api/user` (profile, photo, devices), refresh, sign out | signed in and active, also while waiting for approval |
+| notifications, push subscription | signed in, active and approved |
+| `api/admin/schedules…`, `api/admin/schedule-types…` | signed in, active, approved **and** the permission below |
+
+| Route | Permission | Then also checked on the schedule |
+|---|---|---|
+| `GET schedules`, `calendar-options` | `view_any_schedule` | only what they may see (see `view_inactive_schedule`) |
+| `GET schedules/{id}` | `view_schedule` | the same |
+| `POST schedules` | `create_schedule` | for someone else only with `create_any_schedule`; whole day, past dates, primary rule |
+| `GET form-options` | `create_schedule` or `update_schedule` | |
+| `PUT/PATCH schedules/{id}` | `update_schedule` or `update_status_schedule` | content: own (or `update_any_schedule`), not past; status: as `mayChangeStatus` |
+| `POST …/approve`, `…/reject`, `GET pending` | `approve_schedule` or `update_status_schedule` | pending only, unless `update_status_schedule`; primary / whole-day rules |
+| `POST …/not-shown` | `update_status_schedule` | approved or completed, once started |
+| `POST …/participants/{userId}/not-shown` | `update_schedule` or `update_status_schedule` | the owner (or `update_status_schedule`), once started |
+| `POST / DELETE …/participation` | `participate_schedule` / `cancel_participation_schedule` | as `canJoin` / `canLeave` |
+| schedule types | `view_any_` / `view_` / `create_` / `update_` / `delete_schedule_type` | a type with schedules is not deleted |
+
+Deleting schedules is not in the API (admin panel only). The API docs (`/docs/api`) open only
+locally (`APP_ENV=local`).
+
+#### In the PWA
+
+The PWA gets the signed-in person's permissions from `GET /api/user` and uses them only to hide
+what would not work; the API checks everything again.
+
+| Page | Needs (otherwise: back to Home) |
+|---|---|
+| Calendar | `view_any_schedule` |
+| Schedule details | `view_schedule` |
+| New schedule | `create_schedule` (an Externo never lands on the booking form) |
+| Edit schedule | `update_schedule`, and the schedule's own `can.update` (else: its details) |
+| Approvals (menu, badge, page) | `approve_schedule` or `update_status_schedule` |
+| Schedule types / new / edit | `view_any_schedule_type` / + `create_schedule_type` / `view_schedule_type` + `update_schedule_type` |
+| Home, notifications, profile, settings | any approved account |
+
+- Accounts not approved yet only see the "awaiting approval" page; a deactivated one is refused
+  by the API on its next request.
+- What can be done **with each schedule** comes from the API, by the same rules it enforces:
+  `can.update`, `can.cancel`, `can.approve`, `can.not_shown`, `can.join`, `can.leave`, and
+  `can_mark_not_shown` on each participant. So an Externo only gets "join" / "leave", and nobody
+  gets "join" on a whole-day schedule.
+- The booking form's options come from `GET /api/admin/schedules/form-options` (`can.book_for_others`,
+  `can.past_dates`, `can.all_day`, `can.internal_note`).
+- The internal note is removed by the API for non-staff: it never reaches their phone.
+- The profile only changes name, email, language, notifications, password and photo: never
+  "Active", "Approved" or "Building Key".
+
+#### Roles
+
+| | Super Admin | Admin | Approver | Voluntário Experiente | Voluntário Novo | Externo |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `view_any_schedule`, `view_schedule` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `participate_schedule`, `cancel_participation_schedule` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `create_schedule`, `update_schedule`, `delete_schedule` | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| `independent_schedule` | ✓ | ✓ | ✓ | ✓ | | |
+| `all_day_schedule` | ✓ | ✓ | ✓ | ✓ | | |
+| `approve_schedule` | ✓ | ✓ | ✓ | | | |
+| `update_status_schedule` | ✓ | ✓ | optional | | | |
+| `view_inactive_schedule` | ✓ | ✓ | ✓ | | | |
+| `create_any_schedule`, `update_any_schedule`, `delete_any_schedule`, `update_past_schedule` | ✓ | ✓ | optional | | | |
+| schedule types (all five) | ✓ | ✓ | | | | |
+| users (`view_any_user`, `update_any_user`, `create_user`, `approve_user`, `assign_role_user`…) | ✓ | ✓ | | | | |
+| `view_owned_user`, `update_owned_user` (not needed: Profile covers it) | ✓ | ✓ | optional | | | |
+| roles, audits, notification log, `send_notification_log`, `impersonate_user` | ✓ | ✓ | | | | |
+| restore / delete forever (schedules, users), tokens | ✓ | optional | | | | |
+
+- **Super Admin**: everything; the seeder keeps it complete.
+- **Admin**: runs the association — people, roles, types, approvals and corrections.
+- **Approver**: decides pending schedules; goes alone and books whole days like an Experiente.
+- **Voluntário Experiente**: books, joins, may go alone and book whole days.
+- **Voluntário Novo**: books and joins; on the primary type only approved with someone who may
+  go alone there; no whole-day schedules.
+- **Externo**: only **joins** other people's schedules and leaves them; never books. On the
+  primary type treated like a Novo (cannot go alone).
 
 ### The primary type rule
 
@@ -295,7 +420,8 @@ approved in one go. Other types are not affected.
   too: a Novo never gets one, not even booked for them);
 - once one is approved, **nothing else of that type** can be approved on that day, and it cannot
   be approved while something else of that type is approved there (any type);
-- on the primary type it covers nobody: a Novo needs hours, so Novos are never approved on one.
+- on the primary type it covers nobody: a Novo needs hours, so Novos are never approved on one;
+- nobody joins one: its owner or an admin adds the people.
 
 Approvers see why in `approval_problem` / the panel warning.
 

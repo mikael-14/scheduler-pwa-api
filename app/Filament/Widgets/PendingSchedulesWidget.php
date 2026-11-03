@@ -23,6 +23,17 @@ class PendingSchedulesWidget extends TableWidget
 
     protected int | string | array $columnSpan = 'full';
 
+    /** On the dashboard: half the width, the soonest few, and a link to the Approvals page. */
+    public bool $compact = false;
+
+    /** How many the compact version shows. */
+    private const COMPACT_ROWS = 5;
+
+    public function getColumnSpan(): int | string | array
+    {
+        return $this->compact ? ['default' => 'full', 'lg' => 1] : $this->columnSpan;
+    }
+
     public static function canView(): bool
     {
         $user = Filament::auth()->user();
@@ -120,13 +131,22 @@ class PendingSchedulesWidget extends TableWidget
 
     public function table(Table $table): Table
     {
+        $compact = $this->compact;
+
         return $table
             ->heading(__('Schedules awaiting approval'))
             ->query(fn(): Builder => Schedule::query()
                 ->with(['user', 'schedule_type', 'schedule_users.user'])
                 ->where('status', ScheduleStatus::Pending)
-                ->orderBy('start'))
+                ->orderBy('start')
+                ->when($compact, fn(Builder $query) => $query->limit(self::COMPACT_ROWS)))
             ->defaultSort('start')
+            ->headerActions($compact ? [
+                Action::make('all')
+                    ->label(fn() => __('See all (:count)', ['count' => Schedule::where('status', ScheduleStatus::Pending)->count()]))
+                    ->link()
+                    ->url(\App\Filament\Pages\Approvals::getUrl()),
+            ] : [])
             ->columns([
                 ColorColumn::make('schedule_type.color')
                     ->label(''),
@@ -144,6 +164,7 @@ class PendingSchedulesWidget extends TableWidget
                 TextColumn::make('schedule_users.user.name')
                     ->label(__('Participants'))
                     ->badge()
+                    ->visible(! $compact)
                     ->placeholder('-'),
                 TextColumn::make('start')
                     ->label(__('Start'))
@@ -155,11 +176,13 @@ class PendingSchedulesWidget extends TableWidget
                 TextColumn::make('end')
                     ->label(__('End'))
                     ->dateTime(config('app.date_time_format'))
+                    ->visible(! $compact)
                     ->placeholder('-'),
                 TextColumn::make('description')
                     ->label(__('Description'))
                     ->limit(40)
                     ->tooltip(fn(Schedule $record) => $record->description)
+                    ->visible(! $compact)
                     ->placeholder('-'),
             ])
             ->recordActions([
@@ -189,6 +212,6 @@ class PendingSchedulesWidget extends TableWidget
             ])
             ->emptyStateHeading(__('No schedules awaiting approval'))
             ->emptyStateIcon('heroicon-o-check-circle')
-            ->paginated([5, 10, 25]);
+            ->paginated($compact ? false : [5, 10, 25]);
     }
 }

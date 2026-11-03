@@ -15,7 +15,7 @@ use Spatie\Permission\Models\Permission;
  *
  * Who: active, approved accounts that can open the agenda (`view_any_schedule`), except the
  * person who did it and the people already told personally (owner, participants, and for a new
- * booking the approvers).
+ * booking or someone joining or leaving, the approvers).
  *
  * Called from ScheduleObserver and ScheduleUserObserver. Scoped to one request / job (see
  * AppServiceProvider): a schedule booked together with its participants is one notice, not one
@@ -54,11 +54,20 @@ class ScheduleActivityFeed
         ));
     }
 
-    /** Someone joined or was added (joined: true), or left or was removed. */
+    /** The schedule was booked in this request: its participants came with the booking. */
+    public function bookedInThisRequest(Schedule $schedule): bool
+    {
+        return ($this->bookedNow[$schedule->id] ?? null) === spl_object_id(request());
+    }
+
+    /**
+     * Someone joined or was added (joined: true), or left or was removed. The approvers are told
+     * personally (ScheduleUserObserver), so not here.
+     */
     public function participants(Schedule $schedule, User $participant, bool $joined): void
     {
         // booked together with the schedule: the "booked" notice already says it
-        if ($joined && ($this->bookedNow[$schedule->id] ?? null) === spl_object_id(request())) {
+        if ($joined && $this->bookedInThisRequest($schedule)) {
             return;
         }
 
@@ -66,7 +75,7 @@ class ScheduleActivityFeed
             $schedule,
             $joined ? ScheduleActivity::JOINED : ScheduleActivity::LEFT,
             participantName: $participant->name,
-        ), alsoExclude: [$participant->id]);
+        ), withApprovers: false, alsoExclude: [$participant->id]);
     }
 
     /** @param list<int> $alsoExclude */

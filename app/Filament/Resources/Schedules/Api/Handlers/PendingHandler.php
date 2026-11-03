@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Schedules\Api\Handlers;
 use App\Enums\ScheduleStatus;
 use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Http\Handlers\ApprovedHandler;
-use App\Models\ScheduleUser;
 use App\Models\User;
 use App\Services\PrimaryScheduleRule;
 use Illuminate\Http\Request;
@@ -25,8 +24,7 @@ class PendingHandler extends ApprovedHandler
      *
      * The approver's work list, oldest start first. Available to anyone who can approve, so an
      * approve-only role does not need `view_any_schedule` to see what it has to decide.
-     * `participations` lists people who joined an already decided schedule; decide on them with
-     * `POST /{id}/participants/{userId}/approve` or `/reject`.
+     * Participants are not decided on their own: they share the schedule's status.
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -64,29 +62,6 @@ class PendingHandler extends ApprovedHandler
                 // primary type: why it cannot be approved yet (null = it can)
                 'approval_problem' => PrimaryScheduleRule::scheduleProblem($schedule),
             ])->values(),
-            // people who joined an approved schedule, waiting for their own decision
-            'participations' => ScheduleUser::query()
-                ->where('status', ScheduleStatus::Pending)
-                // on a pending schedule they are decided with it
-                ->whereHas('schedule', fn($query) => $query->where('status', ScheduleStatus::Approved))
-                ->with(['user:id,name,avatar_url', 'schedule.user:id,name,avatar_url', 'schedule.schedule_type:id,name,color,primary'])
-                ->limit(200)
-                ->get()
-                ->filter(fn(ScheduleUser $participant) => $participant->schedule)
-                ->sortBy(fn(ScheduleUser $participant) => $participant->schedule->start)
-                ->map(fn(ScheduleUser $participant) => [
-                    'schedule_id' => $participant->schedule_id,
-                    'user' => $this->person($participant->user),
-                    'start' => $participant->schedule->start,
-                    'end' => $participant->schedule->end,
-                    'all_day' => $participant->schedule->all_day,
-                    'schedule_status' => $participant->schedule->status,
-                    'owner' => $this->person($participant->schedule->user),
-                    'schedule_type' => $participant->schedule->schedule_type
-                        ? $participant->schedule->schedule_type->only(['id', 'name', 'color'])
-                        : null,
-                    'approval_problem' => PrimaryScheduleRule::participantProblem($participant),
-                ])->values(),
         ]);
     }
 

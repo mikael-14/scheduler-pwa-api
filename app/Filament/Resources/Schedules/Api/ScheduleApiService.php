@@ -19,8 +19,6 @@ class ScheduleApiService extends ApiService
             Handlers\RejectHandler::class,
             Handlers\JoinHandler::class,
             Handlers\LeaveHandler::class,
-            Handlers\ApproveParticipantHandler::class,
-            Handlers\RejectParticipantHandler::class,
             Handlers\NotShownHandler::class,
             Handlers\ParticipantNotShownHandler::class,
             // no delete: apps cancel (owner) or reject (approver); deleting is only done in the admin panel

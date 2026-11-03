@@ -63,6 +63,13 @@ class ScheduleObserver
             return;
         }
 
+        // an admin marked it: its owner did not come (participants keep their own status)
+        if ($schedule->status === ScheduleStatus::NotShown) {
+            $this->notifyNotShown($schedule);
+
+            return;
+        }
+
         if (! in_array($schedule->status, self::NOTIFIED, true)) {
             return;
         }
@@ -173,21 +180,54 @@ class ScheduleObserver
         static::tellApprovers(new SchedulePendingApproval($schedule));
     }
 
-    /** Sends a notification to every approver (see notifyApprovers), also used for participations. */
-    public static function tellApprovers(\App\Notifications\AppNotification $notification): void
+    /** The owner is told they were marked as not shown, and so are the approvers. */
+    private function notifyNotShown(Schedule $schedule): void
+    {
+        if (! auth()->check()) {
+            return;
+        }
+
+        $schedule->loadMissing(['user', 'schedule_type']);
+        $owner = $schedule->user;
+
+        if (ScheduleUserObserver::shouldTell($owner)) {
+            try {
+                $owner->notify(new \App\Notifications\MarkedNotShown($schedule));
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        \App\Notifications\NotShownRecorded::tellApprovers($schedule, $owner);
+    }
+
+    /**
+     * Everyone who may decide on schedules (approve_schedule or update_status_schedule), active and
+     * approved, except the signed-in person.
+     *
+     * @return \Illuminate\Support\Collection<int, User>
+     */
+    public static function approvers(): \Illuminate\Support\Collection
     {
         $permissions = Permission::whereIn('name', ['approve_schedule', 'update_status_schedule'])->pluck('name')->all();
 
         if ($permissions === []) {
-            return;
+            return collect();
         }
 
-        User::permission($permissions)
+        return User::permission($permissions)
             ->where('status', true)
             ->whereNotNull('approved_at')
             ->where('id', '!=', auth()->id() ?? 0)
             ->get()
             ->unique('id')
+            ->values();
+    }
+
+    /** Sends a notification to every approver (see notifyApprovers). */
+    public static function tellApprovers(\App\Notifications\AppNotification $notification): void
+    {
+        static::approvers()
             ->each(function (User $approver) use ($notification) {
                 try {
                     $approver->notify($notification);

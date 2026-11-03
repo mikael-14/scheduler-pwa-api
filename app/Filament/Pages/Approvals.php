@@ -3,7 +3,6 @@
 namespace App\Filament\Pages;
 
 use App\Enums\ScheduleStatus;
-use App\Filament\Widgets\PendingParticipationsWidget;
 use App\Filament\Widgets\PendingSchedulesWidget;
 use App\Models\Schedule;
 use BackedEnum;
@@ -11,8 +10,8 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 /**
- * The approver's inbox: the pending schedules and the pending participations (people who joined
- * an approved schedule), with approve/reject on each row.
+ * The approver's inbox: the pending schedules, with approve/reject on each row. Participants are
+ * not decided on their own: they share the schedule's status.
  * Same audience as the widget it hosts (approve_schedule or update_status_schedule).
  */
 class Approvals extends Page
@@ -46,8 +45,7 @@ class Approvals extends Page
     /** How many schedules are waiting, so approvers see it without opening the page. */
     public static function getNavigationBadge(): ?string
     {
-        $count = Schedule::query()->where('status', ScheduleStatus::Pending)->count()
-            + PendingParticipationsWidget::pendingQuery()->count();
+        $count = Schedule::query()->where('status', ScheduleStatus::Pending)->count();
 
         return $count > 0 ? (string) $count : null;
     }
@@ -61,7 +59,6 @@ class Approvals extends Page
     {
         return [
             PendingSchedulesWidget::make(),
-            PendingParticipationsWidget::make(),
         ];
     }
 

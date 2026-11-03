@@ -375,25 +375,54 @@ class RolesAndPrimaryRuleTest extends TestCase
     {
         $type = $this->type();
         $eva = $this->experiente();
-        $novoSchedule = $this->schedule($this->novo(), $type, '10:00', '12:00', ScheduleStatus::Approved);
+        $novo = $this->novo();
+        $nina = $this->novo('Nina Nova');
+        $novoSchedule = $this->schedule($novo, $type, '10:00', '12:00', ScheduleStatus::Approved);
         $novoSchedule->schedule_users()->create(['user_id' => $eva->id, 'status' => ScheduleStatus::Approved]);
+        $novoSchedule->schedule_users()->create(['user_id' => $nina->id, 'status' => ScheduleStatus::Approved]);
+        $admin = $this->admin();
+        Notification::fake();
 
         Sanctum::actingAs($eva);
         $this->deleteJson(self::URL . "/{$novoSchedule->id}/participation")->assertOk();
 
         $this->assertSame(ScheduleStatus::Pending, $novoSchedule->fresh()->status);
+        // the people still on it go back to pending with it
+        $this->assertSame(ScheduleStatus::Pending, $novoSchedule->schedule_users()->where('user_id', $nina->id)->value('status'));
+
+        // told she left, and that it waits for a decision again
+        Notification::assertSentTo([$novo, $nina, $admin], ScheduleJoinedOrLeft::class);
+        Notification::assertNotSentTo($eva, ScheduleJoinedOrLeft::class);
+        Notification::assertSentTo([$novo, $nina], \App\Notifications\ScheduleBackToPending::class);
+        Notification::assertSentTo($admin, \App\Notifications\SchedulePendingApproval::class);
+    }
+
+    public function test_it_stays_approved_when_someone_it_does_not_rely_on_leaves(): void
+    {
+        $type = $this->type();
+        $eva = $this->experiente();
+        $novo = $this->novo();
+        $schedule = $this->schedule($eva, $type, '10:00', '12:00', ScheduleStatus::Approved);
+        $schedule->schedule_users()->create(['user_id' => $novo->id]);
+
+        Sanctum::actingAs($novo);
+        $this->deleteJson(self::URL . "/{$schedule->id}/participation")->assertOk();
+
+        $this->assertSame(ScheduleStatus::Approved, $schedule->fresh()->status);
     }
 
     // ---- joining and leaving
 
-    public function test_joining_creates_a_pending_participation_that_is_approved_with_the_rule(): void
+    public function test_joining_an_approved_schedule_keeps_it_approved_and_tells_everyone_on_it(): void
     {
-        Notification::fake();
         $type = $this->type();
         $eva = $this->experiente();
         $approved = $this->schedule($eva, $type, '10:00', '12:00', ScheduleStatus::Approved);
+        $rui = $this->experiente('Rui Responsavel');
+        $approved->schedule_users()->createQuietly(['user_id' => $rui->id, 'status' => ScheduleStatus::Approved]);
         $novo = $this->novo();
         $admin = $this->admin();
+        Notification::fake();
 
         Sanctum::actingAs($novo);
         $this->postJson(self::URL . "/{$approved->id}/participation")
@@ -401,32 +430,134 @@ class RolesAndPrimaryRuleTest extends TestCase
             ->assertJsonPath('data.can.leave', true)
             ->assertJsonPath('data.can.join', false);
 
-        $this->assertSame(ScheduleStatus::Pending, $approved->schedule_users()->where('user_id', $novo->id)->value('status'));
-        Notification::assertSentTo($admin, ParticipationRequested::class);
-        Notification::assertSentTo($eva, ScheduleJoinedOrLeft::class);
-
-        // in the approver's list, and approvable: Eva (may go alone) owns the approved schedule
-        Sanctum::actingAs($admin);
-        $row = collect($this->getJson(self::URL . '/pending')->json('participations'))->firstWhere('schedule_id', $approved->id);
-        $this->assertSame($novo->id, $row['user']['id']);
-        $this->assertNull($row['approval_problem']);
-
-        $this->postJson(self::URL . "/{$approved->id}/participants/{$novo->id}/approve")->assertOk();
+        // nobody decides on it: it has the schedule's status
         $this->assertSame(ScheduleStatus::Approved, $approved->schedule_users()->where('user_id', $novo->id)->value('status'));
+        $this->assertSame(ScheduleStatus::Approved, $approved->fresh()->status);
+
+        // the owner, the other people on it and the approvers; not the person who joined
+        Notification::assertSentTo($eva, ScheduleJoinedOrLeft::class);
+        Notification::assertSentTo($rui, ScheduleJoinedOrLeft::class);
+        Notification::assertSentTo($admin, ScheduleJoinedOrLeft::class);
+        Notification::assertNotSentTo($novo, ScheduleJoinedOrLeft::class);
+        Notification::assertNotSentTo($admin, ParticipationRequested::class);
+
+        // and nothing waits for a decision
+        Sanctum::actingAs($admin);
+        $this->assertNull($this->getJson(self::URL . '/pending')->json('participations'));
+        $this->postJson(self::URL . "/{$approved->id}/participants/{$novo->id}/approve")->assertNotFound();
     }
 
-    public function test_a_new_volunteer_joining_another_new_volunteer_cannot_be_approved(): void
+    public function test_joining_a_pending_schedule_is_pending_and_approved_with_it(): void
     {
         $type = $this->type();
-        // e.g. approved before the rule existed
-        $approved = $this->schedule($this->novo('Nina Nova'), $type, '10:00', '12:00', ScheduleStatus::Approved);
+        $pending = $this->schedule($this->experiente(), $type, '10:00', '12:00');
         $novo = $this->novo();
-        $approved->schedule_users()->create(['user_id' => $novo->id, 'status' => ScheduleStatus::Pending]);
+
+        Sanctum::actingAs($novo);
+        $this->postJson(self::URL . "/{$pending->id}/participation")->assertOk();
+        $this->assertSame(ScheduleStatus::Pending, $pending->schedule_users()->value('status'));
 
         Sanctum::actingAs($this->admin());
+        $this->postJson(self::URL . "/{$pending->id}/approve")->assertOk();
+        $this->assertSame(ScheduleStatus::Approved, $pending->schedule_users()->value('status'));
+    }
 
-        $this->postJson(self::URL . "/{$approved->id}/participants/{$novo->id}/approve")->assertStatus(422);
-        $this->postJson(self::URL . "/{$approved->id}/participants/{$novo->id}/reject")->assertOk();
+    public function test_someone_the_rule_does_not_allow_cannot_join_an_approved_schedule(): void
+    {
+        $type = $this->type();
+        // e.g. approved before the rule existed: nobody who may go alone is there
+        $approved = $this->schedule($this->novo('Nina Nova'), $type, '10:00', '12:00', ScheduleStatus::Approved);
+        $novo = $this->novo();
+
+        Sanctum::actingAs($novo);
+        $this->postJson(self::URL . "/{$approved->id}/participation")
+            ->assertStatus(422)
+            ->assertJsonPath('errors.status.0', fn($message) => str_contains($message, 'Nuno Novo'));
+
+        $this->assertSame(0, $approved->schedule_users()->count());
+        $this->assertSame(ScheduleStatus::Approved, $approved->fresh()->status);
+    }
+
+    public function test_whole_day_schedules_are_not_joined_but_their_owner_adds_people(): void
+    {
+        Notification::fake();
+        $type = ScheduleType::create(['name' => 'Feira', 'color' => '#112233', 'status' => true, 'range' => true, 'all_day' => true, 'primary' => false]);
+        $owner = $this->experiente();
+        $day = $this->schedule($owner, $type, '00:00', '23:59', ScheduleStatus::Approved, allDay: true);
+        $rui = $this->experiente('Rui Responsavel');
+
+        Sanctum::actingAs($rui);
+        $this->getJson(self::URL . "/{$day->id}")->assertJsonPath('data.can.join', false);
+        $this->postJson(self::URL . "/{$day->id}/participation")->assertStatus(422)->assertJsonPath('code', 'cannot_join');
+
+        // its owner adds them, with the schedule's status
+        Sanctum::actingAs($owner);
+        $this->patchJson(self::URL . "/{$day->id}", ['schedule_users' => [['user_id' => $rui->id]]])->assertOk();
+        $this->assertSame(ScheduleStatus::Approved, $day->schedule_users()->where('user_id', $rui->id)->value('status'));
+        Notification::assertSentTo($rui, \App\Notifications\ScheduleParticipantAdded::class);
+    }
+
+    public function test_participants_always_have_the_schedules_status(): void
+    {
+        $type = $this->type(false, 'Passeios');
+        $owner = $this->experiente();
+        $schedule = $this->schedule($owner, $type, '10:00', '12:00');
+        $novo = $this->novo();
+        $nina = $this->novo('Nina Nova');
+        $schedule->schedule_users()->create(['user_id' => $novo->id]);
+        $schedule->schedule_users()->create(['user_id' => $nina->id]);
+        $admin = $this->admin();
+        $statuses = fn() => $schedule->schedule_users()->pluck('status')->unique()->values()->all();
+
+        // a status sent for one participant is ignored: nobody is decided on alone
+        Sanctum::actingAs($admin);
+        $this->patchJson(self::URL . "/{$schedule->id}", ['schedule_users' => [
+            ['user_id' => $novo->id, 'status' => 'approved'], ['user_id' => $nina->id],
+        ]])->assertOk();
+        $this->assertSame([ScheduleStatus::Pending], $statuses());
+
+        $this->postJson(self::URL . "/{$schedule->id}/approve")->assertOk();
+        $this->assertSame([ScheduleStatus::Approved], $statuses());
+
+        // the owner moves it: back to pending, everyone with it
+        Sanctum::actingAs($owner);
+        $later = now()->addDays(3)->format('Y-m-d');
+        $this->patchJson(self::URL . "/{$schedule->id}", ['start' => "$later 14:00", 'end' => "$later 16:00"])->assertOk();
+        $this->assertSame(ScheduleStatus::Pending, $schedule->fresh()->status);
+        $this->assertSame([ScheduleStatus::Pending], $statuses());
+
+        $this->patchJson(self::URL . "/{$schedule->id}", ['status' => 'cancelled'])->assertOk();
+        $this->assertSame([ScheduleStatus::Cancelled], $statuses());
+    }
+
+    public function test_rejecting_a_schedule_rejects_everyone_on_it(): void
+    {
+        $type = $this->type(false, 'Passeios');
+        $schedule = $this->schedule($this->experiente(), $type, '10:00', '12:00');
+        $schedule->schedule_users()->create(['user_id' => $this->novo()->id]);
+        $schedule->schedule_users()->create(['user_id' => $this->novo('Nina Nova')->id]);
+
+        Sanctum::actingAs($this->admin());
+        $this->postJson(self::URL . "/{$schedule->id}/reject")->assertOk();
+
+        $this->assertSame(ScheduleStatus::Rejected, $schedule->fresh()->status);
+        $this->assertSame([ScheduleStatus::Rejected], $schedule->schedule_users()->pluck('status')->unique()->values()->all());
+    }
+
+    public function test_what_happened_to_each_person_is_kept(): void
+    {
+        $type = $this->type(false, 'Passeios');
+        $schedule = $this->schedule($this->experiente(), $type, '10:00', '12:00', ScheduleStatus::Approved, daysAhead: -1);
+        $novo = $this->novo();
+        $nina = $this->novo('Nina Nova');
+        $schedule->schedule_users()->createQuietly(['user_id' => $novo->id, 'status' => ScheduleStatus::NotShown]);
+        $schedule->schedule_users()->createQuietly(['user_id' => $nina->id, 'status' => ScheduleStatus::Approved]);
+
+        // a task without a signed-in user (as an admin correcting it would)
+        $schedule->update(['status' => ScheduleStatus::Cancelled]);
+
+        $this->assertSame(ScheduleStatus::NotShown, $schedule->schedule_users()->where('user_id', $novo->id)->value('status'));
+        $this->assertSame(ScheduleStatus::Cancelled, $schedule->schedule_users()->where('user_id', $nina->id)->value('status'));
     }
 
     public function test_external_people_only_join_and_leave(): void

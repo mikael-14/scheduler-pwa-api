@@ -81,6 +81,8 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 				$schedule->schedule_users()->where('user_id', $schedule->user_id)->get()->each->delete();
 			}
 		});
+		// Participants are not decided on their own: they share the schedule's status
+		static::updated(fn(Schedule $schedule) => $schedule->shareStatusWithParticipants());
 		// ...and approved schedules left without anyone who may go alone go back to pending
 		static::updated(fn(Schedule $schedule) => \App\Services\PrimaryScheduleRule::afterScheduleChange($schedule));
 		static::deleted(fn(Schedule $schedule) => \App\Services\PrimaryScheduleRule::afterScheduleChange($schedule, deleted: true));
@@ -105,16 +107,36 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 	public function approve(?string $message = null): void
 	{
 		$this->update(['status' => ScheduleStatus::Approved] + $this->noteWith($message, __('Approved')));
-		$this->schedule_users()
-			->where('status', ScheduleStatus::Pending)
-			->update(['status' => ScheduleStatus::Approved]);
 	}
 
 	/** Reject the schedule and every participant. A message is appended to the internal note. */
 	public function reject(?string $message = null): void
 	{
 		$this->update(['status' => ScheduleStatus::Rejected] + $this->noteWith($message, __('Rejected')));
-		$this->schedule_users()->update(['status' => ScheduleStatus::Rejected]);
+	}
+
+	/**
+	 * Participants have the schedule's status (pending, approved, rejected, cancelled), whatever
+	 * changed it: a decision, an edit, the primary rule putting it back to pending. What happened
+	 * to each person once it took place (completed, not shown) is theirs and is kept.
+	 */
+	public function shareStatusWithParticipants(): void
+	{
+		if (! $this->wasChanged('status') || ! $this->status || $this->status->isOutcome()) {
+			return;
+		}
+
+		$this->schedule_users()
+			->whereNotIn('status', [ScheduleStatus::Completed, ScheduleStatus::NotShown, $this->status])
+			->update(['status' => $this->status]);
+	}
+
+	/** The status a person added to this schedule gets: the schedule's, unless it already took place. */
+	public static function statusForNewParticipant(int $scheduleId): ?ScheduleStatus
+	{
+		$status = static::withTrashed()->whereKey($scheduleId)->first(['id', 'status'])?->status;
+
+		return $status && ! $status->isOutcome() ? $status : null;
 	}
 
 	/** Its owner did not come (participants keep their own status). A message is appended to the internal note. */
