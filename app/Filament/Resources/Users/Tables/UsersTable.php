@@ -105,7 +105,9 @@ class UsersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     ApproveUserAction::bulk(),
+                    // each selected person as if alone (UserPolicy::delete: never yourself, nor above you)
                     DeleteBulkAction::make()
+                        ->authorizeIndividualRecords()
                         ->action(function (Collection $records) {
                             $records->each(function ($record) {
                                 if ($record->schedules()->exists()) {
@@ -122,7 +124,7 @@ class UsersTable
                         ->requiresConfirmation()
                         ->deselectRecordsAfterCompletion()
                         ->successNotificationTitle(__('Records deleted successfully')),
-                    RestoreBulkAction::make(),
+                    RestoreBulkAction::make()->authorizeIndividualRecords(),
                 ]),
             ])->checkIfRecordIsSelectableUsing(
                 fn(Model $record): bool => $record->id !== Auth::id(),

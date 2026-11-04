@@ -175,7 +175,8 @@ return [
         // Each resource's full list: only what a policy or rule really checks (see PermissionsSeeder,
         // which deletes permissions no longer listed here)
         'manage' => [
-            \BezhanSalleh\FilamentShield\Resources\Roles\RoleResource::class => [
+            // the app's Roles screen (Shield's, with RoleManagement's rules)
+            App\Filament\Resources\Roles\RoleResource::class => [
                 'view_any',
                 'view',
                 'create',

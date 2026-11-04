@@ -257,7 +257,7 @@ needed and take part.
 
 | Permission | Allows |
 |---|---|
-| `view_any_schedule`, `view_schedule` | open the shared agenda / a schedule |
+| `view_any_schedule`, `view_schedule` | open the shared agenda / a schedule (the calendar, and the dashboard's Today list and counts) |
 | `view_inactive_schedule` | also see other people's rejected, cancelled, completed and not-shown schedules (without it: only pending / approved, plus your own and the ones you take part in) |
 | `create_schedule` | book for yourself |
 | `create_any_schedule` | book for someone else (without it the owner field is locked to you, everywhere) |
@@ -290,17 +290,24 @@ don't open (`ScheduleAdminAccessTest`).
 | `create_schedule_type`, `update_schedule_type` | create / edit types (the "primary" type is set in the database only, never in the form or the API) |
 | `delete_schedule_type` | delete types, one or in bulk: never a type that still has schedules (the others selected are deleted) |
 | `view_any_user` / `view_owned_user` | the users list / the list with only your own row (anyone else's page: 404) |
-| `update_any_user` / `update_owned_user` | edit anyone / only yourself (name, email, avatar, language, notifications, password) |
-| `create_user`, `delete_user`, `restore_user`, `restore_any_user` | create, delete (not someone with schedules, nor yourself in bulk), bring back users |
+| `update_any_user` / `update_owned_user` | edit others (see **never above yourself** below) / only yourself: name, email, avatar, language, notifications. The password only by its owner |
+| `create_user`, `delete_user`, `restore_user`, `restore_any_user` | create, delete (never yourself, nor someone with schedules; in bulk each person is checked as if alone), bring back users |
 | `approve_user` | approve new accounts: the Approve action (gives a role, never `super_admin` unless you are one, and tells the person), the dashboard counter and the users list filter |
-| `assign_role_user` | give roles to **others**: never your own, and `super_admin` (or a super admin's roles) only by a super admin. Seeing the roles (`view_any_role`) is not enough |
-| `impersonate_user` | sign in as someone else (never a super admin) |
-| `view_any_role`, `view_role`, `create_role`, `update_role`, `delete_role` | manage roles (Shield) |
+| `assign_role_user` | give roles to **others**: never your own, `super_admin` only by a super admin, and only roles whose permissions you have too. Seeing the roles (`view_any_role`) is not enough |
+| `impersonate_user` | sign in as someone else who is active (never yourself, never above yourself) |
+| `view_any_role`, `view_role`, `create_role`, `update_role`, `delete_role` | manage roles (Shield's screen, the app's copy in `App\Filament\Resources\Roles`): never your own roles nor the `super_admin` one, only roles whose permissions you have, and a role only gets permissions you have yourself (the others are dropped, with a warning). A super admin may do all of it, but nobody deletes the `super_admin` role |
 | `view_any_audit`, `view_audit` | the change history (audits) and the login history |
 | `restore_audit` | put a schedule / type back as an audit recorded it |
 | `view_any_notification_log`, `view_notification_log` | the notifications sent |
 | `send_notification_log` | send announcements |
-| `view_any_token`, `view_token`, `create_token`, `update_token`, `delete_token` | the API plugin's tokens page (the PWA's own devices don't need it) |
+| `view_any_token`, `view_token`, `create_token`, `update_token`, `delete_token` | the API plugin's tokens page (the PWA's own devices don't need it): your own tokens only, a super admin's all of them (`App\Policies\TokenPolicy`, registered over the plugin's own). A token signs in as its owner with all of their permissions: the abilities ticked there are not checked by the API |
+
+**Never above yourself:** the same idea runs through the Roles screen (`RoleManagement`) and the users:
+editing someone else, switching them off, deleting, restoring,
+impersonating them or giving them roles is only for someone who has every permission they have.
+A super admin's account is only touched by a super admin. Without this an admin could change a
+super admin's email, and social login finds accounts by email (`UserManagement`,
+`UserAdminAccessTest`).
 
 Every delete in bulk needs the same permission as deleting one (`delete_schedule_type`, `delete_user`,
 `delete_role`, `delete_token`; schedules: `delete_any_schedule`, each row checked as if alone). Every screen's policy answers every
@@ -393,7 +400,7 @@ what would not work; the API checks everything again.
 
 | Page | Needs (otherwise: back to Home) |
 |---|---|
-| Calendar | `view_any_schedule` |
+| Calendar (menu and page) | `view_any_schedule` |
 | Schedule details | `view_schedule` |
 | New schedule | `create_schedule` (an Externo never lands on the booking form) |
 | Edit schedule | `update_schedule`, and the schedule's own `can.update` (else: its details) |
@@ -407,13 +414,16 @@ what would not work; the API checks everything again.
   `can.update`, `can.cancel`, `can.approve`, `can.not_shown`, `can.join`, `can.leave`, and
   `can_mark_not_shown` on each participant. So an Externo only gets "join" / "leave", and nobody
   gets "join" on a whole-day schedule.
-- The booking form's options come from `GET /api/admin/schedules/form-options` (`can.book_for_others`,
+- The booking form's options come from `GET /api/admin/schedules/form-options` (`can.book_for_others`: choose the owner of a new schedule, `can.hand_over`: change it when editing,
   `can.past_dates`, `can.all_day`, `can.internal_note`).
 - The internal note is removed by the API for non-staff: it never reaches their phone.
 - The profile only changes name, email, language, notifications, password and photo: never
   "Active", "Approved" or "Building Key".
 
 #### Roles
+
+The suggested roles, created in Shield → Roles. Tick the permissions in each column; "optional"
+depends on how much you trust that person.
 
 | | Super Admin | Admin | Approver | Voluntário Experiente | Voluntário Novo | Externo |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -426,20 +436,55 @@ what would not work; the API checks everything again.
 | `update_status_schedule` | ✓ | ✓ | optional | | | |
 | `view_inactive_schedule` | ✓ | ✓ | ✓ | | | |
 | `create_any_schedule`, `update_any_schedule`, `delete_any_schedule`, `update_past_schedule` | ✓ | ✓ | optional | | | |
+| `restore_schedule`, `restore_any_schedule`, `force_delete_schedule`, `force_delete_any_schedule` | ✓ | optional | | | | |
 | schedule types (all five) | ✓ | ✓ | | | | |
-| users (`view_any_user`, `update_any_user`, `create_user`, `approve_user`, `assign_role_user`…) | ✓ | ✓ | | | | |
-| `view_owned_user`, `update_owned_user` (not needed: Profile covers it) | ✓ | ✓ | optional | | | |
-| roles, audits, notification log, `send_notification_log`, `impersonate_user` | ✓ | ✓ | | | | |
-| restore / delete forever (schedules, users), tokens | ✓ | optional | | | | |
+| `view_any_user`, `create_user`, `update_any_user`, `approve_user`, `assign_role_user` | ✓ | ✓ | | | | |
+| `delete_user`, `restore_user`, `restore_any_user` | ✓ | ✓ | | | | |
+| `impersonate_user` | ✓ | optional | | | | |
+| `view_owned_user`, `update_owned_user` (not needed: the Profile page covers it) | ✓ | ✓ | optional | | | |
+| roles (`view_any_role`, `view_role`, `create_role`, `update_role`, `delete_role`) | ✓ | ✓ | | | | |
+| `view_any_audit`, `view_audit`, `restore_audit` | ✓ | ✓ | | | | |
+| `view_any_notification_log`, `view_notification_log`, `send_notification_log` | ✓ | ✓ | | | | |
+| tokens (all five) | ✓ | | | | | |
 
-- **Super Admin**: everything; the seeder keeps it complete.
-- **Admin**: runs the association — people, roles, types, approvals and corrections.
+- **Super Admin**: everything; the seeder keeps it complete. The only one who may edit the Admin
+  role, the super admin role, or another super admin's account.
+- **Admin**: runs the association: people, roles, types, approvals and corrections.
 - **Approver**: decides pending schedules; goes alone and books whole days like an Experiente.
 - **Voluntário Experiente**: books, joins, may go alone and book whole days.
 - **Voluntário Novo**: books and joins; on the primary type only approved with someone who may
   go alone there; no whole-day schedules.
 - **Externo**: only **joins** other people's schedules and leaves them; never books. On the
   primary type treated like a Novo (cannot go alone).
+
+What an **Admin** still cannot do, whatever is ticked (**never above yourself**, see above):
+
+- edit, switch off, delete, restore, impersonate or give roles to a super admin, or to anyone with
+  a permission the Admin lacks (another Admin with the same role is fine);
+- change their own roles, delete or impersonate themselves;
+- edit or delete the **Admin** role (their own) or the `super_admin` role, or any role with a
+  permission they lack; a role they edit only gets permissions they have;
+- give a role with a permission they lack (it is not offered);
+- set their own Active / Approved / Building Key.
+
+So when the Admin role needs a new permission, a super admin adds it.
+
+Other notes:
+
+- **Tokens** are for a super admin only: a token signs in as its owner with all of their
+  permissions (the abilities ticked on the Tokens page are not checked), and the PWA makes its own.
+- **Restore / delete forever**: deleted schedules are kept (soft deleted) and can be brought back
+  with `restore_schedule`; `force_delete_*` removes them for good. Users are never deleted for
+  good from the panel, and somebody with schedules is not deleted at all.
+- **Audits**: give `view_any_audit` and `view_audit` together; `restore_audit` puts a schedule,
+  type or user back as an audit recorded it, still under the normal rules.
+- A role's name is free (only `super_admin` is special): the app checks permissions, never names.
+
+`tests/Feature/RoleMatrixTest.php` creates these roles (without the optional boxes) and opens every admin page as each of them; it fails if the panel and this table disagree.
+
+**Setting it up:** run `PermissionsSeeder`, sign in as the super admin, create the five roles
+with the permissions above (the super admin creates Admin, since nobody else may give it more
+than they have), then give people their roles when approving them.
 
 ### The primary type rule
 

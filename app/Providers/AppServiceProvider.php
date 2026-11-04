@@ -44,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
         $this->trackNotificationDelivery();
         Gate::policy(Audit::class, AuditPolicy::class);
         Gate::policy(\Rappasoft\LaravelAuthenticationLog\Models\AuthenticationLog::class, \App\Policies\AuthenticationLogPolicy::class);
+        // the API plugin registers its own token policy (it asks for permissions Shield does not
+        // declare here, e.g. delete_any_token); the app's follows the declared ones
+        Gate::policy(\Rupadana\ApiService\Models\Token::class, \App\Policies\TokenPolicy::class);
         // Saving the language chosen in the panel's switcher is done by the
         // App\Listeners\PersistUserLocale listener (auto-discovered); it used to be duplicated here.
 

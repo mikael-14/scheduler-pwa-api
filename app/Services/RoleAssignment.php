@@ -11,6 +11,8 @@ use Spatie\Permission\Models\Role;
  * - only with `assign_role_user` (seeing the roles, `view_any_role`, is not enough)
  * - never one's own roles (no promoting or locking out oneself)
  * - the super admin role, and the roles of a super admin, only by a super admin
+ * - never to someone with permissions one lacks, nor a role with permissions one lacks
+ *   (UserManagement: never above yourself)
  * The saved list is checked again on the server, whatever the browser sends.
  */
 class RoleAssignment
@@ -28,20 +30,30 @@ class RoleAssignment
         if (! $actor?->can(self::PERMISSION)) {
             return false;
         }
-        if ($target && $target->is($actor)) {
-            return false;
+        if (! $target) {
+            return true;
         }
 
-        return ! self::isSuperAdmin($target) || self::isSuperAdmin($actor);
+        // never one's own; never above oneself (a super admin, someone with more permissions)
+        return UserManagement::mayManageOther($actor, $target);
     }
 
-    /** @return array<int, string> id => name, the roles $actor may give */
+    /**
+     * @return array<int, string> id => name, the roles $actor may give: super admin only by a
+     * super admin, and only roles whose permissions $actor has too (no giving more than you have)
+     */
     public static function options(?User $actor): array
     {
+        $superAdmin = self::isSuperAdmin($actor);
+        $mine = $actor?->getAllPermissions()->pluck('name') ?? collect();
+
         return Role::query()
+            ->with('permissions:id,name')
             ->where('guard_name', 'web')
-            ->when(! self::isSuperAdmin($actor), fn($query) => $query->where('name', '!=', Utils::getSuperAdminName()))
+            ->when(! $superAdmin, fn($query) => $query->where('name', '!=', Utils::getSuperAdminName()))
             ->orderBy('name')
+            ->get()
+            ->filter(fn(Role $role) => $superAdmin || $role->permissions->pluck('name')->diff($mine)->isEmpty())
             ->pluck('name', 'id')
             ->all();
     }

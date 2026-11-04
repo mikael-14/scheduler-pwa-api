@@ -3,9 +3,14 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Services\UserManagement;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
+/**
+ * Shield permissions; on other people also UserManagement: never above yourself (a super admin,
+ * or someone with permissions you lack), and never deleting yourself.
+ */
 class UserPolicy
 {
     use HandlesAuthorization;
@@ -37,9 +42,8 @@ class UserPolicy
 
     public function update(AuthUser $authUser, User $user): bool
     {
-        if ($authUser->can('update_any_user'))
-            {
-            return true;
+        if ($authUser->can('update_any_user')) {
+            return $authUser->id === $user->id || UserManagement::mayManageOther($authUser, $user);
         }
         if ($authUser->can('update_owned_user')) {
             return $authUser->id === $user->id;
@@ -47,9 +51,9 @@ class UserPolicy
         return false;
     }
 
-    public function delete(AuthUser $authUser): bool
+    public function delete(AuthUser $authUser, User $user): bool
     {
-        return $authUser->can('delete_user');
+        return $authUser->can('delete_user') && UserManagement::mayManageOther($authUser, $user);
     }
 
     /** The bulk delete: without this method Filament would let anyone who sees the list use it. */
@@ -58,9 +62,9 @@ class UserPolicy
         return $authUser->can('delete_user');
     }
 
-    public function restore(AuthUser $authUser): bool
+    public function restore(AuthUser $authUser, User $user): bool
     {
-        return $authUser->can('restore_user');
+        return $authUser->can('restore_user') && UserManagement::mayManageOther($authUser, $user);
     }
 
     public function forceDelete(AuthUser $authUser): bool
@@ -80,12 +84,12 @@ class UserPolicy
 
     public function replicate(AuthUser $authUser): bool
     {
-        return $authUser->can('replicate_user');
+        return false;
     }
 
     public function reorder(AuthUser $authUser): bool
     {
-        return $authUser->can('reorder_user');
+        return false;
     }
 
     public function viewOwned(AuthUser $authUser): bool

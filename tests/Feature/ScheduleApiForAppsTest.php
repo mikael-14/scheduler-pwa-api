@@ -137,7 +137,7 @@ class ScheduleApiForAppsTest extends TestCase
         $this->assertSame(['Me'], array_column($data['people'], 'name'));
         // a member may only leave it pending or cancel it
         $this->assertSame(['pending', 'cancelled'], array_column($data['statuses'], 'value'));
-        $this->assertSame(['book_for_others' => false, 'past_dates' => false, 'all_day' => false, 'internal_note' => false], $data['can']);
+        $this->assertSame(['book_for_others' => false, 'hand_over' => false, 'past_dates' => false, 'all_day' => false, 'internal_note' => false], $data['can']);
         $this->assertSame(config('app.timezone'), $data['timezone']);
     }
 

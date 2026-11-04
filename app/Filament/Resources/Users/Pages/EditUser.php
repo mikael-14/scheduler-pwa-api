@@ -18,6 +18,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -115,23 +116,34 @@ class EditUser extends EditRecord
                                     ->options(collect(config('app-locales.available'))->pluck('name', 'code')->toArray())
                                     ->translateLabel()
                                     ->selectablePlaceholder(false),
-                                Grid::make()
+                                // shown to who may see or give roles; changed only as RoleAssignment allows
+                                // (never one's own, super admin only by a super admin)
+                                Select::make('role')
+                                    ->label(__('Roles'))
+                                    ->options(fn($record) => RoleAssignment::canAssign(auth()->user(), $record)
+                                        ? RoleAssignment::options(auth()->user())
+                                        : Role::query()->pluck('name', 'id')->all())
+                                    ->multiple()
+                                    ->visible(fn() => auth()->user()->can('view_any_role') || auth()->user()->can(RoleAssignment::PERMISSION))
+                                    ->disabled(fn($record) => ! RoleAssignment::canAssign(auth()->user(), $record))
+                                    ->dehydrated(fn($record) => RoleAssignment::canAssign(auth()->user(), $record)),
+                                Fieldset::make(__('Account'))
                                     ->columns(3)
                                     ->schema([
                                         // the account itself: only by who manages others, never on one's own;
                                         // disabled ones are not saved, whatever the browser sends
-                                        Toggle::make('status')
-                                            ->label(__('Active'))
-                                            ->inline(false)
-                                            ->helperText(__('Admin panel access'))
-                                            ->disabled(fn($record) => ! self::managesAccount($record))
-                                            ->dehydrated(fn($record) => self::managesAccount($record)),
                                         Toggle::make('approved')
                                             ->label(__('Approved'))
                                             ->inline(false)
                                             ->helperText(fn($record) => __('Account approved') . ' ' . $record->approved_at)
                                             ->disabled(fn($record) => ! self::mayApprove($record))
                                             ->dehydrated(fn($record) => self::mayApprove($record)),
+                                        Toggle::make('status')
+                                            ->label(__('Active'))
+                                            ->inline(false)
+                                            ->helperText(__('Admin panel access'))
+                                            ->disabled(fn($record) => ! self::managesAccount($record))
+                                            ->dehydrated(fn($record) => self::managesAccount($record)),
                                         Toggle::make('building_key')
                                             ->label(__('Building Key'))
                                             ->inline(false)
@@ -139,7 +151,8 @@ class EditUser extends EditRecord
                                             ->disabled(fn($record) => ! self::managesAccount($record))
                                             ->dehydrated(fn($record) => self::managesAccount($record)),
                                     ]),
-                                Grid::make()
+                                // one column per channel: their own schedules, then everyone's
+                                Fieldset::make(__('Notifications'))
                                     ->columns(2)
                                     ->schema([
                                         Toggle::make('email_notification')
@@ -159,17 +172,6 @@ class EditUser extends EditRecord
                                             ->inline(false)
                                             ->helperText(__('Also other people\'s schedules.')),
                                     ]),
-                                // shown to who may see or give roles; changed only as RoleAssignment allows
-                                // (never one's own, super admin only by a super admin)
-                                Select::make('role')
-                                    ->label(__('Roles'))
-                                    ->options(fn($record) => RoleAssignment::canAssign(auth()->user(), $record)
-                                        ? RoleAssignment::options(auth()->user())
-                                        : Role::query()->pluck('name', 'id')->all())
-                                    ->multiple()
-                                    ->visible(fn() => auth()->user()->can('view_any_role') || auth()->user()->can(RoleAssignment::PERMISSION))
-                                    ->disabled(fn($record) => ! RoleAssignment::canAssign(auth()->user(), $record))
-                                    ->dehydrated(fn($record) => RoleAssignment::canAssign(auth()->user(), $record)),
                             ])
                             // Logic: If same user, take 2 columns. If different, take all 3.
                             ->columnSpan(fn($record): int => ($record && auth()->id() === $record->id) ? 2 : 3),

@@ -151,10 +151,13 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
      * You can also control which targets can be impersonated.
      * Just add a 'canBeImpersonated' method to the user class with whatever logic you need
      */
-    public function canBeImpersonated(): bool
+    public function canBeImpersonated(?User $by = null): bool
     {
-        // Let's prevent impersonating other users that are super admins
-        return !$this->hasRole('super_admin') && (bool) $this->status;
+        // active, someone else, and never above whoever impersonates (a super admin, or someone
+        // with permissions they lack): UserManagement
+        $by ??= auth()->user();
+
+        return (bool) $this->status && \App\Services\UserManagement::mayManageOther($by, $this);
     }
 
     public function isAdmin(): bool

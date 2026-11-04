@@ -50,6 +50,8 @@ class AccessHolesTest extends TestCase
         foreach (Filament::getPanel('admin')->getResources() as $resource) {
             $policy = \Illuminate\Support\Facades\Gate::getPolicyFor($resource::getModel());
             $this->assertNotNull($policy, "$resource has no policy: it would be open to everyone");
+            // the app's own, following the declared Shield permissions (plugins bring theirs)
+            $this->assertStringStartsWith('App\\Policies\\', $policy::class, "$resource uses a plugin's policy");
             foreach ($abilities as $ability) {
                 $this->assertTrue(method_exists($policy, $ability), $policy::class . " has no $ability()");
             }

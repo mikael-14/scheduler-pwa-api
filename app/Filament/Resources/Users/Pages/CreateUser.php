@@ -15,6 +15,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -57,14 +58,16 @@ class CreateUser extends CreateRecord
                         )->default('pt')
                             ->selectablePlaceholder(false)
                             ->native(false),
-                        Grid::make()
+                        Select::make('role')
+                            ->label(__('Roles'))
+                            // only with assign_role_user; super admin only by a super admin (RoleAssignment)
+                            ->options(fn() => RoleAssignment::options(Filament::auth()->user()))
+                            ->multiple()
+                            ->native(false)
+                            ->visible(fn() => RoleAssignment::canAssign(Filament::auth()->user())),
+                        Fieldset::make(__('Account'))
                             ->columns(3)
                             ->schema([
-                                Toggle::make('status')
-                                    ->label(__('Active'))
-                                    ->inline(false)
-                                    ->helperText(__('Access'))
-                                    ->default(1),
                                 Toggle::make('approved')
                                     ->label(__('Approved'))
                                     ->inline(false)
@@ -73,13 +76,19 @@ class CreateUser extends CreateRecord
                                     // approving needs approve_user, as the Approve action
                                     ->disabled(fn() => ! Filament::auth()->user()->can('approve_user'))
                                     ->dehydrated(fn() => Filament::auth()->user()->can('approve_user')),
+                                Toggle::make('status')
+                                    ->label(__('Active'))
+                                    ->inline(false)
+                                    ->helperText(__('Access'))
+                                    ->default(1),
                                 Toggle::make('building_key')
                                     ->label(__('Building Key'))
                                     ->inline(false)
                                     ->helperText(__('User has a building key'))
                                     ->default(0),
                             ]),
-                        Grid::make()
+                        // one column per channel: their own schedules, then everyone's
+                        Fieldset::make(__('Notifications'))
                             ->columns(2)
                             ->schema([
                                 Toggle::make('email_notification')
@@ -103,13 +112,6 @@ class CreateUser extends CreateRecord
                                     ->default(true)
                                     ->helperText(__('Also other people\'s schedules.')),
                             ]),
-                        Select::make('role')
-                            ->label(__('Roles'))
-                            // only with assign_role_user; super admin only by a super admin (RoleAssignment)
-                            ->options(fn() => RoleAssignment::options(Filament::auth()->user()))
-                            ->multiple()
-                            ->native(false)
-                            ->visible(fn() => RoleAssignment::canAssign(Filament::auth()->user())),
                     ]),
                 Section::make()
                     ->schema([

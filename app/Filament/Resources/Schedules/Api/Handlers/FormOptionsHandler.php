@@ -66,6 +66,8 @@ class FormOptionsHandler extends ApprovedHandler
                     ->values(),
                 'can' => [
                     'book_for_others' => $actor->can('create_any_schedule'),
+                    // editing: give a schedule to another owner (the API ignores the owner otherwise)
+                    'hand_over' => $actor->can('update_any_schedule'),
                     'past_dates' => $actor->can('update_past_schedule'),
                     // whole-day schedules (no hours), on types that allow them
                     'all_day' => \App\Services\AllDayRule::mayBook($actor),

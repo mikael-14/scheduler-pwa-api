@@ -7,7 +7,9 @@ namespace App\Policies;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Spatie\Permission\Models\Role;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use App\Services\RoleManagement;
 
+/** Shield permissions, plus RoleManagement: never the super admin role, your own roles, or above you. */
 class RolePolicy
 {
     use HandlesAuthorization;
@@ -29,12 +31,12 @@ class RolePolicy
 
     public function update(AuthUser $authUser, Role $role): bool
     {
-        return $authUser->can('update_role');
+        return $authUser->can('update_role') && RoleManagement::mayManage($authUser, $role);
     }
 
     public function delete(AuthUser $authUser, Role $role): bool
     {
-        return $authUser->can('delete_role');
+        return $authUser->can('delete_role') && RoleManagement::mayDelete($authUser, $role);
     }
 
     /** The bulk delete: without this method Filament would let anyone who sees the list use it. */

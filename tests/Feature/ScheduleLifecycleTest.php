@@ -74,6 +74,8 @@ class ScheduleLifecycleTest extends TestCase
 
     public function test_the_creator_cancels_pending_or_approved_schedules_until_they_start(): void
     {
+        // midday: "an hour ago" must still be today (just after midnight it would be a past day)
+        $this->travelTo(now()->setTime(12, 0));
         $pending = $this->schedule($this->owner, ScheduleStatus::Pending, now()->addDay()->setTime(10, 0));
         $approved = $this->tomorrow();
         $started = $this->startedAnHourAgo();

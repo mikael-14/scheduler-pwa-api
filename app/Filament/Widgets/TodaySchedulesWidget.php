@@ -30,6 +30,8 @@ class TodaySchedulesWidget extends TableWidget
 
     public function table(Table $table): Table
     {
+        $visible = fn(): Builder => \App\Services\ScheduleAccess::scopeVisible(Schedule::query(), Filament::auth()->user());
+
         $today = fn(Builder $query) => $query
             ->whereNotIn('status', [ScheduleStatus::Rejected, ScheduleStatus::Cancelled])
             ->where('start', '<=', now()->endOfDay())
@@ -38,14 +40,15 @@ class TodaySchedulesWidget extends TableWidget
         return $table
             ->heading(__('Today at the shelter'))
             ->description(now()->translatedFormat('l, d F'))
-            ->query(fn(): Builder => $today(Schedule::query())
+            // only what this person may see (ScheduleAccess::scopeVisible), like the calendar
+            ->query(fn(): Builder => $today($visible())
                 ->with(['user', 'schedule_type', 'schedule_users.user'])
                 ->orderBy('all_day', 'desc')
                 ->orderBy('start')
                 ->limit(self::ROWS))
             ->headerActions([
                 Action::make('calendar')
-                    ->label(fn() => __('See all (:count)', ['count' => $today(Schedule::query())->count()]))
+                    ->label(fn() => __('See all (:count)', ['count' => $today($visible())->count()]))
                     ->link()
                     ->url(ScheduleCalendar::getUrl(['date' => now()->toDateString()])),
             ])
