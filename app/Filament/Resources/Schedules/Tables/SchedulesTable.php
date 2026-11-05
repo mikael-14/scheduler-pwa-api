@@ -62,6 +62,13 @@ class SchedulesTable
                     ->tooltip(fn($record) => $record->description)
                     ->sortable()
                     ->searchable(),
+                // a note icon when the schedule has a description (the calendar shows 💬); hover reads it
+                IconColumn::make('has_description')
+                    ->label('')
+                    ->state(fn(Schedule $record): bool => filled($record->description))
+                    ->icon(fn(bool $state) => $state ? \Filament\Support\Icons\Heroicon::OutlinedChatBubbleLeftEllipsis : null)
+                    ->color('gray')
+                    ->tooltip(fn(Schedule $record) => $record->description),
                 TextColumn::make('start')
                     ->label(__('Start'))
                     ->date(fn($record) => $record->all_day ? config('app.date_format') : config('app.date_time_format'))

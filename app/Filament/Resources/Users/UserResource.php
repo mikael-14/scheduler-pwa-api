@@ -63,6 +63,10 @@ class UserResource extends Resource
     {
         return [
             AuthenticationLogsRelationManager::class,
+            // the changes made to this user, for who may see the audits
+            \App\Filament\Resources\Users\RelationManagers\AuditsRelationManager::class,
+            // what this user did, for who may see the audits
+            \App\Filament\Resources\Users\RelationManagers\ActivityRelationManager::class,
         ];
     }
 

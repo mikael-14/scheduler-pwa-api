@@ -43,7 +43,7 @@ class CalendarWidget extends FullCalendarWidget
         return [
             CreateAction::make()
                 ->model(Schedule::class)
-                // the modal's title and buttons say "â€¦ agendamento", not the class name
+                // the modal's title and buttons say "... agendamento", not the class name
                 ->modelLabel(mb_strtolower(__('Schedule')))
                 ->label(__('Create Schedule'))
                 // a date click / select opens it too: the same permission as the Create page
@@ -144,19 +144,21 @@ class CalendarWidget extends FullCalendarWidget
                     ->unique()
                     ->values();
 
+                // the owner's name, then "+2" for the other participants
                 $title = $names->first() ?? __('No user');
                 if ($names->count() > 1) {
                     $title .= ' +' . ($names->count() - 1);
                 }
+                // symbols as \u{...} escapes, so the file's encoding can never garble them
                 if ($event->all_day) {
-                    $title = 'âŒ› ' . $title;
+                    $title = "\u{231B} " . $title; // ⌛ the whole day
                 }
                 if (!empty($event->description)) {
-                    $title .= ' ðŸ’¬';
+                    $title .= " \u{1F4AC}"; // 💬 has a note
                 }
                 // On the central calendar, say which type each event belongs to
                 if (!$this->record && $type) {
-                    $title .= ' Â· ' . $type->name;
+                    $title .= " \u{00B7} " . $type->name; // · separator
                 }
 
                 return [

@@ -165,6 +165,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         return $this->hasRole('super_admin') ? true : false;
     }
 
+    /** The audits this user is the author of: what they changed (admin panel → user → Activity). */
+    public function performedAudits(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(\Tapp\FilamentAuditing\Models\Audit::class, 'user');
+    }
+
     public function getFilamentAvatarUrl(): ?string
     {
         // Return the full URL for the image or null if empty

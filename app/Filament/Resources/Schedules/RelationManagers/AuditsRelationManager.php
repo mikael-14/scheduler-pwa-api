@@ -6,6 +6,8 @@ use App\Models\Schedule;
 use App\Models\ScheduleUser;
 use App\Models\User;
 use Filament\Actions\ViewAction;
+use Filament\Facades\Filament;
+use Tapp\FilamentAuditing\Models\Audit;
 use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Infolists\Infolist;
@@ -21,13 +23,45 @@ class AuditsRelationManager extends RelationManager
 {
     protected static string $relationship = 'audits';
 
+    /**
+     * On the schedule's View and Edit pages, only for who may see the audits. Read-only on both:
+     * the table has no create/edit/delete actions, only View.
+     */
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        if ($pageClass === \App\Filament\Resources\Schedules\Pages\ViewSchedule::class) {
-            return auth()->user()->can('view_any_audit');
-        }
-        // Example 1: Using Spatie Permissions / Laravel Gates
-        return false;
+        return in_array($pageClass, [
+            \App\Filament\Resources\Schedules\Pages\ViewSchedule::class,
+            \App\Filament\Resources\Schedules\Pages\EditSchedule::class,
+        ], true)
+            && (bool) Filament::auth()->user()?->can('viewAny', Audit::class);
+    }
+
+    /**
+     * The schedule_users rows that ever belonged to this schedule. Who left is deleted from
+     * schedule_users, so their rows are found through their own audits too (schedule_id is kept
+     * in the values they were created and deleted with).
+     */
+    private function participantRowIds(): array
+    {
+        $scheduleId = $this->getOwnerRecord()->getKey();
+
+        return ScheduleUser::where('schedule_id', $scheduleId)->pluck('id')
+            ->merge(Audit::query()
+                ->where('auditable_type', ScheduleUser::class)
+                ->where(fn(Builder $q) => $q
+                    ->where('new_values->schedule_id', $scheduleId)
+                    ->orWhere('old_values->schedule_id', $scheduleId))
+                ->pluck('auditable_id'))
+            ->unique()->values()->all();
+    }
+
+    /** The participant of a schedule_users audit, also when that row is gone. */
+    private static function participantUserId(Audit $audit): ?int
+    {
+        return $audit->auditable?->user_id
+            ?? $audit->old_values['user_id']
+            ?? $audit->new_values['user_id']
+            ?? null;
     }
     // 1. Infolist view structure (Triggers natively inside the modal/slide-over)
     public function infolist(Schema $schema): Schema
@@ -43,7 +77,10 @@ class AuditsRelationManager extends RelationManager
                             ->color('primary')
                             ->state(function ($record) {
                                 if ($record->auditable_type === ScheduleUser::class) {
-                                    $scheduleId = $record->auditable?->schedule_id ?? 'Unknown';
+                                    $scheduleId = $record->auditable?->schedule_id
+                                        ?? $record->old_values['schedule_id']
+                                        ?? $record->new_values['schedule_id']
+                                        ?? 'Unknown';
                                     return "User Row #{$record->auditable_id} (On Schedule #{$scheduleId})";
                                 }
                                 return class_basename($record->auditable_type) . " #{$record->auditable_id}";
@@ -79,24 +116,23 @@ class AuditsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(
-                fn(Builder $query) => $query
-                    ->where(function ($q) {
-                        $q->where('auditable_type', Schedule::class)
-                            ->where('auditable_id', $this->getOwnerRecord()->id);
-                    })
-                    ->orWhere(function ($q) {
-                        $q->where('auditable_type', ScheduleUser::class)
-                            ->whereIn('auditable_id', ScheduleUser::where('schedule_id', $this->getOwnerRecord()->id)->pluck('id'));
-                    })
-            )
+            // its own query (not the audits() relation plus an orWhere): the schedule's audits and its
+            // participants', grouped, so the table's search and sort cannot unbalance the OR
+            ->query(fn(): Builder => Audit::query()->where(fn(Builder $q) => $q
+                ->where(fn(Builder $q) => $q
+                    ->where('auditable_type', Schedule::class)
+                    ->where('auditable_id', $this->getOwnerRecord()->getKey()))
+                ->orWhere(fn(Builder $q) => $q
+                    ->where('auditable_type', ScheduleUser::class)
+                    ->whereIn('auditable_id', $this->participantRowIds()))))
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('resource_details')
                     ->label(__('Resource Details'))
                     ->weight('bold')
                     ->getStateUsing(function ($record) {
                         if ($record->auditable_type === ScheduleUser::class) {
-                            return  " #{$record->auditable_id} " . __("Schedule User") . " " . User::where('id', $record->auditable?->user_id)->value('name');
+                            return  " #{$record->auditable_id} " . __("Schedule User") . " " . User::where('id', self::participantUserId($record))->value('name');
                         }
                         return "#{$record->auditable_id} " . __("Agenda");
                     }),
