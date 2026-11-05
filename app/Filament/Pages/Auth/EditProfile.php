@@ -4,13 +4,14 @@ namespace App\Filament\Pages\Auth;
 
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 /**
- * Filament's own profile page, plus the user's language and notification preferences.
+ * Filament's own profile page, plus the user's photo, language and notification preferences.
  * The same columns are edited from the PWA (PATCH /api/user).
  */
 class EditProfile extends BaseEditProfile
@@ -19,6 +20,15 @@ class EditProfile extends BaseEditProfile
     {
         return $schema
             ->components([
+                // same field as the user edit form (Users → Edit)
+                FileUpload::make('avatar_url')
+                    ->label(__('Avatar'))
+                    ->image()
+                    ->avatar()
+                    ->disk('public')
+                    ->directory('avatars')
+                    ->visibility('public')
+                    ->imageEditor(),
                 $this->getNameFormComponent(),
                 $this->getEmailFormComponent(),
                 Select::make('locale')
