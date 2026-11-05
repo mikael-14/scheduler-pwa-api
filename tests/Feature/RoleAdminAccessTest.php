@@ -54,6 +54,13 @@ class RoleAdminAccessTest extends TestCase
 
         $this->actingAs($this->userWith($this->role('Admin', self::ROLES)));
         $this->get(RoleResource::getUrl('index'))->assertOk();
+
+        // only the Resources tab: pages and widgets check their own access (filament-shield.php
+        // pages.exclude / widgets.exclude), so Shield has no permissions for them
+        $other = $this->role('Externo', ['view_any_schedule']);
+        Livewire::test(EditRole::class, ['record' => $other->getRouteKey()])
+            ->assertDontSee(__('filament-shield::filament-shield.widgets'))
+            ->assertDontSee(__('filament-shield::filament-shield.pages'));
     }
 
     public function test_nobody_edits_their_own_role_the_super_admin_role_or_a_bigger_one(): void
