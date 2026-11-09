@@ -453,7 +453,12 @@
     "Restore participant": "Repor participante",
     "The person is back on the schedule with its current status, and is told.": "A pessoa volta ao agendamento com o estado atual deste, e é avisada.",
     "Participant restored": "Participante reposto",
-    "Needs an experienced volunteer": "Precisa de um voluntário experiente",
+    ":type: only between :from and :to.": ":type: só entre as :from e as :to.",
+    ":type: not before :from.": ":type: não antes das :from.",
+    ":type: only until :to.": ":type: só até às :to.",
+    "Optional: schedules cannot start before this time (the calendar starts here).": "Opcional: os agendamentos não podem começar antes desta hora (o calendário começa aqui).",
+    "Optional: schedules must end by this time (the calendar ends here). 00:00 = midnight.": "Opcional: os agendamentos têm de terminar até esta hora (o calendário termina aqui). 00:00 = meia-noite.",
+    "Needs an experienced volunteer":"Precisa de um voluntário experiente",
     "Someone who cannot go alone is only approved when an experienced volunteer is there. If you can go, join this schedule.": "Quem não pode ir sozinho só é aprovado com um voluntário experiente presente. Se puder ir, junte-se a este agendamento.",
     "Someone who cannot go alone is only approved when an experienced volunteer is there.": "Quem não pode ir sozinho só é aprovado com um voluntário experiente presente."
 }

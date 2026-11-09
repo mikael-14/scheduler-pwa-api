@@ -149,9 +149,27 @@ class ScheduleApiHardeningTest extends TestCase
         $type = $this->type();
         $day = now()->addDays(3)->format('Y-m-d');
 
-        // min_time / max_time only set the calendar's visible hours: outside them is allowed
-        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 06:00", 'end' => "$day 09:00"]))->assertOk();
-        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 16:00", 'end' => "$day 20:00"]))->assertOk();
+        // the daily hours (08:00-18:00): the calendar shows only those, so nothing may fall outside
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 06:00", 'end' => "$day 09:00"]))
+            ->assertStatus(422)->assertJsonValidationErrors(['start' => 'only between 08:00 and 18:00']);
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 16:00", 'end' => "$day 20:00"]))
+            ->assertStatus(422)->assertJsonValidationErrors('end');
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 18:00", 'end' => "$day 19:00"]))
+            ->assertStatus(422)->assertJsonValidationErrors('end');
+        // from the first minute to the last one is fine
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 08:00", 'end' => "$day 18:00"]))->assertOk();
+
+        // a max of 00:00 is midnight: ending at midnight fits, and whole-day schedules have no hours
+        $type->update(['max_time' => '00:00']);
+        $next = now()->addDays(4)->format('Y-m-d');
+        $this->postJson(self::URL, $this->payload($type, ['start' => "$day 20:00", 'end' => "$next 00:00"]))->assertOk();
+
+        // an existing schedule outside the hours is only checked when its time or type changes
+        $type->update(['max_time' => '18:00']);
+        $old = Schedule::query()->latest('id')->first();
+        $old->update(['description' => 'still fine']);
+        $this->assertSame('still fine', $old->fresh()->description);
+        $type->update(['max_time' => null, 'min_time' => null]);
 
         // outside the type's start / end (when it may be booked) is not
         $type->update(['start' => now()->addDays(2)->startOfDay(), 'end' => now()->addDays(10)->endOfDay()]);

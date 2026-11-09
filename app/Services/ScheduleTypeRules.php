@@ -14,8 +14,9 @@ use Illuminate\Support\Collection;
  * - all_day       whether a schedule may be "all day". Enforced.
  * - range         whether a schedule needs an end time. Enforced.
  * - status        only active types take new schedules. Enforced.
- * - min_time / max_time  which hours the calendar shows for this type. Display only:
- *                 never a reason to refuse a schedule.
+ * - min_time / max_time  the daily hours: a schedule with hours starts at min_time or later and
+ *                 ends by max_time (a max of 00:00 = midnight). Enforced, for everyone. The
+ *                 calendar shows exactly these hours, so nothing can fall outside it.
  */
 class ScheduleTypeRules
 {
@@ -79,7 +80,48 @@ class ScheduleTypeRules
     }
 
     /**
-     * Hours the calendar shows for this type ("HH:mm:ss", null = no limit). Display only.
+     * Why a schedule with hours falls outside the type's daily hours, or null when it fits.
+     * Times are compared on the clock, in the app's timezone; an end at midnight counts as 24:00.
+     *
+     * @return array{field: string, message: string}|null
+     */
+    public function hoursProblem(CarbonInterface $start, ?CarbonInterface $end): ?array
+    {
+        ['min' => $min, 'max' => $max] = $this->calendarHours();
+        if (! $min && ! $max) {
+            return null;
+        }
+
+        $tz = config('app.timezone');
+        $start = $start->copy()->setTimezone($tz);
+        $last = ($end ?? $start)->copy()->setTimezone($tz);
+
+        $startClock = $start->format('H:i:s');
+        $lastClock = $last->format('H:i:s');
+        if ($lastClock === '00:00:00' && $last->gt($start)) {
+            $lastClock = '24:00:00'; // ends at midnight
+        }
+
+        $hhmm = fn(string $time) => substr($time, 0, 5);
+        $message = match (true) {
+            $min && $max => __(':type: only between :from and :to.', ['type' => $this->type->name, 'from' => $hhmm($min), 'to' => $hhmm($max)]),
+            (bool) $min => __(':type: not before :from.', ['type' => $this->type->name, 'from' => $hhmm($min)]),
+            default => __(':type: only until :to.', ['type' => $this->type->name, 'to' => $hhmm($max)]),
+        };
+
+        if ($min && $startClock < $min) {
+            return ['field' => 'start', 'message' => $message];
+        }
+        // a start after the end of the day, or an end after it
+        if ($max && ($startClock >= $max || $lastClock > $max)) {
+            return ['field' => $end ? 'end' : 'start', 'message' => $message];
+        }
+
+        return null;
+    }
+
+    /**
+     * Hours the calendar shows for this type ("HH:mm:ss", null = no limit): its daily hours.
      *
      * @return array{min: ?string, max: ?string}
      */
@@ -133,7 +175,7 @@ class ScheduleTypeRules
             'end' => $this->type->end,
             // its end has passed: the PWA offers it only to people who may book the past
             'ended' => $this->hasEnded(),
-            // display only: the calendar's visible hours
+            // the daily hours (enforced; also the calendar's visible hours)
             'min_time' => $hours['min'] ? substr($hours['min'], 0, 5) : null,
             'max_time' => $hours['max'] ? substr($hours['max'], 0, 5) : null,
         ];

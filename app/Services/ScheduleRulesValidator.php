@@ -93,7 +93,7 @@ class ScheduleRulesValidator
         }
     }
 
-    /** The type's rules (see ScheduleTypeRules); its calendar hours are display only, never checked. */
+    /** The type's rules (see ScheduleTypeRules). */
     private static function validateAgainstType(
         Schedule $schedule,
         ScheduleTypeRules $rules,
@@ -129,6 +129,12 @@ class ScheduleRulesValidator
             $errors['end'][] = __('This schedule type is only available until :date.', [
                 'date' => $windowEnd->format(config('app.date_time_format')),
             ]);
+        }
+
+        // Its daily hours (min_time / max_time): the calendar shows only those, so nothing outside
+        // them could be seen. Whole-day schedules have no hours.
+        if (! $schedule->all_day && $problem = $rules->hoursProblem($start, $end)) {
+            $errors[$problem['field']][] = $problem['message'];
         }
     }
 }
