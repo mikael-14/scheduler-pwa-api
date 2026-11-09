@@ -6,6 +6,7 @@ use App\Filament\Resources\Schedules\ScheduleResource;
 use App\Http\Handlers\ApprovedHandler;
 use App\Models\User;
 use App\Services\PrimaryScheduleRule;
+use App\Services\ScheduleAccess;
 use Illuminate\Http\Request;
 
 class PendingHandler extends ApprovedHandler
@@ -61,6 +62,9 @@ class PendingHandler extends ApprovedHandler
                     ->values(),
                 // primary type: why it cannot be approved yet (null = it can)
                 'approval_problem' => PrimaryScheduleRule::scheduleProblem($schedule),
+                // the approver's own schedule: they may cancel it from the list (before it starts)
+                'can_cancel' => $schedule->user_id === $request->user()?->id
+                    && ScheduleAccess::canCancel($request->user(), $schedule),
             ])->values(),
         ]);
     }

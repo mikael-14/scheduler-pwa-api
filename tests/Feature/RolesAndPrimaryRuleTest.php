@@ -95,6 +95,57 @@ class RolesAndPrimaryRuleTest extends TestCase
 
     // ---- the primary rule
 
+    public function test_the_pending_list_lets_approvers_cancel_only_their_own_schedules(): void
+    {
+        $type = $this->type(primary: false, name: 'Passeios');
+        $admin = $this->admin();
+        $mine = $this->schedule($admin, $type, '10:00', '12:00');
+        $theirs = $this->schedule($this->novo(), $type, '14:00', '16:00');
+
+        Sanctum::actingAs($admin);
+        $rows = collect($this->getJson(self::URL . '/pending')->assertOk()->json('data'))->keyBy('id');
+
+        $this->assertTrue($rows[$mine->id]['can_cancel']);
+        // someone else's: approve or reject here, anything else inside the schedule
+        $this->assertFalse($rows[$theirs->id]['can_cancel']);
+    }
+
+    public function test_everyone_sees_when_a_schedule_waits_for_an_experienced_volunteer(): void
+    {
+        $type = $this->type();
+        $novo = $this->novo();
+        $waiting = $this->schedule($novo, $type, '10:00', '12:00');
+        $withExperiente = $this->schedule($this->experiente(), $type, '15:00', '17:00');
+        $otherType = $this->schedule($this->novo('Nina Nova'), $this->type(primary: false, name: 'Passeios'), '10:00', '12:00');
+
+        // to everyone, not only approvers: the PWA shows ⚠️ and a notice
+        Sanctum::actingAs($novo);
+        $this->assertTrue($this->getJson(self::URL . "/{$waiting->id}")->json('data.needs_independent'));
+        $this->assertFalse($this->getJson(self::URL . "/{$withExperiente->id}")->json('data.needs_independent'));
+        $this->assertFalse($this->getJson(self::URL . "/{$otherType->id}")->json('data.needs_independent'));
+
+        // the admin calendar marks it too
+        $events = collect(Livewire::test(\App\Livewire\CalendarWidget::class)->instance()->fetchEvents([
+            'start' => now()->toIso8601String(), 'end' => now()->addDays(7)->toIso8601String(),
+        ]))->keyBy('id');
+        $this->assertStringStartsWith("\u{26A0}\u{FE0F} ", $events[$waiting->id]['title']);
+        $this->assertStringNotContainsString("\u{26A0}", $events[$withExperiente->id]['title']);
+
+        // and its View page has the notice, asking who may go alone to join
+        $admin = $this->admin();
+        Filament::setCurrentPanel('admin');
+        $this->actingAs($admin, 'web');
+        $page = fn(Schedule $schedule) => $this->get(\App\Filament\Resources\Schedules\ScheduleResource::getUrl('infolist', ['record' => $schedule]))->assertOk();
+        $page($waiting)
+            ->assertSee(__('Needs an experienced volunteer'))
+            ->assertSee(__('Someone who cannot go alone is only approved when an experienced volunteer is there. If you can go, join this schedule.'));
+        $page($withExperiente)->assertDontSee(__('Needs an experienced volunteer'));
+
+        // an Experiente joins: no longer waiting
+        $waiting->schedule_users()->create(['user_id' => $this->experiente('Eli Experiente')->id, 'status' => ScheduleStatus::Pending]);
+        $this->assertFalse($this->getJson(self::URL . "/{$waiting->id}")->json('data.needs_independent'));
+    }
+
     public function test_a_new_volunteer_alone_stays_pending_and_cannot_be_approved(): void
     {
         $type = $this->type();

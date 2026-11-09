@@ -10,6 +10,8 @@ use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
+use App\Services\PrimaryScheduleRule;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Flex;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -22,6 +24,14 @@ class ScheduleInfolist
     {
         return $schema
             ->components([
+                // waiting for someone who may go alone (an Experiente): shown to everyone
+                Callout::make(__('Needs an experienced volunteer'))
+                    ->description(fn() => PrimaryScheduleRule::mayGoAlone(auth()->user())
+                        ? __('Someone who cannot go alone is only approved when an experienced volunteer is there. If you can go, join this schedule.')
+                        : __('Someone who cannot go alone is only approved when an experienced volunteer is there.'))
+                    ->warning()
+                    ->visible(fn(Schedule $record) => PrimaryScheduleRule::needsSomeoneWhoMayGoAlone($record))
+                    ->columnSpanFull(),
                 Section::make(fn(Schedule $record) => "#({$record->id}) - {$record->schedule_type->name}")
                     ->schema([
                         TextEntry::make('schedule_type.name')

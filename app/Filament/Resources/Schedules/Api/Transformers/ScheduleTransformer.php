@@ -76,6 +76,9 @@ class ScheduleTransformer extends JsonResource
 
         $data['can'] = $user ? $this->abilities($user) : [];
 
+        // everyone: waiting for someone who may go alone (an Experiente) to join (calendar ⚠️, notice)
+        $data['needs_independent'] = PrimaryScheduleRule::needsSomeoneWhoMayGoAlone($this->resource);
+
         // approvers: why this pending schedule cannot be approved yet (primary rule), or null
         if ($approver && $this->resource->status === ScheduleStatus::Pending) {
             $data['approval_problem'] = PrimaryScheduleRule::scheduleProblem($this->resource);

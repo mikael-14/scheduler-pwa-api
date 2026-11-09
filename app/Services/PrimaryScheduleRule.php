@@ -120,6 +120,24 @@ class PrimaryScheduleRule
         return static::message($alone);
     }
 
+    /**
+     * A pending schedule of the primary type, with hours, that only someone who may go alone can
+     * unblock: nobody on it may go alone and nobody who may is there at that time on another
+     * approved schedule. Shown to everyone (calendar ⚠️ and a notice), so an Experiente can join.
+     */
+    public static function needsSomeoneWhoMayGoAlone(Schedule $schedule): bool
+    {
+        if ($schedule->status !== ScheduleStatus::Pending || $schedule->all_day || ! static::applies($schedule)) {
+            return false;
+        }
+
+        $people = static::peopleOn($schedule);
+
+        return $people->isNotEmpty()
+            && ! $people->contains(fn(User $user) => static::mayGoAlone($user))
+            && ! static::someoneResponsibleElsewhere($schedule);
+    }
+
     /** Why this participant cannot be approved, or null when they can. */
     public static function participantProblem(ScheduleUser $participant): ?string
     {

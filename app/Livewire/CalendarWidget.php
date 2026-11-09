@@ -6,6 +6,7 @@ use App\Filament\Resources\Schedules\Schemas\ScheduleForm;
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Schedule;
 use App\Models\ScheduleType;
+use App\Services\PrimaryScheduleRule;
 use App\Services\ScheduleAccess;
 use App\Services\ScheduleTypeRules;
 use Filament\Schemas\Components\Grid;
@@ -153,6 +154,10 @@ class CalendarWidget extends FullCalendarWidget
                 if ($event->all_day) {
                     $title = "\u{231B} " . $title; // ⌛ the whole day
                 }
+                // ⚠️ waiting for someone who may go alone (an Experiente) to join
+                if (PrimaryScheduleRule::needsSomeoneWhoMayGoAlone($event)) {
+                    $title = "\u{26A0}\u{FE0F} " . $title;
+                }
                 if (!empty($event->description)) {
                     $title .= " \u{1F4AC}"; // 💬 has a note
                 }
@@ -170,6 +175,8 @@ class CalendarWidget extends FullCalendarWidget
                     'backgroundColor' => $backgroundColor,
                     'borderColor'     => $backgroundColor,
                     'description' => $event->description,
+                    // a dot of the type's colour before the title (not needed when coloured by type)
+                    'typeColor' => $this->colorBy === 'type' ? null : $type?->color,
                 ];
             })
             ->toArray();
@@ -221,6 +228,17 @@ class CalendarWidget extends FullCalendarWidget
         return <<<JS
         function({ event, timeText, isStart, isEnd, isMirror, isPast, isFuture, isToday, el, view }){
             const description = event.extendedProps.description;
+
+            // the type's colour as a little dot before the title (the background is the status)
+            const typeColor = event.extendedProps.typeColor;
+            const title = el.querySelector('.fc-list-event-title a') || el.querySelector('.fc-event-title');
+            if (typeColor && title && !title.querySelector('.schedule-type-dot')) {
+                const dot = document.createElement('span');
+                dot.className = 'schedule-type-dot';
+                dot.style.cssText = 'display:inline-block;width:.6rem;height:.6rem;margin-right:.3rem;border-radius:9999px;vertical-align:middle;box-shadow:0 0 0 1.5px rgba(255,255,255,.9)';
+                dot.style.backgroundColor = typeColor;
+                title.prepend(dot);
+            }
 
             if (description) {
                 el.setAttribute("x-tooltip", "tooltip");

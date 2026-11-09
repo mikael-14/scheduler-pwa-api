@@ -47,6 +47,8 @@ class CalendarEventTitleTest extends TestCase
         ]);
 
         $this->assertSame("Maria +2 \u{1F4AC} \u{00B7} Cleaning", $events[0]['title']);
+        // the type's colour for the dot before the title (the background is the status)
+        $this->assertSame('#112233', $events[0]['typeColor']);
         $this->assertTrue(mb_check_encoding($events[0]['title'], 'UTF-8'));
         // no double-encoded UTF-8 ("Ã", "â€", "ðŸ"...) left in the widget
         $this->assertDoesNotMatchRegularExpression('/Ã|â€|âŒ|ðŸ|Â/u', file_get_contents(app_path('Livewire/CalendarWidget.php')));
