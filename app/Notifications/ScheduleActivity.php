@@ -62,7 +62,7 @@ class ScheduleActivity extends AppNotification
             self::CANCELLED => __(':name cancelled :type', $names),
             self::REJECTED => __(':type of :name was rejected', $names),
             self::JOINED => __(':participant joined :type of :name', $names),
-            self::LEFT => __(':participant left :type of :name', $names),
+            self::LEFT => __(':participant cancelled their attendance at :type of :name', $names),
             default => __('Agenda activity'),
         };
     }

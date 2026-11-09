@@ -78,9 +78,10 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 		// Primary type: who may be approved without someone who may go alone
 		static::saving(fn(Schedule $schedule) => \App\Services\PrimaryScheduleRule::enforceOnSchedule($schedule));
 		// Handed over to one of its participants: they are the owner now, not also a participant
+		// (removed for good, also a cancelled participation: the owner never shows as cancelled)
 		static::updated(function (Schedule $schedule) {
 			if ($schedule->wasChanged('user_id')) {
-				$schedule->schedule_users()->where('user_id', $schedule->user_id)->get()->each->delete();
+				$schedule->schedule_users()->withTrashed()->where('user_id', $schedule->user_id)->get()->each->forceDelete();
 			}
 		});
 		// Participants are not decided on their own: they share the schedule's status
@@ -103,6 +104,12 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 	public function schedule_users()
 	{
 		return $this->hasMany(ScheduleUser::class); // Relates to the new pivot model
+	}
+
+	/** The people who cancelled their participation (or were taken off): shown as cancelled. */
+	public function cancelled_schedule_users()
+	{
+		return $this->hasMany(ScheduleUser::class)->onlyTrashed();
 	}
 
 	/** Approve the schedule and any participant still waiting. A message is appended to the internal note. */

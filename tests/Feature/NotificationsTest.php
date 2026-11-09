@@ -119,7 +119,9 @@ class NotificationsTest extends TestCase
             return $data['title'] === 'Foi adicionado a um agendamento'
                 && str_contains($data['body'], 'Passeios')
                 && str_contains($data['body'], 'de Rita')
-                && str_contains($data['body'], 'Aguarda aprovação.')
+                // a reminder, not the approval rules
+                && str_contains($data['body'], 'Por favor, não chegue antes da hora marcada.')
+                && ! str_contains($data['body'], 'Aguarda aprovação.')
                 && $data['path'] === "/schedules/{$id}";
         });
         Notification::assertNotSentTo($inactive, ScheduleParticipantAdded::class);
@@ -200,10 +202,21 @@ class NotificationsTest extends TestCase
         Sanctum::actingAs($owner);
         $this->patchJson("/api/admin/schedules/{$schedule->id}", ['schedule_users' => [['user_id' => $stays->id]]])->assertOk();
 
-        Notification::assertSentTo($removed, ScheduleParticipantRemoved::class, function (ScheduleParticipantRemoved $notification) use ($removed) {
+        // their attendance is cancelled (they stay on it as cancelled): the schedule, where they can join again
+        Notification::assertSentTo($removed, ScheduleParticipantRemoved::class, function (ScheduleParticipantRemoved $notification) use ($removed, $schedule) {
             $data = $notification->toDatabase($removed);
 
-            return $data['title'] === 'Foi removido de um agendamento' && $data['path'] === '/my-agenda';
+            // the email says it in full: what, who did it, and that they can join again
+            $mail = $notification->toMail($removed);
+
+            return $data['title'] === 'A sua presença foi cancelada'
+                && str_contains($data['body'], 'Pode voltar a participar até à hora de início.')
+                && $data['path'] === "/schedules/{$schedule->id}"
+                && $mail->subject === 'A sua presença foi cancelada'
+                && str_contains($mail->introLines[0], 'foi cancelada por ' . $schedule->user->name)
+                && str_contains($mail->introLines[1], 'pode voltar a participar na aplicação')
+                && $mail->actionText === 'Abrir o agendamento'
+                && str_ends_with($mail->actionUrl, "/schedules/{$schedule->id}");
         });
         Notification::assertNotSentTo($stays, ScheduleParticipantRemoved::class);
         // the removal is audited one by one, not lost in a bulk delete

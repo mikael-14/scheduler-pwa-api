@@ -5,8 +5,8 @@ namespace App\Notifications;
 use App\Models\Schedule;
 
 /**
- * Sent to someone added as a participant of a schedule (when it is created, or later), so they
- * know they are in it and whether it still waits for approval.
+ * Sent to someone added as a participant of a schedule (when it is created, or later, or put back
+ * after cancelling), so they know they are in it, with a reminder not to arrive early.
  */
 class ScheduleParticipantAdded extends AppNotification
 {
@@ -26,11 +26,8 @@ class ScheduleParticipantAdded extends AppNotification
             $this->schedule->start?->format(config('app.date_time_format')),
             $this->schedule->user ? __('by :name', ['name' => $this->schedule->user->name]) : null,
         ];
-        $line = implode(' · ', array_filter($parts));
-
-        return $this->schedule->status?->value === 'pending'
-            ? $line . "\n" . __('It is waiting for approval.')
-            : $line;
+        // a practical reminder, not the approval rules (as the app says when joining)
+        return implode(' · ', array_filter($parts)) . "\n" . __('Please do not arrive before the scheduled time.');
     }
 
     protected function path(): string

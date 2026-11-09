@@ -109,15 +109,30 @@ abstract class AppNotification extends Notification implements ShouldQueueAfterC
         return array_merge($notification->getDatabaseMessage(), ['path' => $this->path()]);
     }
 
+    /**
+     * The email's paragraphs. By default the in-app text, one paragraph per line; a notification
+     * may say it in full sentences instead (an email is read on its own, without the app around it).
+     *
+     * @return list<string>
+     */
+    protected function mailLines(): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/\R/', $this->body()))));
+    }
+
+    protected function mailActionLabel(): string
+    {
+        return __('Open the scheduler');
+    }
+
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
             ->subject($this->title())
             ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
-            // one paragraph per line, so a multi-line message keeps its shape
-            ->lines(array_filter(array_map('trim', preg_split('/\R/', $this->body()))))
+            ->lines($this->mailLines())
             ->action(
-                __('Open the scheduler'),
+                $this->mailActionLabel(),
                 $this->url() ?? rtrim((string) config('app.pwa_url'), '/') . $this->path()
             )
             ->lineIf(

@@ -16,6 +16,7 @@ class ScheduleTransformer extends JsonResource
     /** Relations the transformer reads; load them with the query to avoid one query per row. */
     public const RELATIONS = [
         'schedule_users.user:id,name,avatar_url',
+        'cancelled_schedule_users.user:id,name,avatar_url',
         'schedule_type:id,name,color,all_day,range',
         'user:id,name,avatar_url',
     ];
@@ -61,6 +62,17 @@ class ScheduleTransformer extends JsonResource
                     && ScheduleAccess::canMarkParticipantNotShown($user, $this->resource, $scheduleUser),
             ];
         });
+
+        // who cancelled their participation (or was taken off): shown as cancelled, never counted.
+        // Separate from schedule_users, so older apps keep counting only the people going.
+        unset($data['cancelled_schedule_users']);
+        $data['cancelled_users'] = $this->resource->cancelled_schedule_users->map(fn($scheduleUser) => [
+            'id' => $scheduleUser->id,
+            'user_id' => $scheduleUser->user_id,
+            'name' => $scheduleUser->user?->name,
+            'avatar_url' => $scheduleUser->user ? $this->avatarUrl($scheduleUser->user) : null,
+            'cancelled_at' => $scheduleUser->cancelled_at?->toIso8601String(),
+        ])->values();
 
         $data['can'] = $user ? $this->abilities($user) : [];
 

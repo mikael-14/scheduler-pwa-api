@@ -45,8 +45,22 @@ class ScheduleUserObserver
         }
     }
 
+    /** Rejoined after cancelling: told like a join. */
+    public function restored(ScheduleUser $participant): void
+    {
+        $this->created($participant);
+    }
+
+    /**
+     * Cancelled (a soft delete: left, or taken off) is told like leaving. Removing a cancelled
+     * participation for good tells nobody again: they were told when it was cancelled.
+     */
     public function deleted(ScheduleUser $participant): void
     {
+        if ($participant->isForceDeleting() && $participant->getOriginal('cancelled_at') !== null) {
+            return;
+        }
+
         $this->tell($participant, fn($schedule) => new ScheduleParticipantRemoved($schedule));
         $this->tellAround($participant, joined: false);
         $this->tellEveryone($participant, joined: false);

@@ -29,7 +29,8 @@ class PaginationHandler extends ApprovedHandler
             AllowedFilter::exact('status'),
             AllowedFilter::exact('schedule_type_id'),
 
-            // "Only mine": schedules I own or take part in
+            // "Only mine": schedules I own or take part in (also the ones I cancelled: shown as
+            // cancelled, so I can find them and join again)
             AllowedFilter::callback('mine', function ($query, $value) {
                 if (! filter_var($value, FILTER_VALIDATE_BOOLEAN)) {
                     return;
@@ -37,7 +38,7 @@ class PaginationHandler extends ApprovedHandler
                 $userId = request()->user()->id;
                 $query->where(function ($q) use ($userId) {
                     $q->where('user_id', $userId)
-                        ->orWhereHas('schedule_users', fn($su) => $su->where('user_id', $userId));
+                        ->orWhereHas('schedule_users', fn($su) => $su->withTrashed()->where('user_id', $userId));
                 });
             }),
 

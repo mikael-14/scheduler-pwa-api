@@ -35,6 +35,11 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 class ScheduleUser extends Model implements Auditable
 {
 	use \OwenIt\Auditing\Auditable;
+	// Cancelling is a soft delete: the person stays on the schedule as cancelled (and every query,
+	// count and rule ignores them); restore() is rejoining, forceDelete() removes them for good.
+	use \Illuminate\Database\Eloquent\SoftDeletes;
+
+	public const DELETED_AT = 'cancelled_at';
 
 	protected $table = 'schedule_users';
 
@@ -42,6 +47,7 @@ class ScheduleUser extends Model implements Auditable
 		'schedule_id' => 'int',
 		'user_id' => 'int',
 		'status' => ScheduleStatus::class,
+		'cancelled_at' => 'datetime',
 	];
 
 	protected $fillable = [
@@ -90,6 +96,33 @@ class ScheduleUser extends Model implements Auditable
 		// ...and approved schedules left without anyone who may go alone go back to pending
 		static::updated(fn(ScheduleUser $participant) => \App\Services\PrimaryScheduleRule::afterParticipantChange($participant));
 		static::deleted(fn(ScheduleUser $participant) => \App\Services\PrimaryScheduleRule::afterParticipantChange($participant, deleted: true));
+
+		// Cancelled (soft delete: leaving, or taken off by the owner / an admin): shown as cancelled
+		static::softDeleted(function (ScheduleUser $participant) {
+			static::withTrashed()->whereKey($participant->getKey())->update(['status' => ScheduleStatus::Cancelled]);
+			// the original stays: the `deleted` listeners (primary rule) need what it was before
+			$participant->status = ScheduleStatus::Cancelled;
+		});
+		// Rejoining: back with the schedule's status at that moment (the primary rule is checked
+		// when that is approved, in the saving hooks above)
+		static::restoring(function (ScheduleUser $participant) {
+			$participant->status = Schedule::statusForNewParticipant($participant->schedule_id) ?? ScheduleStatus::Pending;
+		});
+		// Added again (admin form, API participant list) while a cancelled row of theirs is there:
+		// that old row makes way (one row per person and schedule)
+		static::creating(function (ScheduleUser $participant) {
+			static::onlyTrashed()
+				->where('schedule_id', $participant->schedule_id)
+				->where('user_id', $participant->user_id)
+				->get()
+				->each->forceDelete();
+		});
+	}
+
+	/** Cancelled their participation (or was taken off); see SoftDeletes / cancelled_at. */
+	public function isCancelled(): bool
+	{
+		return $this->trashed();
 	}
 
 	public static function getValidationRules(): array

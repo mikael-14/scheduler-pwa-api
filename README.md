@@ -267,7 +267,7 @@ needed and take part.
 | `restore_schedule`, `restore_any_schedule`, `force_delete_schedule`, `force_delete_any_schedule` | bring back / delete forever deleted schedules (admin panel) |
 | `update_past_schedule` | anything on schedules before today (without it, from today on only) |
 | `participate_schedule` | add **yourself** to someone else's pending / approved schedule, from today on; never a whole-day one. You get the schedule's status (joining an approved one keeps it approved; on the primary type the "may go alone" rule still applies) |
-| `cancel_participation_schedule` | remove yourself from a schedule you take part in, from today on. Always give it together with `participate_schedule` |
+| `cancel_participation_schedule` | **cancel your attendance** (pending or approved) on a schedule you take part in, **before it starts**. You stay on it as cancelled (see "Cancelled participants" below) and may join again before it starts. Always give it together with `participate_schedule` |
 | `approve_schedule` | approve / reject pending schedules (their participants follow). Approvers may approve their own |
 | `update_status_schedule` | everything `approve_schedule` does, plus cancel at any time (also after the start) and mark "não compareceu". Never "completed": the nightly `schedules:complete` sets it |
 | `independent_schedule` | **may go alone** on the primary type (see below) |
@@ -414,6 +414,21 @@ what would not work; the API checks everything again.
   `can.update`, `can.cancel`, `can.approve`, `can.not_shown`, `can.join`, `can.leave`, and
   `can_mark_not_shown` on each participant. So an Externo only gets "join" / "leave", and nobody
   gets "join" on a whole-day schedule.
+- **Cancelled participants.** Leaving ("Cancelar presença"), or being taken off by the owner or an
+  admin (participants list of the PWA or admin form), never deletes the person: the row is
+  soft-deleted into `schedule_users.cancelled_at` with status `cancelled`.
+  - They are never counted: not in `schedule_users` of the API, the calendar "+N", the
+    widgets, the primary rule, the notifications or `schedules:complete`. An approved
+    schedule that relied on them goes back to pending, as before.
+  - The API lists them apart, in `cancelled_users`. The PWA shows them greyed out on the
+    schedule; for the person who cancelled it stays in their list with a "Cancelado" badge.
+  - Joining again ("Voltar a participar", before it starts) restores the same row with the
+    schedule's status at that moment; the primary rule applies.
+  - Approving / rejecting the schedule never brings them back.
+  - Admin panel: the schedule's View / Edit pages have a "Participantes cancelados" tab;
+    whoever edits other people's schedules (`update_any_schedule`) may **restore** one there
+    (like joining again: the schedule's status now, the primary rule checked, the person is
+    told) or **delete one for good** (audited, nobody is told again).
 - The booking form's options come from `GET /api/admin/schedules/form-options` (`can.book_for_others`: choose the owner of a new schedule, `can.hand_over`: change it when editing,
   `can.past_dates`, `can.all_day`, `can.internal_note`).
 - The internal note is removed by the API for non-staff: it never reaches their phone.

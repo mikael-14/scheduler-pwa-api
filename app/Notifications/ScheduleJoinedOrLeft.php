@@ -30,16 +30,17 @@ class ScheduleJoinedOrLeft extends AppNotification
             return match (true) {
                 $this->joined && $this->byOthers => __(':name was added to your schedule', $name),
                 $this->joined => __(':name joined your schedule', $name),
-                $this->byOthers => __(':name was removed from your schedule', $name),
-                default => __(':name left your schedule', $name),
+                // leaving is cancelling the attendance (they stay on it as cancelled)
+                $this->byOthers => __('The attendance of :name on your schedule was cancelled', $name),
+                default => __(':name cancelled their attendance on your schedule', $name),
             };
         }
 
         return match (true) {
             $this->joined && $this->byOthers => __(':name was added to a schedule', $name),
             $this->joined => __(':name joined a schedule', $name),
-            $this->byOthers => __(':name was removed from a schedule', $name),
-            default => __(':name left a schedule', $name),
+            $this->byOthers => __('The attendance of :name on a schedule was cancelled', $name),
+            default => __(':name cancelled their attendance on a schedule', $name),
         };
     }
 
@@ -56,6 +57,36 @@ class ScheduleJoinedOrLeft extends AppNotification
     protected function path(): string
     {
         return "/schedules/{$this->schedule->id}";
+    }
+
+    /** A cancellation by email: in full sentences (joining keeps the short in-app text). */
+    protected function mailLines(): array
+    {
+        if ($this->joined) {
+            return parent::mailLines();
+        }
+
+        $what = [
+            'name' => $this->participant->name,
+            'type' => $this->schedule->schedule_type?->name ?? __('Schedule'),
+            'date' => $this->schedule->start?->format(config('app.date_time_format')),
+            'owner' => $this->schedule->user?->name,
+        ];
+
+        return array_values(array_filter([
+            match (true) {
+                $this->yours && $this->byOthers => __('The attendance of :name at your :type on :date was cancelled.', $what),
+                $this->yours => __(':name cancelled their attendance at your :type on :date.', $what),
+                $this->byOthers => __('The attendance of :name at :type on :date (by :owner) was cancelled.', $what),
+                default => __(':name cancelled their attendance at :type on :date (by :owner).', $what),
+            },
+            __('They are no longer counted among the people going. They can join again until it starts.'),
+        ]));
+    }
+
+    protected function mailActionLabel(): string
+    {
+        return __('Open the schedule');
     }
 
     /** Stored with the notification, so the app can tell joining from leaving. */

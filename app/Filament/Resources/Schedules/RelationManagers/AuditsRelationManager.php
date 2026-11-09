@@ -45,7 +45,7 @@ class AuditsRelationManager extends RelationManager
     {
         $scheduleId = $this->getOwnerRecord()->getKey();
 
-        return ScheduleUser::where('schedule_id', $scheduleId)->pluck('id')
+        return ScheduleUser::withTrashed()->where('schedule_id', $scheduleId)->pluck('id')
             ->merge(Audit::query()
                 ->where('auditable_type', ScheduleUser::class)
                 ->where(fn(Builder $q) => $q

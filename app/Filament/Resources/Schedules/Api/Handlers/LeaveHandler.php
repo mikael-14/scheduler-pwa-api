@@ -28,7 +28,9 @@ class LeaveHandler extends ApprovedHandler
     /**
      * Leave a schedule
      *
-     * Cancels the signed-in user's participation in a schedule, from today on. The owner is told.
+     * Cancels the signed-in user's participation (pending or approved), before the schedule starts.
+     * They stay on it as cancelled (`cancelled_users`) and may join again before it starts. The
+     * owner, the other people on it and the approvers are told.
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse

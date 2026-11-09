@@ -92,18 +92,34 @@ class ScheduleAccess
             && ! $schedule->all_day
             && in_array($schedule->status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true)
             && ! static::isPastLocked($user, $schedule)
-            && ! static::participation($user, $schedule);
+            && ! static::participation($user, $schedule)
+            // joining again after cancelling: like cancelling, only before it starts
+            && (! static::cancelledParticipation($user, $schedule) || ! static::hasStarted($schedule));
     }
 
-    /** `cancel_participation_schedule`: leave a schedule they take part in, from today on. */
+    /**
+     * `cancel_participation_schedule`: cancel their participation (pending or approved), before
+     * the schedule starts. It stays on the schedule as cancelled; they can join again.
+     */
     public static function canLeave(User $user, Schedule $schedule): bool
     {
+        $participation = static::participation($user, $schedule);
+
         return $user->can('cancel_participation_schedule')
-            && ! static::isPastLocked($user, $schedule)
-            && (bool) static::participation($user, $schedule);
+            && $participation
+            && in_array($participation->status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true)
+            && ! static::hasStarted($schedule);
     }
 
-    /** The user's participation in the schedule, if any. */
+    /** The user's cancelled participation in the schedule, if they cancelled (or were taken off). */
+    public static function cancelledParticipation(User $user, Schedule $schedule): ?ScheduleUser
+    {
+        return $schedule->relationLoaded('cancelled_schedule_users')
+            ? $schedule->cancelled_schedule_users->firstWhere('user_id', $user->id)
+            : $schedule->cancelled_schedule_users()->where('user_id', $user->id)->first();
+    }
+
+    /** The user's (not cancelled) participation in the schedule, if any. */
     public static function participation(User $user, Schedule $schedule): ?ScheduleUser
     {
         return $schedule->relationLoaded('schedule_users')

@@ -62,8 +62,9 @@ class ScheduleResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //public static function getRelations(): array
-          AuditsRelationManager::class, // <-- Add this here
+            // who cancelled their participation (shown when someone did)
+            \App\Filament\Resources\Schedules\RelationManagers\CancelledParticipantsRelationManager::class,
+            AuditsRelationManager::class,
         ];
     }
 
