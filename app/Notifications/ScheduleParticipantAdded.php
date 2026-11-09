@@ -10,8 +10,12 @@ use App\Models\Schedule;
  */
 class ScheduleParticipantAdded extends AppNotification
 {
+    /** Who added them, kept for the queued email (sent after the request is over). */
+    private readonly ?string $by;
+
     public function __construct(private readonly Schedule $schedule)
     {
+        $this->by = auth()->user()?->name;
     }
 
     protected function title(): string
@@ -19,15 +23,32 @@ class ScheduleParticipantAdded extends AppNotification
         return __('You were added to a schedule');
     }
 
+    /** In the app and on the phone: the same sentences as the email. */
     protected function body(): string
     {
-        $parts = [
-            $this->schedule->schedule_type?->name,
-            $this->schedule->start?->format(config('app.date_time_format')),
-            $this->schedule->user ? __('by :name', ['name' => $this->schedule->user->name]) : null,
+        return implode(' ', $this->mailLines());
+    }
+
+    /** By email, in full sentences: who added them, to what and when, and the reminder. */
+    protected function mailLines(): array
+    {
+        $what = [
+            'type' => $this->schedule->schedule_type?->name ?? __('Schedule'),
+            'date' => $this->schedule->start?->format(config('app.date_time_format')),
+            'by' => $this->by ?? $this->schedule->user?->name,
         ];
-        // a practical reminder, not the approval rules (as the app says when joining)
-        return implode(' · ', array_filter($parts)) . "\n" . __('Please do not arrive before the scheduled time.');
+
+        return [
+            $what['by']
+                ? __(':by added you to the :type schedule on :date.', $what)
+                : __('You were added to the :type schedule on :date.', $what),
+            __('Please do not arrive before the scheduled time.'),
+        ];
+    }
+
+    protected function mailActionLabel(): string
+    {
+        return __('Open the schedule');
     }
 
     protected function path(): string

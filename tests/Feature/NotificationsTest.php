@@ -115,14 +115,18 @@ class NotificationsTest extends TestCase
         Notification::assertSentTo($approver, SchedulePendingApproval::class);
         Notification::assertSentTo($friend, ScheduleParticipantAdded::class, function (ScheduleParticipantAdded $notification) use ($friend, $id) {
             $data = $notification->toDatabase($friend);
+            // the email in full sentences: who added them, to what, and the reminder
+            $mail = $notification->toMail($friend);
 
             return $data['title'] === 'Foi adicionado a um agendamento'
-                && str_contains($data['body'], 'Passeios')
-                && str_contains($data['body'], 'de Rita')
-                // a reminder, not the approval rules
-                && str_contains($data['body'], 'Por favor, não chegue antes da hora marcada.')
+                // in the app (and on the phone) the same sentences as the email; a reminder, not the approval rules
+                && str_starts_with($data['body'], 'Rita adicionou-o(a) ao agendamento de Passeios, a ')
+                && str_ends_with($data['body'], '. Por favor, não chegue antes da hora marcada.')
                 && ! str_contains($data['body'], 'Aguarda aprovação.')
-                && $data['path'] === "/schedules/{$id}";
+                && $data['path'] === "/schedules/{$id}"
+                && str_starts_with($mail->introLines[0], 'Rita adicionou-o(a) ao agendamento de Passeios, a ')
+                && $mail->introLines[1] === 'Por favor, não chegue antes da hora marcada.'
+                && $mail->actionText === 'Abrir o agendamento';
         });
         Notification::assertNotSentTo($inactive, ScheduleParticipantAdded::class);
         Notification::assertNotSentTo($pending, ScheduleParticipantAdded::class);
@@ -216,7 +220,8 @@ class NotificationsTest extends TestCase
                 && str_contains($mail->introLines[0], 'foi cancelada por ' . $schedule->user->name)
                 && str_contains($mail->introLines[1], 'pode voltar a participar na aplicação')
                 && $mail->actionText === 'Abrir o agendamento'
-                && str_ends_with($mail->actionUrl, "/schedules/{$schedule->id}");
+                && str_ends_with($mail->actionUrl, "/schedules/{$schedule->id}")
+                && str_contains($data['body'], 'foi cancelada por ' . $schedule->user->name . '.');
         });
         Notification::assertNotSentTo($stays, ScheduleParticipantRemoved::class);
         // the removal is audited one by one, not lost in a bulk delete
@@ -569,6 +574,7 @@ class NotificationsTest extends TestCase
 
         $this->assertSame(['urgency' => 'high', 'TTL' => 86400], $message->getOptions());
         $this->assertSame('T', $message->toArray()['title']);
+        $this->assertSame('B', $message->toArray()['body']);
     }
 
     public function test_new_accounts_start_with_email_and_push_on(): void

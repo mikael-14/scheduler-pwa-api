@@ -44,14 +44,10 @@ class ScheduleJoinedOrLeft extends AppNotification
         };
     }
 
+    /** In the app and on the phone: the email's first sentence (who, what and when). */
     protected function body(): string
     {
-        return implode(' · ', array_filter([
-            $this->schedule->schedule_type?->name,
-            $this->schedule->start?->format(config('app.date_time_format')),
-            // for the people who do not own it: whose it is
-            $this->yours ? null : $this->schedule->user?->name,
-        ]));
+        return $this->mailLines()[0];
     }
 
     protected function path(): string
@@ -59,19 +55,26 @@ class ScheduleJoinedOrLeft extends AppNotification
         return "/schedules/{$this->schedule->id}";
     }
 
-    /** A cancellation by email: in full sentences (joining keeps the short in-app text). */
+    /** By email, in full sentences (the app keeps the short text). */
     protected function mailLines(): array
     {
-        if ($this->joined) {
-            return parent::mailLines();
-        }
-
         $what = [
             'name' => $this->participant->name,
             'type' => $this->schedule->schedule_type?->name ?? __('Schedule'),
             'date' => $this->schedule->start?->format(config('app.date_time_format')),
             'owner' => $this->schedule->user?->name,
         ];
+
+        if ($this->joined) {
+            return [
+                match (true) {
+                    $this->yours && $this->byOthers => __(':name was added to your :type on :date.', $what),
+                    $this->yours => __(':name joined your :type on :date.', $what),
+                    $this->byOthers => __(':name was added to :type on :date (by :owner).', $what),
+                    default => __(':name joined :type on :date (by :owner).', $what),
+                },
+            ];
+        }
 
         return array_values(array_filter([
             match (true) {

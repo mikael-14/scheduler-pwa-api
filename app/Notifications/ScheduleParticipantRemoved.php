@@ -23,12 +23,10 @@ class ScheduleParticipantRemoved extends AppNotification
         return __('Your attendance was cancelled');
     }
 
+    /** In the app and on the phone: who cancelled it, and the short "join again" line. */
     protected function body(): string
     {
-        return implode(' · ', array_filter([
-            $this->schedule->schedule_type?->name,
-            $this->schedule->start?->format(config('app.date_time_format')),
-        ])) . "\n" . __('You can join again until it starts.');
+        return $this->mailLines()[0] . ' ' . __('You can join again until it starts.');
     }
 
     protected function status(): string

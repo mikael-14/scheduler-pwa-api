@@ -92,6 +92,16 @@ class ParticipantCancellationTest extends TestCase
         Sanctum::actingAs($maria);
         $this->postJson(self::URL . "/{$schedule->id}/participation")->assertOk();
         $rowId = ScheduleUser::where('schedule_id', $schedule->id)->value('id');
+        // the owner's email says it in a full sentence
+        Notification::assertSentTo($owner, ScheduleJoinedOrLeft::class, function (ScheduleJoinedOrLeft $notification) use ($owner) {
+            $mail = $notification->toMail($owner);
+
+            return $notification->joined
+                && str_starts_with($mail->introLines[0], 'Maria juntou-se ao seu agendamento de Passeios, a ')
+                && $mail->actionText === 'Abrir o agendamento'
+                // in the app and on the phone: the same sentence
+                && $notification->toDatabase($owner)['body'] === $mail->introLines[0];
+        });
 
         $data = $this->deleteJson(self::URL . "/{$schedule->id}/participation")->assertOk()->json('data');
 
@@ -152,7 +162,8 @@ class ParticipantCancellationTest extends TestCase
                 && $mail->subject === 'Maria cancelou a presença no seu agendamento'
                 && str_starts_with($mail->introLines[0], 'Maria cancelou a presença no seu agendamento de Passeios, a ')
                 && str_contains($mail->introLines[1], 'Pode voltar a participar até à hora de início.')
-                && $mail->actionText === 'Abrir o agendamento';
+                && $mail->actionText === 'Abrir o agendamento'
+                && $notification->toDatabase($owner)['body'] === $mail->introLines[0];
         });
 
         // approving (or anything else) changes the people going, not the one who cancelled
