@@ -12,6 +12,12 @@ use Illuminate\Support\Carbon;
  */
 class CoverageAlert extends AppNotification
 {
+    /** Can wait for the email summary (see AppNotification::digestible). */
+    protected function digestible(): bool
+    {
+        return true;
+    }
+
     public function __construct(
         private readonly ScheduleType $type,
         /** the uncovered day, "YYYY-MM-DD" */

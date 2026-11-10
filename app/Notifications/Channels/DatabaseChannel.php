@@ -20,9 +20,16 @@ class DatabaseChannel extends BaseDatabaseChannel
     {
         $channels = method_exists($notification, 'via') ? (array) $notification->via($notifiable) : [];
 
+        $mailStatus = match (true) {
+            in_array('mail', $channels, true) => DeliveryStatus::Queued->value,
+            // its email waits for the person's summary (EmailDigest, notifications:digest)
+            $notification instanceof \App\Notifications\AppNotification && $notification->goesToDigest($notifiable) => DeliveryStatus::Digest->value,
+            default => null,
+        };
+
         return parent::buildPayload($notifiable, $notification) + [
             'sender_id' => auth()->id(),
-            'mail_status' => in_array('mail', $channels, true) ? DeliveryStatus::Queued->value : null,
+            'mail_status' => $mailStatus,
         ];
     }
 }

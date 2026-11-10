@@ -10,6 +10,12 @@ use App\Models\Schedule;
  */
 class ScheduleParticipantAdded extends AppNotification
 {
+    /** Can wait for the email summary (see AppNotification::digestible). */
+    protected function digestible(): bool
+    {
+        return true;
+    }
+
     /** Who added them, kept for the queued email (sent after the request is over). */
     private readonly ?string $by;
 

@@ -9,6 +9,12 @@ use App\Models\User;
 /** Sent to approvers when someone joins a schedule: their participation waits for a decision. */
 class ParticipationRequested extends AppNotification
 {
+    /** Can wait for the email summary (see AppNotification::digestible). */
+    protected function digestible(): bool
+    {
+        return true;
+    }
+
     public function __construct(private readonly Schedule $schedule, private readonly User $participant)
     {
     }

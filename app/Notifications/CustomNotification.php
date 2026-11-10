@@ -9,6 +9,12 @@ namespace App\Notifications;
  */
 class CustomNotification extends AppNotification
 {
+    /** Can wait for the email summary (see AppNotification::digestible). */
+    protected function digestible(): bool
+    {
+        return true;
+    }
+
     public function __construct(
         private readonly string $subject,
         private readonly string $message,

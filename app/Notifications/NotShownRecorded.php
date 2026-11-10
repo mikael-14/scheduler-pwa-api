@@ -11,6 +11,12 @@ use App\Models\User;
  */
 class NotShownRecorded extends AppNotification
 {
+    /** Can wait for the email summary (see AppNotification::digestible). */
+    protected function digestible(): bool
+    {
+        return true;
+    }
+
     public function __construct(
         private readonly Schedule $schedule,
         private readonly User $person,

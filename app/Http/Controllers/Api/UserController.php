@@ -173,6 +173,8 @@ class UserController extends Controller
             // "All notifications": other people's schedules too
             'all_email_notification' => ['sometimes', 'boolean'],
             'all_push_notification' => ['sometimes', 'boolean'],
+            // The emails that can wait: each right away, or in a summary twice / once a day
+            'email_digest' => ['sometimes', 'string', Rule::in(['instant', 'twice', 'daily'])],
             // Changing the password proves knowledge of the current one (social-only accounts have none)
             'current_password' => [Rule::requiredIf(fn() => $request->filled('password') && $user->password !== null), 'nullable', 'string'],
             'password' => ['sometimes', 'nullable', 'min:8', 'confirmed'],

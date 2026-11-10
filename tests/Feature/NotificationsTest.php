@@ -364,7 +364,8 @@ class NotificationsTest extends TestCase
 
     public function test_pending_notification_points_to_the_admin_panel_and_is_in_the_approvers_language(): void
     {
-        $approver = $this->userWithPermissions(['approve_schedule'], ['locale' => 'en', 'email_notification' => true]);
+        // each email right away (by default this one waits for the summary)
+        $approver = $this->userWithPermissions(['approve_schedule'], ['locale' => 'en', 'email_notification' => true, 'email_digest' => 'instant']);
         $owner = $this->user(['name' => 'Maria']);
 
         $this->pendingSchedule($owner);

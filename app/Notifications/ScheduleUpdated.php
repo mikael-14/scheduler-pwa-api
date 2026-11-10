@@ -17,6 +17,12 @@ use Illuminate\Support\Carbon;
  */
 class ScheduleUpdated extends AppNotification
 {
+    /** Can wait for the email summary (see AppNotification::digestible). */
+    protected function digestible(): bool
+    {
+        return true;
+    }
+
     /** @var array<string, array{0: mixed, 1: mixed}> field => [before, after] */
     private readonly array $changes;
 

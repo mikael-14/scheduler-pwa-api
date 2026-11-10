@@ -46,6 +46,14 @@ class EditProfile extends BaseEditProfile
                         Toggle::make('push_notification')
                             ->label(__('Push notifications'))
                             ->helperText(__('Receive push notifications on the devices where you enabled them in the app.')),
+                        // the emails that can wait (decisions about you and account emails always come right away)
+                        Select::make('email_digest')
+                            ->label(__('Email summary'))
+                            ->options(self::digestOptions())
+                            ->helperText(__('News such as people joining, changes and requests waiting can come together in one email. Decisions about you and account emails always come right away.'))
+                            ->selectablePlaceholder(false)
+                            ->native(false)
+                            ->required(),
                     ]),
                 Section::make(__('All notifications'))
                     ->description(__('Also hear about other people\'s schedules: booked, approved, changed, cancelled, and people joining or leaving.'))
@@ -62,6 +70,16 @@ class EditProfile extends BaseEditProfile
     }
 
     /** Reload after saving so a changed language applies to the page straight away. */
+    /** users.email_digest (see EmailDigest). */
+    public static function digestOptions(): array
+    {
+        return [
+            'twice' => __('Summary twice a day (08:00 and 18:00)'),
+            'daily' => __('Summary once a day (08:00)'),
+            'instant' => __('Each email right away'),
+        ];
+    }
+
     protected function getRedirectUrl(): ?string
     {
         return Filament::getProfileUrl();

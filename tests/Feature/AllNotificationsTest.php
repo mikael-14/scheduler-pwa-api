@@ -133,7 +133,13 @@ class AllNotificationsTest extends TestCase
         $this->assertSame('activity', $this->getJson('/api/notifications')->json('data.0.kind'));
 
         $notification = new ScheduleActivity(Schedule::first(), ScheduleActivity::CREATED);
+        // by email: in the summary by default (EmailDigest), or on its own for who chose that
+        $this->assertTrue($notification->emailWanted($emailOnly));
+        $this->assertTrue($notification->goesToDigest($emailOnly));
+        $this->assertNotContains('mail', $notification->via($emailOnly));
+        $emailOnly->email_digest = 'instant';
         $this->assertContains('mail', $notification->via($emailOnly));
+        $this->assertFalse($notification->emailWanted($pushOnly));
         $this->assertNotContains('mail', $notification->via($pushOnly));
 
         // push: activity follows all_push_notification, personal ones push_notification

@@ -151,7 +151,7 @@ class ScheduleApiHardeningTest extends TestCase
 
         // the daily hours (08:00-18:00): the calendar shows only those, so nothing may fall outside
         $this->postJson(self::URL, $this->payload($type, ['start' => "$day 06:00", 'end' => "$day 09:00"]))
-            ->assertStatus(422)->assertJsonValidationErrors(['start' => 'only between 08:00 and 18:00']);
+            ->assertStatus(422)->assertJsonValidationErrors(['start' => 'só entre as 08:00 e as 18:00']);
         $this->postJson(self::URL, $this->payload($type, ['start' => "$day 16:00", 'end' => "$day 20:00"]))
             ->assertStatus(422)->assertJsonValidationErrors('end');
         $this->postJson(self::URL, $this->payload($type, ['start' => "$day 18:00", 'end' => "$day 19:00"]))

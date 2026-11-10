@@ -98,15 +98,15 @@ class ScheduleActivity extends AppNotification
             : "/schedules/{$this->scheduleId}";
     }
 
-    public function via(object $notifiable): array
+    /** Follows all_email_notification (not email_notification). */
+    public function emailWanted(object $notifiable): bool
     {
-        $channels = ['database'];
+        return $notifiable->all_email_notification && filled($notifiable->email);
+    }
 
-        if ($notifiable->all_email_notification && filled($notifiable->email)) {
-            $channels[] = 'mail';
-        }
-
-        return $channels;
+    protected function digestible(): bool
+    {
+        return true;
     }
 
     /** `activity` tells the push observer to follow all_push_notification (and the app the kind). */

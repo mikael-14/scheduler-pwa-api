@@ -34,6 +34,17 @@ Schedule::command('coverage:check')
     ->timezone(config('app.timezone'))
     ->when(fn() => (bool) config('coverage.enabled'));
 
+// Email summaries of the news that can wait (users.email_digest): 08:00 for everyone who chose a
+// summary (twice or once a day), 18:00 only for those who chose twice a day
+Schedule::command('notifications:digest --with-daily')
+    ->dailyAt('08:00')
+    ->timezone(config('app.timezone'))
+    ->withoutOverlapping(30);
+Schedule::command('notifications:digest')
+    ->dailyAt('18:00')
+    ->timezone(config('app.timezone'))
+    ->withoutOverlapping(30);
+
 // Approved schedules that are over become completed (nobody else sets that status)
 Schedule::command('schedules:complete')
     ->everyFifteenMinutes()

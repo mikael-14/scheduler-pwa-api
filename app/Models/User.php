@@ -47,6 +47,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         // "all notifications": other people's schedules too (ScheduleActivity)
         'all_push_notification',
         'all_email_notification',
+        // instant | twice | daily: how the emails that can wait arrive (EmailDigest)
+        'email_digest',
     ];
 
     /**
@@ -77,6 +79,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         'email_notification' => true,
         'all_push_notification' => true,
         'all_email_notification' => true,
+        'email_digest' => 'twice',
     ];
 
     /**

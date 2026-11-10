@@ -608,6 +608,7 @@ Current tasks:
 |---|---|---|
 | `sanctum:prune-expired --hours=24` | daily at 00:00 | deletes tokens expired for more than a day (old 30-day tokens and the ones replaced by renewals), so `personal_access_tokens` does not grow forever |
 | `coverage:check` | daily at `COVERAGE_ALERTS_AT` (09:00) | warns everyone about days with nobody approved for a schedule type, 7 days and 1 day before (see "Coverage alerts") |
+| `notifications:digest --with-daily` / `notifications:digest` | daily at 08:00 / 18:00 | the email summaries (see "Email summaries"); the 08:00 run also covers who chose one a day |
 
 Check them with `php artisan schedule:list`. Without the scheduler everything still works;
 expired tokens are just not cleaned up.
@@ -627,6 +628,31 @@ All four are on for new accounts. "All notifications" go to active, approved peo
 the agenda (`view_any_schedule`), except whoever did it and the people already told personally.
 Not stored: the password-reset email, email verification, and the "new device" email of the
 authentication log.
+
+### Email summaries
+
+News that can wait does not get an email of its own: it is kept for a summary (`users.email_digest`,
+chosen in the PWA settings and the admin profile):
+
+| `email_digest` | Emails that can wait |
+|---|---|
+| `twice` (default) | one summary at 08:00 and one at 18:00 |
+| `daily` | one summary at 08:00 |
+| `instant` | each one right away, as before |
+
+- **Can wait** (`digestible()` returns true): people joining or cancelling (`ScheduleJoinedOrLeft`),
+  being added (`ScheduleParticipantAdded`), changes (`ScheduleUpdated`), agenda activity
+  (`ScheduleActivity`), requests waiting (`SchedulePendingApproval`, `ParticipationRequested`),
+  no-shows recorded (`NotShownRecorded`), coverage alerts, and announcements not marked important.
+- **Always right away**: account approved, password reset, decisions about the person's schedule
+  (approved / rejected / cancelled, back to pending), booked or handed over to them, taken off a
+  schedule, marked as not shown, important announcements.
+- The summary (`App\Notifications\EmailDigest`, sent by `notifications:digest`) only has what the
+  person has **not read** in the app yet, grouped (to decide, your schedules, on the agenda,
+  messages), each line linking to the PWA. Nothing new: no email.
+- In the notifications log: `mail_status` = "In the next summary" while waiting, then "Sent";
+  read in the app before the summary (or email turned off): empty.
+- Push and the in-app list are not affected.
 
 ## Coverage alerts
 

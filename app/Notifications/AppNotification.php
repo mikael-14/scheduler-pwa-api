@@ -75,11 +75,40 @@ abstract class AppNotification extends Notification implements ShouldQueueAfterC
         return false;
     }
 
+    /**
+     * News that can wait for the person's email summary (EmailDigest) instead of an email of its
+     * own: people joining, changes, activity, requests waiting... Decisions about the person
+     * (approved, rejected, booked for them, taken off...) and account messages are never digested.
+     */
+    protected function digestible(): bool
+    {
+        return false;
+    }
+
+    /** The person gets this by email at all (on its own or in the summary). */
+    public function emailWanted(object $notifiable): bool
+    {
+        return ($this->alwaysEmail() || $notifiable->email_notification) && filled($notifiable->email);
+    }
+
+    /**
+     * Its email waits for the summary: it can wait, and the person chose a summary
+     * (users.email_digest: twice / daily; 'instant' = each email right away).
+     */
+    public function goesToDigest(object $notifiable): bool
+    {
+        return $this->digestible()
+            && ! $this->alwaysEmail()
+            && in_array($notifiable->email_digest ?? 'instant', ['twice', 'daily'], true)
+            && $this->emailWanted($notifiable);
+    }
+
     public function via(object $notifiable): array
     {
         $channels = ['database'];
 
-        if (($this->alwaysEmail() || $notifiable->email_notification) && filled($notifiable->email)) {
+        // a digested one is only stored, marked for the summary (Channels\DatabaseChannel)
+        if ($this->emailWanted($notifiable) && ! $this->goesToDigest($notifiable)) {
             $channels[] = 'mail';
         }
 
