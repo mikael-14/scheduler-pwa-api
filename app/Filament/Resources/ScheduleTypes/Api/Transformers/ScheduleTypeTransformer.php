@@ -3,6 +3,8 @@ namespace App\Filament\Resources\ScheduleTypes\Api\Transformers;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Models\ScheduleType;
+use App\Models\ScheduleTypeSlot;
+use App\Services\SlotDefinitions;
 
 /**
  * A schedule type as the PWA's management screens use it.
@@ -41,6 +43,19 @@ class ScheduleTypeTransformer extends JsonResource
             // daily hours, "HH:mm" (time columns: the raw value, not the datetime cast)
             'min_time' => self::hhmm($type->getRawOriginal('min_time')),
             'max_time' => self::hhmm($type->getRawOriginal('max_time')),
+            // shifts: the slots come with a single type (detail, after a save), not with the list
+            'uses_slots' => (bool) $type->uses_slots,
+            'slots' => $this->when($type->relationLoaded('slots'), fn() => $type->slots->map(fn(ScheduleTypeSlot $slot) => [
+                'id' => $slot->id,
+                ...SlotDefinitions::toRow($slot),
+                'start' => $slot->start->toIso8601String(),
+                'end' => $slot->end->toIso8601String(),
+                'capacity' => $slot->capacity,
+                'comment' => $slot->comment,
+                'people' => $people = $slot->peopleCount(),
+                // with a schedule going on: its times are fixed and it can't be removed
+                'taken' => $people > 0,
+            ])->values()),
             // active schedules (deleted ones don't count, see ScheduleType::canBeDeleted)
             'schedules_count' => (int) $schedules,
             'can' => [

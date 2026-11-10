@@ -2,6 +2,8 @@
 namespace App\Filament\Resources\ScheduleTypes\Api\Handlers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Services\SlotDefinitions;
 use Rupadana\ApiService\Http\Handlers;
 use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
 use App\Filament\Resources\ScheduleTypes\Api\Requests\UpdateScheduleTypeRequest;
@@ -38,9 +40,18 @@ class UpdateHandler extends \App\Http\Handlers\ApprovedHandler
         if (!$model) return static::sendNotFoundResponse();
 
         // only the validated fields: anything else (e.g. 'primary') is ignored
-        $model->fill($request->validated());
+        $data = $request->validated();
+        $model->fill(collect($data)->except('slots')->all());
 
-        $model->save();
+        // the slots are checked against the type as filled, then stored with it
+        $plan = array_key_exists('slots', $data) ? SlotDefinitions::check($model, $data['slots']) : null;
+        DB::transaction(function () use ($model, $plan) {
+            $model->save();
+            if ($plan !== null) {
+                SlotDefinitions::save($model, $plan);
+            }
+        });
+        $model->load('slots');
 
         return static::sendSuccessResponse(new ScheduleTypeTransformer($model), "Successfully Update Resource");
     }

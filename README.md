@@ -543,7 +543,7 @@ approved yet (`approval_problem` in the API, a warning in the panel and the PWA)
 ### Shift slots
 
 A schedule type can work in **slots** (shifts): turn on "Members pick a slot" in the type form
-(admin panel) and list the slots. Each slot has a day, a start and an end (an end of 00:00 means
+(admin panel or PWA) and list the slots. Each slot has a day, a start and an end (an end of 00:00 means
 midnight), an optional maximum of people and a comment shown to everyone who picks it.
 
 - People don't choose hours for these types: they pick a slot (PWA form, admin create page and
@@ -559,6 +559,10 @@ midnight), an optional maximum of people and a comment shown to everyone who pic
 - API: `GET schedules/slots?schedule_type_id=` lists the slots that haven't ended (`people`,
   `capacity`, `full`, `mine`, `schedule_id`, `problem`). `POST schedules/slots/{slot}` takes one.
   Schedules have `slot` (`comment`, `capacity`, `people`), and types have `uses_slots`.
+- Type API (`schedule-types`): the detail and the answer to a save have `slots` (`day`, `from`,
+  `to`, `capacity`, `comment`, `people`, `taken`). A create or update may send `uses_slots` and
+  the whole `slots` list: a row with an `id` changes that slot, one without is new, a slot left
+  out is removed. Without `slots` the slots stay as they are (`App\Services\SlotDefinitions`).
 
 The rules live in `App\Services\ScheduleSlots` (tables `schedule_type_slots` and
 `schedules.schedule_type_slot_id`).

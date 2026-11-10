@@ -4,7 +4,7 @@ namespace App\Filament\Resources\ScheduleTypes\Schemas;
 
 use App\Models\ScheduleType;
 use App\Models\ScheduleTypeSlot;
-use App\Services\ScheduleTypeRules;
+use App\Services\SlotDefinitions;
 use Carbon\Carbon;
 use Coolsam\Flatpickr\Forms\Components\Flatpickr;
 use Filament\Actions\Action;
@@ -226,15 +226,7 @@ class ScheduleTypeForm
     /** @return array{0: Carbon, 1: Carbon} */
     private static function moments(string $day, string $from, string $to): array
     {
-        $tz = config('app.timezone');
-        $date = Carbon::parse($day, $tz)->format('Y-m-d');
-        $start = Carbon::parse($date . ' ' . substr($from, 0, 5), $tz);
-        $end = Carbon::parse($date . ' ' . substr($to, 0, 5), $tz);
-        if ($end->lte($start) && $end->format('H:i') === '00:00') {
-            $end->addDay(); // until midnight
-        }
-
-        return [$start, $end];
+        return SlotDefinitions::moments($day, $from, $to);
     }
 
     /** Why a slot does not fit (the end before the start, the type's dates or daily hours), or null. */
@@ -245,9 +237,6 @@ class ScheduleTypeForm
         }
 
         [$start, $end] = self::moments((string) $day, (string) $from, (string) $to);
-        if ($end->lte($start)) {
-            return __('The end must be after the start.');
-        }
 
         // the type as it is in the form (not saved yet)
         $moment = function (string $field) use ($get): ?Carbon {
@@ -261,16 +250,7 @@ class ScheduleTypeForm
         foreach (['start', 'end', 'min_time', 'max_time'] as $field) {
             $type->{$field} = $moment($field);
         }
-        $rules = new ScheduleTypeRules($type);
-
-        if (($windowStart = $rules->windowStart()) && $start->lt($windowStart)) {
-            return __('This schedule type is only available from :date.', ['date' => $windowStart->format(config('app.date_time_format'))]);
-        }
-        if (($windowEnd = $rules->windowEnd()) && $end->gt($windowEnd)) {
-            return __('This schedule type is only available until :date.', ['date' => $windowEnd->format(config('app.date_time_format'))]);
-        }
-
-        return $rules->hoursProblem($start, $end)['message'] ?? null;
+        return SlotDefinitions::fitProblem($type, $start, $end);
     }
 
     /** "21/11/2026 · 09:00–11:00 · max 5" as the item's title. */

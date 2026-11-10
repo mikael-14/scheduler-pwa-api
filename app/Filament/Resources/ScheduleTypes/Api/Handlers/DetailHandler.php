@@ -35,6 +35,8 @@ class DetailHandler extends \App\Http\Handlers\ApprovedHandler
 
         if (!$query) return static::sendNotFoundResponse();
 
+        $query->load('slots');
+
         return new ScheduleTypeTransformer($query);
     }
 }

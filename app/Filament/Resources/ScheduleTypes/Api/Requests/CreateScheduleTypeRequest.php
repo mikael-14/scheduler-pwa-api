@@ -33,6 +33,15 @@ class CreateScheduleTypeRequest extends FormRequest
             'description' => 'nullable|string|max:255',
             'min_time' => 'nullable|date_format:H:i',
             'max_time' => 'nullable|date_format:H:i',
+            // shifts: left out = the slots stay as they are (SlotDefinitions)
+            'uses_slots' => 'sometimes|boolean',
+            'slots' => 'sometimes|array|max:500',
+            'slots.*.id' => 'nullable|integer',
+            'slots.*.day' => 'required|date_format:Y-m-d',
+            'slots.*.from' => 'required|date_format:H:i',
+            'slots.*.to' => 'required|date_format:H:i',
+            'slots.*.capacity' => 'nullable|integer|min:1|max:1000',
+            'slots.*.comment' => 'nullable|string|max:1000',
         ];
     }
 }
