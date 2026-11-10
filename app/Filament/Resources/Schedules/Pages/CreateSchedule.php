@@ -14,6 +14,11 @@ class CreateSchedule extends CreateRecord
     /** The participants in the form are saved after the schedule; the primary rule counts them already. */
     protected function handleRecordCreation(array $data): Model
     {
+        // a slot (shift): its schedule is booked, or joined when someone took it already
+        if ($schedule = \App\Services\ScheduleSlots::takeFromForm($data)) {
+            return $schedule;
+        }
+
         return PrimaryScheduleRule::withCompanions(
             collect($this->data['schedules'] ?? [])->pluck('user_id')->all(),
             fn() => parent::handleRecordCreation($data)

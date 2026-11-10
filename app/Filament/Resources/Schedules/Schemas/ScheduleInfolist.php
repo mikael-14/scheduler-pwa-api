@@ -32,6 +32,13 @@ class ScheduleInfolist
                     ->warning()
                     ->visible(fn(Schedule $record) => PrimaryScheduleRule::needsSomeoneWhoMayGoAlone($record))
                     ->columnSpanFull(),
+                // booked on a slot (shift): its comment and how many people it has / takes
+                Callout::make(fn(Schedule $record) => self::slotTitle($record))
+                    ->description(fn(Schedule $record) => \App\Services\ScheduleSlots::summary($record)['comment'] ?? null)
+                    ->icon(Heroicon::OutlinedClock)
+                    ->info()
+                    ->visible(fn(Schedule $record) => $record->schedule_type_slot_id !== null)
+                    ->columnSpanFull(),
                 Section::make(fn(Schedule $record) => "#({$record->id}) - {$record->schedule_type->name}")
                     ->schema([
                         TextEntry::make('schedule_type.name')
@@ -110,5 +117,18 @@ class ScheduleInfolist
                             ])
                     ])->visible(fn(Schedule $record) => $record->schedule_users()->exists()),
             ]);
+    }
+
+    /** "Slot · 2 of 5 people" */
+    private static function slotTitle(Schedule $record): string
+    {
+        $slot = \App\Services\ScheduleSlots::summary($record);
+        if (! $slot) {
+            return __('Slot');
+        }
+
+        return __('Slot') . ' · ' . ($slot['capacity'] !== null
+            ? __(':people of :capacity people', ['people' => $slot['people'], 'capacity' => $slot['capacity']])
+            : trans_choice(':count person|:count people', $slot['people'], ['count' => $slot['people']]));
     }
 }

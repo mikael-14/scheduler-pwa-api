@@ -19,6 +19,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  * @property bool $status
  * @property bool $range
  * @property bool $all_day
+ * @property bool $uses_slots  people pick one of its slots (shifts) instead of their own hours
  * @property Carbon|null $start
  * @property Carbon|null $end
  * @property string|null $description
@@ -49,6 +50,7 @@ class ScheduleType extends Model implements Auditable
 		'status' => 'bool',
 		'range' => 'bool',
 		'all_day' => 'bool',
+		'uses_slots' => 'bool',
 		'start' => 'datetime',
 		'end' => 'datetime',
 		'min_time' => 'datetime',
@@ -62,6 +64,7 @@ class ScheduleType extends Model implements Auditable
 		'status',
 		'range',
 		'all_day',
+		'uses_slots',
 		'start',
 		'end',
 		'description',
@@ -73,6 +76,12 @@ class ScheduleType extends Model implements Auditable
 	public function schedules()
 	{
 		return $this->hasMany(Schedule::class);
+	}
+
+	/** Its fixed times, when it uses slots (shifts). */
+	public function slots()
+	{
+		return $this->hasMany(ScheduleTypeSlot::class)->orderBy('start');
 	}
 
 	/**

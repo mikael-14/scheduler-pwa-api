@@ -68,4 +68,50 @@ class ScheduleTypeFormTest extends TestCase
         $this->assertSame('Cleaning the boxes', $type->fresh()->name);
         $this->assertTrue((bool) $type->fresh()->primary);
     }
+
+    public function test_slots_are_entered_as_a_day_and_two_times_and_must_fit_the_hours(): void
+    {
+        $day = now()->addDays(10)->format('Y-m-d');
+
+        // outside the type's hours: refused
+        Livewire::test(CreateScheduleType::class)
+            ->fillForm([
+                'name' => 'Feira', 'color' => '#aa3300', 'max_time' => '18:00', 'uses_slots' => true,
+                'slots' => [['day' => $day, 'from' => '17:00', 'to' => '19:00', 'capacity' => null, 'comment' => null]],
+            ])
+            ->call('create')
+            ->assertHasFormErrors();
+        $this->assertFalse(ScheduleType::where('name', 'Feira')->exists());
+
+        Livewire::test(CreateScheduleType::class)
+            ->fillForm([
+                'name' => 'Feira', 'color' => '#aa3300', 'uses_slots' => true,
+                'slots' => [
+                    ['day' => $day, 'from' => '09:00', 'to' => '11:00', 'capacity' => 5, 'comment' => 'Trazer colete'],
+                    ['day' => $day, 'from' => '22:00', 'to' => '00:00', 'capacity' => null, 'comment' => null],
+                ],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $type = ScheduleType::where('name', 'Feira')->firstOrFail();
+        $this->assertTrue($type->uses_slots);
+        [$morning, $night] = $type->slots()->get()->all();
+        $this->assertSame("$day 09:00 → $day 11:00", $morning->start->format('Y-m-d H:i') . ' → ' . $morning->end->format('Y-m-d H:i'));
+        $this->assertSame(5, $morning->capacity);
+        $this->assertSame('Trazer colete', $morning->comment);
+        $this->assertNull($night->capacity);
+        // until midnight: the next day at 00:00
+        $this->assertSame(now()->addDays(11)->format('Y-m-d') . ' 00:00', $night->end->format('Y-m-d H:i'));
+
+        // editing shows them back as a day and two times
+        $edit = Livewire::test(EditScheduleType::class, ['record' => $type->getKey()]);
+        $items = collect($edit->instance()->data['slots'])->values();
+        $this->assertSame($day, substr((string) $items[0]['day'], 0, 10));
+        $this->assertSame(['09:00', '11:00'], [substr($items[0]['from'], 0, 5), substr($items[0]['to'], 0, 5)]);
+
+        $edit->call('save')->assertHasNoFormErrors();
+        $this->assertSame(2, $type->slots()->count());
+        $this->assertSame("$day 09:00", $type->slots()->first()->start->format('Y-m-d H:i'));
+    }
 }

@@ -70,7 +70,7 @@ class ScheduleApiForAppsTest extends TestCase
         Sanctum::actingAs($me);
         $rows = collect($this->getJson(self::URL)->assertOk()->json('data'))->keyBy('id');
 
-        $this->assertSame(['id' => $type->id, 'name' => 'Cleaning', 'color' => '#112233', 'all_day' => false, 'range' => true], $rows[$mine->id]['schedule_type']);
+        $this->assertSame(['id' => $type->id, 'name' => 'Cleaning', 'color' => '#112233', 'all_day' => false, 'range' => true, 'uses_slots' => false], $rows[$mine->id]['schedule_type']);
         $this->assertSame(['id' => $me->id, 'name' => 'Me Myself', 'avatar_url' => null], $rows[$mine->id]['user']);
         $this->assertSame('Friend', $rows[$mine->id]['schedule_users'][0]['name']);
 

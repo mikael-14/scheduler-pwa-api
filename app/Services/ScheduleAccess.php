@@ -24,6 +24,21 @@ use Illuminate\Validation\ValidationException;
  */
 class ScheduleAccess
 {
+    /** A slot schedule passing to its next person as its owner leaves (ScheduleSlots::ownerLeaves). */
+    private static bool $handingOver = false;
+
+    /** Runs a change of owner that the rules allow on their own (not the person's permissions). */
+    public static function handingOver(callable $change): mixed
+    {
+        static::$handingOver = true;
+
+        try {
+            return $change();
+        } finally {
+            static::$handingOver = false;
+        }
+    }
+
     /** Approvers and admins: may read internal notes and touch other people's schedules. */
     public static function isStaff(User $user): bool
     {
@@ -94,7 +109,35 @@ class ScheduleAccess
             && ! static::isPastLocked($user, $schedule)
             && ! static::participation($user, $schedule)
             // joining again after cancelling: like cancelling, only before it starts
-            && (! static::cancelledParticipation($user, $schedule) || ! static::hasStarted($schedule));
+            && (! static::cancelledParticipation($user, $schedule) || ! static::hasStarted($schedule))
+            // a slot (shift) with a maximum of people: not when it is full
+            && ! static::slotIsFull($schedule);
+    }
+
+    /** Booked on a slot (shift) that has as many people as it takes. */
+    public static function slotIsFull(Schedule $schedule): bool
+    {
+        if (! $schedule->schedule_type_slot_id) {
+            return false;
+        }
+
+        $slot = $schedule->relationLoaded('slot') ? $schedule->slot : $schedule->slot()->first();
+
+        return $slot !== null && $slot->isFull($schedule);
+    }
+
+    /**
+     * The owner of a slot (shift) schedule with other people on it leaves instead of cancelling it
+     * for everyone: it is handed to the next person (ScheduleSlots::ownerLeaves).
+     */
+    public static function canLeaveAsOwner(User $user, Schedule $schedule): bool
+    {
+        return $schedule->schedule_type_slot_id !== null
+            && $schedule->user_id === $user->id
+            && $user->can('cancel_participation_schedule')
+            && in_array($schedule->status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true)
+            && ! static::hasStarted($schedule)
+            && $schedule->schedule_users()->whereIn('status', [ScheduleStatus::Pending, ScheduleStatus::Approved])->exists();
     }
 
     /**
@@ -103,6 +146,10 @@ class ScheduleAccess
      */
     public static function canLeave(User $user, Schedule $schedule): bool
     {
+        if (static::canLeaveAsOwner($user, $schedule)) {
+            return true;
+        }
+
         $participation = static::participation($user, $schedule);
 
         return $user->can('cancel_participation_schedule')
@@ -283,7 +330,7 @@ class ScheduleAccess
     {
         $user = auth()->user();
 
-        if (! $user instanceof User) {
+        if (! $user instanceof User || static::$handingOver) {
             return;
         }
 

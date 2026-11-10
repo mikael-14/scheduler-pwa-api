@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Enums\DigestFrequency;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
@@ -93,13 +94,13 @@ abstract class AppNotification extends Notification implements ShouldQueueAfterC
 
     /**
      * Its email waits for the summary: it can wait, and the person chose a summary
-     * (users.email_digest: twice / daily; 'instant' = each email right away).
+     * (users.email_digest, see DigestFrequency).
      */
     public function goesToDigest(object $notifiable): bool
     {
         return $this->digestible()
             && ! $this->alwaysEmail()
-            && in_array($notifiable->email_digest ?? 'instant', ['twice', 'daily'], true)
+            && ($notifiable->email_digest instanceof DigestFrequency && $notifiable->email_digest->isSummary())
             && $this->emailWanted($notifiable);
     }
 

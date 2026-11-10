@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DigestFrequency;
 use App\Enums\ScheduleStatus;
 use App\Models\Schedule;
 use App\Models\ScheduleType;
@@ -54,7 +55,7 @@ class EmailDigestTest extends TestCase
     public function test_news_that_can_wait_is_kept_for_the_summary_while_decisions_go_out_at_once(): void
     {
         $owner = $this->user(['name' => 'Olga']);
-        $this->assertSame('twice', $owner->email_digest); // the default
+        $this->assertSame(DigestFrequency::Twice, $owner->email_digest); // the default
 
         $this->joined($owner, 'Maria');
         $this->assertCount(0, $this->emails());
@@ -136,7 +137,7 @@ class EmailDigestTest extends TestCase
 
         // and sent back, so the app shows the choice
         $this->patchJson('/api/user', ['email_digest' => 'daily'])->assertOk()->assertJsonPath('user.email_digest', 'daily');
-        $this->assertSame('daily', $user->fresh()->email_digest);
+        $this->assertSame(DigestFrequency::Daily, $user->fresh()->email_digest);
 
         $this->patchJson('/api/user', ['email_digest' => 'weekly'])->assertStatus(422)->assertJsonValidationErrors('email_digest');
     }

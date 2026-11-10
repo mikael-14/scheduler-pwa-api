@@ -17,8 +17,9 @@ class ScheduleTransformer extends JsonResource
     public const RELATIONS = [
         'schedule_users.user:id,name,avatar_url',
         'cancelled_schedule_users.user:id,name,avatar_url',
-        'schedule_type:id,name,color,all_day,range',
+        'schedule_type:id,name,color,all_day,range,uses_slots',
         'user:id,name,avatar_url',
+        'slot',
     ];
 
     /**
@@ -40,7 +41,7 @@ class ScheduleTransformer extends JsonResource
 
         // Names and colours, so an app can show the schedule without looking anything else up
         $type = $this->resource->schedule_type;
-        $data['schedule_type'] = $type ? $type->only(['id', 'name', 'color', 'all_day', 'range']) : null;
+        $data['schedule_type'] = $type ? $type->only(['id', 'name', 'color', 'all_day', 'range', 'uses_slots']) : null;
         $owner = $this->resource->user;
         $data['user'] = $owner
             ? ['id' => $owner->id, 'name' => $owner->name, 'avatar_url' => $this->avatarUrl($owner)]
@@ -73,6 +74,10 @@ class ScheduleTransformer extends JsonResource
             'avatar_url' => $scheduleUser->user ? $this->avatarUrl($scheduleUser->user) : null,
             'cancelled_at' => $scheduleUser->cancelled_at?->toIso8601String(),
         ])->values();
+
+        // booked on a slot (shift): its comment and how many people it has / takes
+        unset($data['slot']);
+        $data['slot'] = \App\Services\ScheduleSlots::summary($this->resource);
 
         $data['can'] = $user ? $this->abilities($user) : [];
 

@@ -56,6 +56,19 @@ class ScheduleForm
                     ->live()
                     ->searchable()
                     ->preload(true),
+                // Types with slots (shifts): pick one of its slots instead of the hours. Taken through
+                // ScheduleSlots (CreateSchedule, the calendar's create modal): an existing schedule of
+                // that slot is joined instead of booking a second one. Fixed once booked.
+                Select::make('schedule_type_slot_id')
+                    ->label(__('Slot'))
+                    ->visible(fn(Get $get) => self::usesSlots($get))
+                    ->disabled(fn($record) => $record instanceof \App\Models\Schedule && $record->exists)
+                    ->dehydrated(fn($record) => ! ($record instanceof \App\Models\Schedule && $record->exists))
+                    ->options(fn(Get $get, $record) => self::slotOptions($get('schedule_type_id'), $record))
+                    ->allowHtml()
+                    ->native(false)
+                    ->required()
+                    ->columnSpanFull(),
                 // The type's rules (ScheduleTypeRules), also enforced on save by ScheduleRulesValidator:
                 // the pickers stop at the type's start / end, "all day" only when the type allows it,
                 // an end only when the type needs one.
@@ -63,7 +76,7 @@ class ScheduleForm
                     ->allowInput()
                     // a new picker when the type or "all day" changes (limits and time picker differ)
                     ->key(fn(Get $get) => 'start_' . $get('schedule_type_id') . '_' . (int) self::isAllDay($get))
-                    ->visible(fn(Get $get) => $get('schedule_type_id') ?? false)
+                    ->visible(fn(Get $get) => ($get('schedule_type_id') ?? false) && ! self::usesSlots($get))
                     ->minDate(fn(Get $get) => self::pickerDate(self::rules($get)?->windowStart(), $get))
                     ->maxDate(fn(Get $get) => self::pickerDate(self::rules($get)?->windowEnd(), $get))
                     ->time(fn(Get $get) => ! self::isAllDay($get))
@@ -78,7 +91,7 @@ class ScheduleForm
                 Flatpickr::make('end')
                     ->allowInput()
                     ->key(fn(Get $get) => 'end_' . $get('schedule_type_id') . '_' . (int) self::isAllDay($get))
-                    ->visible(fn(Get $get) => self::rules($get)?->requiresEnd() ?? false)
+                    ->visible(fn(Get $get) => (self::rules($get)?->requiresEnd() ?? false) && ! self::usesSlots($get))
                     ->maxDate(fn(Get $get) => self::pickerDate(self::rules($get)?->windowEnd(), $get))
                     // never before the start
                     ->minDate(fn(Get $get) => $get('start') ?: self::pickerDate(self::rules($get)?->windowStart(), $get))
@@ -95,7 +108,7 @@ class ScheduleForm
                     ->inline(false)
                     ->live()
                     // only on types that allow it, for people who may give no hours (AllDayRule)
-                    ->visible(fn(Get $get, $record) => (self::rules($get)?->allowsAllDay() ?? false)
+                    ->visible(fn(Get $get, $record) => (self::rules($get)?->allowsAllDay() ?? false) && ! self::usesSlots($get)
                         && (\App\Services\AllDayRule::mayBook(Filament::auth()->user()) || $record?->all_day))
                     ->default(false),
                 Textarea::make('description')->autosize(),
@@ -125,6 +138,8 @@ class ScheduleForm
                     }, merge: true)
                     ->columnSpanFull(),
                 Repeater::make('schedules')
+                    // a new slot booking: the others take the slot themselves
+                    ->hidden(fn(Get $get, $record) => self::usesSlots($get) && ! ($record instanceof \App\Models\Schedule && $record->exists))
                     ->defaultItems(0)
                     ->relationship('schedule_users') // Use the new hasMany relationship to the pivot model
                     ->reorderable(false)
@@ -195,6 +210,50 @@ class ScheduleForm
     private static function rules(Get $get): ?ScheduleTypeRules
     {
         return ScheduleTypeRules::for($get('schedule_type_id'));
+    }
+
+    private static function usesSlots(Get $get): bool
+    {
+        return self::rules($get)?->usesSlots() ?? false;
+    }
+
+    /** The slots of the type still to come (plus the schedule's own), with people and comment. */
+    private static function slotOptions(mixed $typeId, mixed $record): array
+    {
+        if (! $typeId) {
+            return [];
+        }
+
+        $ownSlotId = $record instanceof \App\Models\Schedule ? $record->schedule_type_slot_id : null;
+
+        return \App\Models\ScheduleTypeSlot::query()
+            ->where('schedule_type_id', $typeId)
+            ->where(fn($query) => $query->where('end', '>', now())->when($ownSlotId, fn($q) => $q->orWhere('id', $ownSlotId)))
+            ->orderBy('start')
+            ->get()
+            ->mapWithKeys(fn(\App\Models\ScheduleTypeSlot $slot) => [$slot->id => self::slotLabel($slot)])
+            ->all();
+    }
+
+    /** "Sat, 21 Nov · 09:00–11:00 (2 of 5 people)" and the comment below. */
+    public static function slotLabel(\App\Models\ScheduleTypeSlot $slot): string
+    {
+        $tz = config('app.timezone');
+        $start = $slot->start->copy()->setTimezone($tz);
+        $end = $slot->end->copy()->setTimezone($tz);
+        $people = $slot->peopleCount();
+
+        $when = $start->translatedFormat('D, d M') . ' · ' . $start->format('H:i') . '–' . $end->format('H:i');
+        $count = $slot->capacity !== null
+            ? __(':people of :capacity people', ['people' => $people, 'capacity' => $slot->capacity])
+            : trans_choice(':count person|:count people', $people, ['count' => $people]);
+        if ($slot->isFull()) {
+            $count .= ' · ' . __('Full');
+        }
+
+        return '<div><strong>' . e($when) . '</strong> <span style="opacity:.7">(' . e($count) . ')</span>'
+            . (filled($slot->comment) ? '<div style="opacity:.7;font-size:.85em;white-space:pre-line">' . e($slot->comment) . '</div>' : '')
+            . '</div>';
     }
 
     /** "All day" counts only when the type allows it. */

@@ -14,6 +14,7 @@ use Illuminate\Support\Collection;
  * - all_day       whether a schedule may be "all day". Enforced.
  * - range         whether a schedule needs an end time. Enforced.
  * - status        only active types take new schedules. Enforced.
+ * - uses_slots    schedules take the times of one of its slots (shifts, ScheduleSlots). Enforced.
  * - min_time / max_time  the daily hours: a schedule with hours starts at min_time or later and
  *                 ends by max_time (a max of 00:00 = midnight). Enforced, for everyone. The
  *                 calendar shows exactly these hours, so nothing can fall outside it.
@@ -72,6 +73,12 @@ class ScheduleTypeRules
     public function allowsAllDay(): bool
     {
         return (bool) $this->type->all_day;
+    }
+
+    /** People pick one of its slots (shifts) instead of their own hours (ScheduleSlots). */
+    public function usesSlots(): bool
+    {
+        return (bool) $this->type->uses_slots;
     }
 
     public function requiresEnd(): bool
@@ -171,6 +178,8 @@ class ScheduleTypeRules
             'description' => $this->type->description,
             'range' => $this->requiresEnd(),
             'all_day' => $this->allowsAllDay(),
+            // pick a slot (GET schedules/slots) instead of giving hours
+            'uses_slots' => $this->usesSlots(),
             'start' => $this->type->start,
             'end' => $this->type->end,
             // its end has passed: the PWA offers it only to people who may book the past

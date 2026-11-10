@@ -540,6 +540,29 @@ The rules live in `App\Services\PrimaryScheduleRule` and `App\Services\AllDayRul
 so the admin panel, the API and the PWA all obey it. Approvers see why something cannot be
 approved yet (`approval_problem` in the API, a warning in the panel and the PWA).
 
+### Shift slots
+
+A schedule type can work in **slots** (shifts): turn on "Members pick a slot" in the type form
+(admin panel) and list the slots. Each slot has a day, a start and an end (an end of 00:00 means
+midnight), an optional maximum of people and a comment shown to everyone who picks it.
+
+- People don't choose hours for these types: they pick a slot (PWA form, admin create page and
+  calendar modal). The **first** person books the slot's schedule and owns it; the **next ones
+  join** it as participants. Approval, the primary rule and notifications work as usual.
+- A slot with a maximum takes that many people, its owner included. A full slot can't be taken
+  or joined.
+- If the owner leaves while others are on it, the schedule passes to whoever joined first and
+  the owner shows as cancelled. Alone, the owner cancels it as usual, and the slot can be taken again.
+- A slot's schedule always keeps the slot's times (`ScheduleRulesValidator`). A slot with a
+  schedule going on can't be removed and its times are locked. Its comment and maximum can
+  still change.
+- API: `GET schedules/slots?schedule_type_id=` lists the slots that haven't ended (`people`,
+  `capacity`, `full`, `mine`, `schedule_id`, `problem`). `POST schedules/slots/{slot}` takes one.
+  Schedules have `slot` (`comment`, `capacity`, `people`), and types have `uses_slots`.
+
+The rules live in `App\Services\ScheduleSlots` (tables `schedule_type_slots` and
+`schedules.schedule_type_slot_id`).
+
 ## API sessions (PWA tokens)
 
 The PWA signs in with a Laravel Sanctum token (email/password, Google or Facebook). The API
@@ -632,7 +655,8 @@ authentication log.
 ### Email summaries
 
 News that can wait does not get an email of its own: it is kept for a summary (`users.email_digest`,
-chosen in the PWA settings and the admin profile):
+chosen in the PWA settings and the admin profile; values and labels in `App\Enums\DigestFrequency`,
+stored as a plain string so a new value needs no migration):
 
 | `email_digest` | Emails that can wait |
 |---|---|

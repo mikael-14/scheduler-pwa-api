@@ -49,6 +49,8 @@ class CalendarWidget extends FullCalendarWidget
                 ->label(__('Create Schedule'))
                 // a date click / select opens it too: the same permission as the Create page
                 ->authorize(fn() => Gate::allows('create', Schedule::class))
+                // a slot (shift): its schedule is booked, or joined when someone took it already
+                ->using(fn(array $data) => \App\Services\ScheduleSlots::takeFromForm($data) ?? Schedule::create($data))
                 ->schema([
                     Grid::make(2)
                         ->schema(ScheduleForm::formSchema())

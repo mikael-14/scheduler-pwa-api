@@ -79,7 +79,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         'email_notification' => true,
         'all_push_notification' => true,
         'all_email_notification' => true,
-        'email_digest' => 'twice',
+        'email_digest' => 'twice', // DigestFrequency::DEFAULT
     ];
 
     /**
@@ -109,6 +109,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
             'email_notification' => 'boolean',
             'all_push_notification' => 'boolean',
             'all_email_notification' => 'boolean',
+            'email_digest' => \App\Enums\DigestFrequency::class,
         ];
     }
 

@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ScheduleRulesValidator
 {
-    private const SLOT_FIELDS = ['start', 'end', 'all_day', 'schedule_type_id'];
+    private const SLOT_FIELDS = ['start', 'end', 'all_day', 'schedule_type_id', 'schedule_type_slot_id'];
 
     /**
      * Called from the model's `saving` hook.
@@ -107,6 +107,14 @@ class ScheduleRulesValidator
             $errors['schedule_type_id'][] = __('This schedule type is not active.');
         }
 
+        // Types with slots (shifts): exactly the times of one of its slots (ScheduleSlots). The slot
+        // was checked against the type's window and hours when it was defined.
+        if ($rules->usesSlots() || $schedule->schedule_type_slot_id) {
+            static::validateSlot($schedule, $rules, $start, $end, $errors);
+
+            return;
+        }
+
         if ($rules->requiresEnd() && ! $end) {
             $errors['end'][] = __('This schedule type requires an end time.');
         }
@@ -135,6 +143,28 @@ class ScheduleRulesValidator
         // them could be seen. Whole-day schedules have no hours.
         if (! $schedule->all_day && $problem = $rules->hoursProblem($start, $end)) {
             $errors[$problem['field']][] = $problem['message'];
+        }
+    }
+
+    private static function validateSlot(
+        Schedule $schedule,
+        ScheduleTypeRules $rules,
+        CarbonInterface $start,
+        ?CarbonInterface $end,
+        array &$errors,
+    ): void {
+        $slot = $schedule->schedule_type_slot_id ? \App\Models\ScheduleTypeSlot::find($schedule->schedule_type_slot_id) : null;
+
+        if (! $rules->usesSlots() || ! $slot || $slot->schedule_type_id !== (int) $schedule->schedule_type_id) {
+            $errors['schedule_type_slot_id'][] = $rules->usesSlots()
+                ? __('Pick one of the slots of :type.', ['type' => $rules->type->name])
+                : __('This slot belongs to another schedule type.');
+
+            return;
+        }
+
+        if ($schedule->all_day || ! $end || ! $start->equalTo($slot->start) || ! $end->equalTo($slot->end)) {
+            $errors['start'][] = __('A schedule of :type keeps the times of its slot.', ['type' => $rules->type->name]);
         }
     }
 }

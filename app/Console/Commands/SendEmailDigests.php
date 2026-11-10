@@ -40,7 +40,7 @@ class SendEmailDigests extends Command
                     return;
                 }
 
-                if ($user->email_digest === 'daily' && ! $this->option('with-daily')) {
+                if ($user->email_digest?->onlyInTheMorning() && ! $this->option('with-daily')) {
                     return;
                 }
 

@@ -37,6 +37,13 @@ class ScheduleParticipation
 
     public static function leave(User $user, Schedule $schedule): void
     {
+        // the owner of a slot (shift) schedule: handed to the next person, not cancelled for all
+        if ($schedule->user_id === $user->id && $schedule->schedule_type_slot_id) {
+            ScheduleSlots::ownerLeaves($user, $schedule);
+
+            return;
+        }
+
         $schedule->schedule_users()->where('user_id', $user->id)->first()?->delete();
     }
 

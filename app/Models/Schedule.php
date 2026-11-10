@@ -31,6 +31,7 @@ use Rupadana\ApiService\Contracts\HasAllowedSorts;
  * @property string $status
  * @property int|null $user_id
  * @property int|null $schedule_type_id
+ * @property int|null $schedule_type_slot_id  the slot (shift) it was booked on, for types that use slots
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property string|null $deleted_at
@@ -53,6 +54,7 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 		'all_day' => 'bool',
 		'user_id' => 'int',
 		'schedule_type_id' => 'int',
+		'schedule_type_slot_id' => 'int',
 		'status' => ScheduleStatus::class,
 	];
 
@@ -64,7 +66,8 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 		'internal_note',
 		'status',
 		'user_id',
-		'schedule_type_id'
+		'schedule_type_id',
+		'schedule_type_slot_id'
 	];
 
 	protected static function booted(): void
@@ -73,6 +76,13 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleAccess::enforceStatusChange($schedule));
 		// Who owns it: booking for / handing over to someone else needs create_any / update_any_schedule
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleAccess::enforceOwner($schedule));
+		// Moved to a type without slots (shifts): it is no longer on a slot
+		static::saving(function (Schedule $schedule) {
+			if ($schedule->schedule_type_slot_id && $schedule->isDirty('schedule_type_id')
+				&& ! \App\Services\ScheduleTypeRules::for($schedule->schedule_type_id)?->usesSlots()) {
+				$schedule->schedule_type_slot_id = null;
+			}
+		});
 		// Type rules and the past-date rule must hold on every path (panel, calendar modals, API)
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleRulesValidator::enforce($schedule));
 		// Primary type: who may be approved without someone who may go alone
@@ -94,6 +104,12 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 	public function schedule_type()
 	{
 		return $this->belongsTo(ScheduleType::class);
+	}
+
+	/** The slot (shift) it was booked on, for types that use slots. */
+	public function slot()
+	{
+		return $this->belongsTo(ScheduleTypeSlot::class, 'schedule_type_slot_id');
 	}
 
 	public function user()
@@ -191,6 +207,7 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 			'status',
 			'user_id',
 			'schedule_type_id',
+			'schedule_type_slot_id',
 		];
 	}
 

@@ -69,6 +69,20 @@ class ScheduleTypeInfolist
                     ])
                     ->columns(2)
                     ->columnSpanFull(),
+                // shifts: the slots people pick, with how many are on each
+                Section::make(__('Slots'))
+                    ->visible(fn($record) => (bool) $record?->uses_slots)
+                    ->schema([
+                        TextEntry::make('slot_list')
+                            ->hiddenLabel()
+                            ->state(fn($record) => $record->slots()->get()
+                                ->map(fn($slot) => \App\Filament\Resources\Schedules\Schemas\ScheduleForm::slotLabel($slot))
+                                ->implode(''))
+                            ->html()
+                            ->placeholder(__('No slots yet.')),
+                    ])
+                    ->collapsible()
+                    ->columnSpanFull(),
             ]);
     }
 }
