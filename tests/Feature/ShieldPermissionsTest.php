@@ -46,6 +46,33 @@ class ShieldPermissionsTest extends TestCase
         $this->assertSame([], array_values(array_diff($expected, $existing)), 'permissions missing after shield:generate');
     }
 
+    /**
+     * Shield 4.3+ refuses the "_" separator with snake case (the Roles screen crashed): the config
+     * says ":" and AppServiceProvider joins with "_", so the names are the same as ever.
+     */
+    public function test_permission_names_keep_their_format_and_the_role_screen_opens(): void
+    {
+        $this->generate();
+
+        $names = Permission::pluck('name');
+        $this->assertSame([], $names->filter(fn(string $name) => str_contains($name, ':'))->values()->all());
+        $this->assertContains('view_any_schedule', $names->all());
+        $this->assertContains('view_any_queue_monitor', $names->all());
+        $this->assertContains('approve_schedule', $names->all());
+
+        // the screen that crashed: a role's view and edit pages build every permission key
+        \Filament\Facades\Filament::setCurrentPanel('admin');
+        $admin = User::factory()->create(['approved_at' => now(), 'status' => true]);
+        $admin->assignRole(\BezhanSalleh\FilamentShield\Support\Utils::createRole());
+        Role::findByName(\BezhanSalleh\FilamentShield\Support\Utils::getSuperAdminName())->syncPermissions(Permission::all());
+        $role = Role::create(['name' => 'voluntario', 'guard_name' => 'web']);
+        $this->actingAs($admin);
+
+        $resource = \App\Filament\Resources\Roles\RoleResource::class;
+        $this->get($resource::getUrl('view', ['record' => $role]))->assertOk();
+        $this->get($resource::getUrl('edit', ['record' => $role]))->assertOk()->assertSee('view_any_schedule', false);
+    }
+
     public function test_generate_is_idempotent(): void
     {
         $this->generate();

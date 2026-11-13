@@ -42,6 +42,15 @@ class AppServiceProvider extends ServiceProvider
     {
         DatabaseNotification::observe(FilamentNotificationObserver::class);
         $this->trackNotificationDelivery();
+        // Permission names as they have always been, "affix_subject" in snake case (view_any_schedule).
+        // Shield 4.3+ no longer accepts "_" as the configured separator with snake case (it is ":" in
+        // config/filament-shield.php), so the "_" is put here. Custom permissions (no affix) are left
+        // to Shield's own formatting.
+        \BezhanSalleh\FilamentShield\Facades\FilamentShield::buildPermissionKeyUsing(
+            fn(?string $affix, string $subject, string $case): ?string => $affix === null
+                ? null
+                : \BezhanSalleh\FilamentShield\Facades\FilamentShield::defaultPermissionKeyBuilder($affix, '_', $subject, $case)
+        );
         Gate::policy(Audit::class, AuditPolicy::class);
         Gate::policy(\Croustibat\FilamentJobsMonitor\Models\QueueMonitor::class, \App\Policies\QueueMonitorPolicy::class);
         Gate::policy(\Rappasoft\LaravelAuthenticationLog\Models\AuthenticationLog::class, \App\Policies\AuthenticationLogPolicy::class);

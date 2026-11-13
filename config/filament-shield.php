@@ -101,7 +101,9 @@ return [
     */
 
     'permissions' => [
-        'separator' => '_',
+        // Shield 4.3+ refuses "_" with snake case; the keys are still joined with "_" (view_any_schedule)
+        // by the builder registered in AppServiceProvider, so every existing permission keeps its name
+        'separator' => ':',
         'case' => 'snake',
         'generate' => true,
     ],

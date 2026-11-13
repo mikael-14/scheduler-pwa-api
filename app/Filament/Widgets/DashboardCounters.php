@@ -33,16 +33,18 @@ class DashboardCounters extends StatsOverviewWidget
     }
 
     /**
-     * Every row full, whatever the number of counters (each person sees only theirs): one under
-     * the other on phones, then all in one row (4: two rows of two first, then one row from lg).
+     * Every row full, and wide enough for the values ("12 agendamentos" is long at that size):
+     * one under the other on phones; 4 counters in two rows of two, one row only on very wide
+     * screens (2xl); 3 in one row from lg; 2 side by side.
      */
     protected function getColumns(): int | array
     {
-        $count = max(1, count($this->getCachedStats()));
-
-        return $count === 4
-            ? ['default' => 1, 'sm' => 2, 'lg' => 4]
-            : ['default' => 1, 'sm' => $count];
+        return match (max(1, count($this->getCachedStats()))) {
+            4 => ['default' => 1, 'md' => 2, '2xl' => 4],
+            3 => ['default' => 1, 'lg' => 3],
+            2 => ['default' => 1, 'sm' => 2],
+            default => 1,
+        };
     }
 
     protected function getStats(): array

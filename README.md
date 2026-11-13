@@ -147,6 +147,11 @@ composer install --no-dev --optimize-autoloader   # vendor/ (if the host has no 
 npm ci && npm run build                           # public/build (the host has no Node)
 ```
 
+The admin panel's theme (`public/build/assets/theme-*.css`) is compiled from Filament's CSS in
+`vendor/`: **build it again after every Filament update** (`composer update`) and upload
+`public/build`. An old build with a newer Filament breaks the layout (widgets not spanning their
+row, tabs stacked).
+
 Upload to a folder **outside** `public_html` (e.g. `~/scheduler-api`) and point the subdomain's
 document root at `~/scheduler-api/public` (cPanel → Domains). Include
 `storage/app/GeoLite2-City.mmdb` (sign-in locations).
