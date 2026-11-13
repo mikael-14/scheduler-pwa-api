@@ -238,6 +238,11 @@ return [
                 'view',
                 'restore',
             ],
+            // the jobs monitor: see it (and retry from it), delete its records
+            App\Filament\Resources\QueueMonitors\QueueMonitorResource::class => [
+                'view_any',
+                'delete',
+            ],
             App\Filament\Resources\NotificationLogs\NotificationLogResource::class => [
                 'view_any',
                 'view',

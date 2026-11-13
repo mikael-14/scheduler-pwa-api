@@ -155,6 +155,35 @@ class CoverageAlertsTest extends TestCase
         $this->assertSame('2026-11-05', DB::table('coverage_alerts')->value('date'));
     }
 
+    public function test_the_alerts_of_one_run_are_listed_by_day_soonest_first(): void
+    {
+        // really stored (not faked): the order is the lists'
+        Notification::swap(new \Illuminate\Notifications\ChannelManager($this->app));
+        $volunteer = $this->user(['email_notification' => false, 'all_email_notification' => false]);
+        config(['coverage.rules.walks' => ['type' => 'Passeios', 'notify_days_before' => [7, 1, 2]]]);
+
+        $this->artisan('coverage:check')
+            ->expectsTable(
+                ['Rule', 'Type', 'Day', 'Days before', 'Approved', 'Pending', 'Result', 'Recipients'],
+                [
+                    ['walks', 'Passeios', '2026-10-21', 1, 0, 0, 'sent', 1],
+                    ['walks', 'Passeios', '2026-10-22', 2, 0, 0, 'sent', 1],
+                    ['walks', 'Passeios', '2026-10-27', 7, 0, 0, 'sent', 1],
+                ],
+            )
+            ->assertSuccessful();
+
+        // sent the farthest first: on a phone the last push (tomorrow) is on top
+        $this->assertSame(['2026-10-27', '2026-10-22', '2026-10-21'], DB::table('coverage_alerts')->orderBy('id')->pluck('date')->all());
+
+        // same second; the lists (bell, PWA, email summary) show tomorrow, then 2 days, then 7
+        $soonestFirst = ['2026-10-21', '2026-10-22', '2026-10-27'];
+        $this->assertSame(1, $volunteer->notifications()->distinct()->count('created_at'));
+        $this->assertSame($soonestFirst, $volunteer->notifications()->get()->pluck('data.sort_day')->all());
+        $this->assertSame($soonestFirst, $volunteer->unreadNotifications()->get()->pluck('data.sort_day')->all());
+        $this->assertSame($soonestFirst, $volunteer->notifications()->reorder('created_at')->orderBy('data->sort_day')->get()->pluck('data.sort_day')->all());
+    }
+
     public function test_the_check_is_scheduled_daily_at_the_configured_time(): void
     {
         $event = collect(app(Scheduler::class)->events())->first(fn($event) => str_contains($event->command, 'coverage:check'));

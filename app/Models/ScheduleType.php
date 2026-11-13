@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Services\AuditTags;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -91,5 +92,18 @@ class ScheduleType extends Model implements Auditable
 	public function canBeDeleted(): bool
 	{
 		return ! $this->schedules()->exists();
+	}
+
+	/** The audit's tags: the type's name and what kind of change. See AuditTags. */
+	public function generateTags(): array
+	{
+		return AuditTags::make($this, [
+			'schedule-type',
+			$this->name,
+			$this->uses_slots ? 'slots' : null,
+			AuditTags::changed($this, 'status') ? 'activation' : null,
+			AuditTags::changed($this, 'start', 'end', 'min_time', 'max_time') ? 'dates-and-hours' : null,
+			AuditTags::changed($this, 'range', 'all_day', 'uses_slots', 'primary') ? 'rules' : null,
+		]);
 	}
 }

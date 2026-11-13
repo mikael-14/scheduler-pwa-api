@@ -503,5 +503,6 @@
     "This type": "Este tipo",
     "No slots yet.": "Ainda não há turnos.",
     "A slot with people on it keeps its times.": "Um turno com pessoas inscritas mantém as suas horas.",
-    "A slot with people on it cannot be removed (:slot).": "Um turno com pessoas inscritas não pode ser removido (:slot)."
+    "A slot with people on it cannot be removed (:slot).": "Um turno com pessoas inscritas não pode ser removido (:slot).",
+    ":count slot|:count slots": ":count turno|:count turnos"
 }

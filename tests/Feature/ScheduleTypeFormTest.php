@@ -54,6 +54,24 @@ class ScheduleTypeFormTest extends TestCase
         $this->assertFalse((bool) $type->primary);
     }
 
+    public function test_the_list_says_which_types_use_slots(): void
+    {
+        $shifts = ScheduleType::create(['name' => 'Feira', 'status' => true, 'range' => true, 'uses_slots' => true]);
+        $day = now()->addDays(3)->format('Y-m-d');
+        $shifts->slots()->create(['start' => "$day 09:00", 'end' => "$day 11:00"]);
+        $shifts->slots()->create(['start' => "$day 11:00", 'end' => "$day 13:00"]);
+        $free = ScheduleType::create(['name' => 'Passeios', 'status' => true, 'range' => true]);
+
+        Livewire::test(\App\Filament\Resources\ScheduleTypes\Pages\ListScheduleTypes::class)
+            ->assertTableColumnExists('uses_slots')
+            ->assertTableColumnStateSet('uses_slots', true, $shifts)
+            ->assertTableColumnStateSet('uses_slots', false, $free)
+            ->assertSee(trans_choice(':count slot|:count slots', 2))
+            ->filterTable('uses_slots', true)
+            ->assertCanSeeTableRecords([$shifts])
+            ->assertCanNotSeeTableRecords([$free]);
+    }
+
     public function test_saving_a_type_keeps_it_primary(): void
     {
         $type = ScheduleType::create([

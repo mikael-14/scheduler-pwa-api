@@ -103,7 +103,8 @@ return [
     |
     */
 
-    'empty_values' => true,
+    // off: an update whose only changes are hidden (remember_token on sign in / out) is not an entry
+    'empty_values' => false,
     'allowed_empty_values' => [
         'retrieved',
     ],

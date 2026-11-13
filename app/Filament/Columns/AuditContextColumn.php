@@ -5,6 +5,7 @@ namespace App\Filament\Columns;
 use Filament\Tables\Columns\TextColumn;
 use App\Models\Schedule;
 use App\Models\ScheduleUser;
+use App\Models\ScheduleTypeSlot;
 
 class AuditContextColumn extends TextColumn
 {
@@ -23,6 +24,13 @@ class AuditContextColumn extends TextColumn
                     // Fetch the parent schedule ID dynamically from the relation
                     $scheduleId = $record->auditable?->schedule_id ?? 'Unknown';
                     return "User Row #{$record->auditable_id} (On Schedule #{$scheduleId})";
+
+                case ScheduleTypeSlot::class:
+                    $typeId = $record->auditable?->schedule_type_id
+                        ?? $record->new_values['schedule_type_id']
+                        ?? $record->old_values['schedule_type_id']
+                        ?? '?';
+                    return ScheduleTypeSlot::auditLabel($record) . " (Schedule Type #{$typeId})";
 
                 case Schedule::class:
                     return "Schedule #{$record->auditable_id}";

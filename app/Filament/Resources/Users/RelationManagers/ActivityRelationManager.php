@@ -10,6 +10,8 @@ use App\Models\ModelHasRole;
 use App\Models\Role;
 use App\Models\Schedule;
 use App\Models\ScheduleType;
+use App\Models\ScheduleTypeSlot;
+use App\Filament\Resources\ScheduleTypes\ScheduleTypeResource;
 use App\Models\ScheduleUser;
 use App\Models\User;
 use Filament\Actions\ViewAction;
@@ -45,6 +47,7 @@ class ActivityRelationManager extends RelationManager
             ModelHasRole::class => __('Role'),
             Role::class => __('Role'),
             ScheduleType::class => __('Schedule Type'),
+            ScheduleTypeSlot::class => __('Slot'),
         ];
     }
 
@@ -80,6 +83,8 @@ class ActivityRelationManager extends RelationManager
                 . ' · ' . __('Schedule') . ' #' . self::value($audit, 'schedule_id'),
             User::class => trim($kind . ' ' . (User::withTrashed()->whereKey($audit->auditable_id)->value('name') ?? "#{$audit->auditable_id}")),
             ModelHasRole::class => trim($kind . ' ' . Role::whereKey(self::value($audit, 'role_id'))->value('name')),
+            ScheduleTypeSlot::class => ScheduleTypeSlot::auditLabel($audit) . ' · '
+                . (ScheduleType::whereKey(self::value($audit, 'schedule_type_id'))->value('name') ?? __('Schedule Type') . ' #' . self::value($audit, 'schedule_type_id')),
             Role::class, ScheduleType::class => trim($kind . ' ' . (self::value($audit, 'name') ?? "#{$audit->auditable_id}")),
             default => "{$kind} #{$audit->auditable_id}",
         };
@@ -92,6 +97,8 @@ class ActivityRelationManager extends RelationManager
             Schedule::class => [ScheduleResource::class, 'infolist', $audit->auditable_id],
             ScheduleUser::class => [ScheduleResource::class, 'infolist', self::value($audit, 'schedule_id')],
             User::class => [UserResource::class, 'view', $audit->auditable_id],
+            ScheduleType::class => [ScheduleTypeResource::class, 'view', $audit->auditable_id],
+            ScheduleTypeSlot::class => [ScheduleTypeResource::class, 'view', self::value($audit, 'schedule_type_id')],
             default => [null, null, null],
         };
         if (! $resource || ! $id) {
@@ -158,6 +165,7 @@ class ActivityRelationManager extends RelationManager
                     ->label(__('Event'))
                     ->badge()
                     ->color(fn(string $state): string => self::eventColor($state)),
+                \App\Filament\Columns\AuditTagsColumn::make(),
                 TextColumn::make('created_at')
                     ->label(__('Date'))
                     ->dateTime()

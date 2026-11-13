@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AuditTags;
 use App\Models\SocialiteUser;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -169,6 +170,17 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         return $this->hasRole('super_admin') ? true : false;
     }
 
+    /**
+     * Newest first (the panel's bell, the PWA's list). News from the same second, like the
+     * alerts of one coverage:check run, by the day it is about, soonest first (data.sort_day).
+     */
+    public function notifications()
+    {
+        return $this->morphMany(\Illuminate\Notifications\DatabaseNotification::class, 'notifiable')
+            ->latest()
+            ->orderBy('data->sort_day');
+    }
+
     /** The audits this user is the author of: what they changed (admin panel → user → Activity). */
     public function performedAudits(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
@@ -300,5 +312,38 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
         ]);
 
         return $user;
+    }
+
+    /**
+     * The audit's tags: what kind of change (approval, activation, profile, password...), and
+     * "self" when the person changed their own account. See AuditTags.
+     */
+    public function generateTags(): array
+    {
+        return AuditTags::make($this, [
+            'user',
+            in_array($this->getAuditEvent(), ['roles', 'permissions'], true) ? $this->getAuditEvent() : null,
+            AuditTags::changed($this, 'approved_at') ? ($this->approved_at ? 'approved' : 'unapproved') : null,
+            AuditTags::changed($this, 'status') ? 'activation' : null,
+            AuditTags::changed($this, 'name', 'email', 'locale', 'avatar_url') ? 'profile' : null,
+            AuditTags::changed($this, 'password') ? 'password' : null,
+            AuditTags::changed($this, 'building_key') ? 'building-key' : null,
+            AuditTags::changed($this, 'push_notification', 'email_notification', 'all_push_notification', 'all_email_notification', 'email_digest') ? 'notifications' : null,
+            auth()->id() !== null && auth()->id() === $this->getKey() ? 'self' : null,
+        ]);
+    }
+
+    /**
+     * A password change says only that it changed (the hash is never copied, see $auditExclude),
+     * so the entry is not empty and is kept.
+     */
+    public function transformAudit(array $data): array
+    {
+        if (AuditTags::changed($this, 'password')) {
+            $data['old_values']['password_changed'] = false;
+            $data['new_values']['password_changed'] = true;
+        }
+
+        return $data;
     }
 }

@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Services\AuditTags;
 use App\Enums\ScheduleStatus;
 use App\Observers\ScheduleObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -246,4 +247,22 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
             'schedule_type_id' => 'required|exists:schedule_types,id',
         ];
     }
+
+	/**
+	 * The audit's tags: where from, the type, the status, and what kind of change
+	 * (status, times, owner, slot). See AuditTags.
+	 */
+	public function generateTags(): array
+	{
+		return AuditTags::make($this, [
+			'schedule',
+			$this->schedule_type?->name,
+			$this->status?->value,
+			$this->schedule_type_slot_id ? 'slot' : null,
+			AuditTags::changed($this, 'status') ? 'status-change' : null,
+			AuditTags::changed($this, 'start', 'end', 'all_day') ? 'times' : null,
+			AuditTags::changed($this, 'user_id') ? 'owner' : null,
+			AuditTags::changed($this, 'description', 'internal_note') ? 'notes' : null,
+		]);
+	}
 }

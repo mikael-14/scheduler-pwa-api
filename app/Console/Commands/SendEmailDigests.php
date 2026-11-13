@@ -47,7 +47,9 @@ class SendEmailDigests extends Command
                 $items = $user->notifications()
                     ->where('mail_status', DeliveryStatus::Digest->value)
                     ->whereNull('read_at')
+                    // oldest first; the same second (one coverage:check run) by day, soonest first
                     ->reorder('created_at')
+                    ->orderBy('data->sort_day')
                     ->get();
                 if ($items->isEmpty()) {
                     return;

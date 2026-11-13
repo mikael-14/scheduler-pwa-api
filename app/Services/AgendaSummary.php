@@ -82,6 +82,45 @@ class AgendaSummary
         ];
     }
 
+    /**
+     * Whether each day from $first is filled for a type (the PWA's home strip): its people, how
+     * many of its schedules were cancelled or rejected, and a state:
+     * 'approved' (someone approved), 'pending' (only requests), 'cancelled' (only cancelled or
+     * rejected schedules) or 'empty' (nothing at all).
+     *
+     * @return list<array{date: string, approved: int, pending: int, cancelled: int, state: string}>
+     */
+    public static function coverage(CarbonImmutable $first, int $days, int $typeId): array
+    {
+        $first = $first->startOfDay();
+        $closed = Schedule::query()
+            ->where('schedule_type_id', $typeId)
+            ->whereIn('status', [ScheduleStatus::Cancelled, ScheduleStatus::Rejected])
+            ->where('start', '<=', $first->addDays($days - 1)->endOfDay())
+            ->whereRaw('COALESCE(`end`, `start`) >= ?', [$first])
+            ->get(['id', 'start', 'end']);
+
+        return array_map(function (array $day) use ($closed) {
+            $dayStart = $day['date'];
+            $dayEnd = $dayStart->endOfDay();
+            $cancelled = $closed->filter(fn(Schedule $schedule) => $schedule->start <= $dayEnd
+                && ($schedule->end ?? $schedule->start) >= $dayStart)->count();
+
+            return [
+                'date' => $dayStart->toDateString(),
+                'approved' => $day['approved'],
+                'pending' => $day['pending'],
+                'cancelled' => $cancelled,
+                'state' => match (true) {
+                    $day['approved'] > 0 => 'approved',
+                    $day['pending'] > 0 => 'pending',
+                    $cancelled > 0 => 'cancelled',
+                    default => 'empty',
+                },
+            ];
+        }, static::days($first, $days, $typeId));
+    }
+
     public static function primaryType(): ?ScheduleType
     {
         return ScheduleType::query()->where('primary', true)->orderBy('id')->first();

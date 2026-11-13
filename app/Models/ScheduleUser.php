@@ -6,6 +6,7 @@
 
 namespace App\Models;
 
+use App\Services\AuditTags;
 use App\Enums\ScheduleStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -133,5 +134,19 @@ class ScheduleUser extends Model implements Auditable
 			'status' => ['required', Rule::enum(ScheduleStatus::class)],
 			'description' => 'nullable|string',
 		];
+	}
+
+	/** The audit's tags: a participant, of which schedule and type, and its status. See AuditTags. */
+	public function generateTags(): array
+	{
+		$schedule = $this->schedule()->withTrashed()->first();
+
+		return AuditTags::make($this, [
+			'participant',
+			$this->schedule_id ? 'schedule:' . $this->schedule_id : null,
+			$schedule?->schedule_type?->name,
+			$this->status?->value,
+			AuditTags::changed($this, 'status') ? 'status-change' : null,
+		]);
 	}
 }

@@ -146,6 +146,7 @@ class AuditsRelationManager extends RelationManager
                     }),
                 TextColumn::make('user.name')
                     ->label(__('Action By')),
+                \App\Filament\Columns\AuditTagsColumn::make(),
                 TextColumn::make('created_at')
                     ->label(__('Date'))
                     ->dateTime()

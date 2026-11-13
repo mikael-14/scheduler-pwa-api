@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AuditTags;
 use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Contracts\Auditable;
 
@@ -39,4 +40,13 @@ class ModelHasRole extends Model implements Auditable
 		return $this->belongsTo(User::class,'id','model_id');
 	}
 	
+
+	/** The audit's tags: a role given to or taken from someone. See AuditTags. */
+	public function generateTags(): array
+	{
+		return AuditTags::make($this, [
+			'roles',
+			$this->role?->name,
+		]);
+	}
 }

@@ -44,6 +44,10 @@ return [
                 // You can add more styling methods here if you like, e.g., 'badge'
             ],
         ],
+        // the audit's tags as badges (App\Services\AuditTags); label, colours and search in the class
+        'tags' => [
+            'class' => \App\Filament\Columns\AuditTagsColumn::class,
+        ],
     ],
 
     'custom_audits_view' => false,

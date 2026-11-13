@@ -85,6 +85,12 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentShieldPlugin::make(),
                 FilamentAuditingPlugin::make(),
+                // what ran, waits and failed in the queue (Administração → Jobs); the app's resource puts
+                // every page behind QueueMonitorPolicy, and the records are pruned daily (routes/console.php)
+                \Croustibat\FilamentJobsMonitor\FilamentJobsMonitorPlugin::make()
+                    ->resource(\App\Filament\Resources\QueueMonitors\QueueMonitorResource::class)
+                    ->enablePruning()
+                    ->pruningRetention(7),
                 ApiServicePlugin::make(),
                 FilamentLanguageSwitcherPlugin::make()
                     ->locales(config('app-locales.available'))

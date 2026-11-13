@@ -26,6 +26,7 @@ class ScheduleApiService extends ApiService
             // before DetailHandler, whose `/{id}` would otherwise swallow `/pending`
             Handlers\PendingHandler::class,
             Handlers\SlotsHandler::class,
+            Handlers\PrimaryWeekHandler::class,
             Handlers\TakeSlotHandler::class,
             Handlers\FormOptionsHandler::class,
             Handlers\CalendarOptionsHandler::class,

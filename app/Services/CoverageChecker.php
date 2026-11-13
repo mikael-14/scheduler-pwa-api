@@ -33,8 +33,11 @@ class CoverageChecker
 
         foreach ($this->rules($onlyRules) as $key => $rule) {
             $type = $this->type($rule['type'] ?? null);
+            $rows = [];
 
-            foreach ($daysBefore ?? $rule['notify_days_before'] as $days) {
+            // the farthest day first, tomorrow last: on a phone the last push is on top (the lists
+            // in the app sort the alerts of one run by day themselves, see User::notifications)
+            foreach ($this->farthestFirst($daysBefore ?? $rule['notify_days_before']) as $days) {
                 $date = $today->copy()->startOfDay()->addDays((int) $days);
                 $row = ['rule' => $key, 'type' => $type?->name ?? (string) ($rule['type'] ?? '?'), 'date' => $date->toDateString(),
                     'days_before' => (int) $days, 'approved' => 0, 'pending' => 0, 'result' => '', 'recipients' => 0];
@@ -65,11 +68,23 @@ class CoverageChecker
                     }
                 }
 
-                $results[] = $row;
+                $rows[] = $row;
             }
+
+            // reported soonest first
+            array_push($results, ...array_reverse($rows));
         }
 
         return $results;
+    }
+
+    /** @return list<int> the days ahead, once each, the largest first */
+    private function farthestFirst(array $days): array
+    {
+        $days = array_values(array_unique(array_map('intval', $days)));
+        rsort($days);
+
+        return $days;
     }
 
     /** The configured rules with the defaults filled in. */

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AuditTags;
 use OwenIt\Auditing\Contracts\Auditable;
 use Spatie\Permission\Models\Role as SpatieRole;
 
@@ -20,5 +21,15 @@ class Role extends SpatieRole implements Auditable
 	public function model_has_roles()
 	{
 		return $this->hasMany(ModelHasRole::class);
+	}
+
+	/** The audit's tags: the role's name, and "permissions" when those changed. See AuditTags. */
+	public function generateTags(): array
+	{
+		return AuditTags::make($this, [
+			'role',
+			$this->name,
+			$this->getAuditEvent() === 'permissions' ? 'permissions' : null,
+		]);
 	}
 }

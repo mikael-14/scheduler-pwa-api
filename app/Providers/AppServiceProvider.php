@@ -43,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         DatabaseNotification::observe(FilamentNotificationObserver::class);
         $this->trackNotificationDelivery();
         Gate::policy(Audit::class, AuditPolicy::class);
+        Gate::policy(\Croustibat\FilamentJobsMonitor\Models\QueueMonitor::class, \App\Policies\QueueMonitorPolicy::class);
         Gate::policy(\Rappasoft\LaravelAuthenticationLog\Models\AuthenticationLog::class, \App\Policies\AuthenticationLogPolicy::class);
         // the API plugin registers its own token policy (it asks for permissions Shield does not
         // declare here, e.g. delete_any_token); the app's follows the declared ones

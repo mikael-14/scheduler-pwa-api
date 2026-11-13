@@ -26,6 +26,11 @@ class ApiRouteGuardsTest extends TestCase
         'api/user', 'api/user/avatar', 'api/user/sessions', 'api/user/sessions/{id}',
     ];
 
+    /** Schedule routes for every approved account, no permission: counts only, never who. */
+    private const NO_PERMISSION = [
+        'api/{panel}/schedules/primary-week', // the PWA home strip (PrimaryWeekHandler)
+    ];
+
     private function apiRoutes(): array
     {
         return collect(Router::getRoutes()->getRoutes())
@@ -70,7 +75,8 @@ class ApiRouteGuardsTest extends TestCase
     public function test_every_schedule_and_type_route_needs_a_permission(): void
     {
         $guarded = collect($this->apiRoutes())
-            ->filter(fn(Route $route) => Str::contains($route->uri(), ['/schedules', '/schedule-types']));
+            ->filter(fn(Route $route) => Str::contains($route->uri(), ['/schedules', '/schedule-types']))
+            ->reject(fn(Route $route) => in_array($route->uri(), self::NO_PERMISSION, true));
 
         $this->assertNotEmpty($guarded);
 

@@ -71,6 +71,15 @@ class ScheduleTypesTable
                     ->label(__('No time'))
                     ->sortable()
                     ->toggleable(),
+                // shifts: people pick one of the type's slots (the tooltip says how many there are)
+                IconColumn::make('uses_slots')
+                    ->label(__('Slots'))
+                    ->boolean()
+                    ->tooltip(fn(Model $record) => $record->uses_slots
+                        ? trans_choice(':count slot|:count slots', $record->slots()->count())
+                        : null)
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->dateTime(config('app.date_time_format'))
                     ->sortable()
@@ -88,6 +97,8 @@ class ScheduleTypesTable
                     ->label(__('Needs an end time')),
                 TernaryFilter::make('all_day')
                     ->label(__('No time')),
+                TernaryFilter::make('uses_slots')
+                    ->label(__('Slots')),
                 Filter::make('description')
                     ->schema([
                         TextInput::make('description')

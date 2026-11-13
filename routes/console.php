@@ -45,6 +45,11 @@ Schedule::command('notifications:digest')
     ->timezone(config('app.timezone'))
     ->withoutOverlapping(30);
 
+// The jobs monitor's records older than 7 days (Administração → Jobs)
+Schedule::command('filament-jobs-monitor:prune')
+    ->dailyAt('03:30')
+    ->timezone(config('app.timezone'));
+
 // Approved schedules that are over become completed (nobody else sets that status)
 Schedule::command('schedules:complete')
     ->everyFifteenMinutes()

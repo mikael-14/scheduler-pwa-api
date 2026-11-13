@@ -76,9 +76,15 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // only when the toggle was saved (see mayApprove); keeps the original approval date
+        // only when the toggle was saved (see mayApprove), and only when it changed: turned on
+        // stamps the approval date, turned off clears it; left as it was, approved_at is not touched
         if (array_key_exists('approved', $data)) {
-            $data['approved_at'] = $data['approved'] ? ($this->record->approved_at ?? now()) : null;
+            $wasApproved = $this->record->getRawOriginal('approved_at') !== null;
+            if ($data['approved'] && ! $wasApproved) {
+                $data['approved_at'] = now();
+            } elseif (! $data['approved'] && $wasApproved) {
+                $data['approved_at'] = null;
+            }
         }
         unset($data['approved']);
 

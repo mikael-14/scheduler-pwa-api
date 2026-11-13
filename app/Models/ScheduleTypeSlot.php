@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AuditTags;
 use App\Enums\ScheduleStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -83,9 +84,58 @@ class ScheduleTypeSlot extends Model implements Auditable
         return ($schedule->user_id ? 1 : 0) + $participants;
     }
 
+    /**
+     * "Slot 21/11/2026 09:00–11:00" for an audit of a slot, also when the slot is gone
+     * (then from the audit's values).
+     */
+    public static function auditLabel($audit): string
+    {
+        $value = fn(string $key) => $audit->auditable?->{$key}
+            ?? $audit->new_values[$key]
+            ?? $audit->old_values[$key]
+            ?? null;
+        $tz = config('app.timezone');
+
+        try {
+            $start = filled($value('start')) ? Carbon::parse($value('start'))->setTimezone($tz) : null;
+            $end = filled($value('end')) ? Carbon::parse($value('end'))->setTimezone($tz) : null;
+        } catch (\Throwable) {
+            $start = $end = null;
+        }
+
+        return $start
+            ? __('Slot') . ' ' . $start->format(config('app.date_format') . ' H:i') . ($end ? '–' . $end->format('H:i') : '')
+            : __('Slot') . " #{$audit->auditable_id}";
+    }
+
+    /** The slot ids that ever belonged to the type: the ones there and the removed ones (from their audits). */
+    public static function everOf(int $typeId): array
+    {
+        return static::where('schedule_type_id', $typeId)->pluck('id')
+            ->merge(\OwenIt\Auditing\Models\Audit::query()
+                ->where('auditable_type', static::class)
+                ->where(fn($q) => $q
+                    ->where('new_values->schedule_type_id', $typeId)
+                    ->orWhere('old_values->schedule_type_id', $typeId))
+                ->pluck('auditable_id'))
+            ->unique()->values()->all();
+    }
+
     /** It has a schedule going on: its times are fixed and it can't be removed. */
     public function isTaken(): bool
     {
         return $this->exists && $this->activeSchedule() !== null;
+    }
+
+    /** The audit's tags: a slot of which type. See AuditTags. */
+    public function generateTags(): array
+    {
+        return AuditTags::make($this, [
+            'slot',
+            $this->schedule_type?->name,
+            AuditTags::changed($this, 'start', 'end') ? 'times' : null,
+            AuditTags::changed($this, 'capacity') ? 'capacity' : null,
+            AuditTags::changed($this, 'comment') ? 'comment' : null,
+        ]);
     }
 }

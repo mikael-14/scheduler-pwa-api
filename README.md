@@ -29,6 +29,7 @@ A Laravel-based scheduler API project with a Filament admin interface. Built wit
 - MaxMind GeoIP2: https://github.com/maxmind/GeoIP2-php
 - Torann GeoIP: https://github.com/Torann/laravel-geoip
 - Zvizvi User Fields: https://github.com/zvizvi/user-fields
+- Filament Jobs Monitor: https://github.com/croustibat/filament-jobs-monitor (4.x: PHP 8.2)
 
 ## Prerequisites
 
@@ -615,6 +616,14 @@ php artisan queue:work
 Keep it running in production (Supervisor on Linux, NSSM or Task Scheduler on Windows).
 `composer dev` already starts one in development. Failed jobs: `php artisan queue:failed`.
 
+**Jobs monitor** (Administração → Tarefas em fila, croustibat/filament-jobs-monitor): every job
+that ran (emails, pushes, coverage alerts…) with its time and result, the jobs still waiting
+(Pending, only with the `database` queue) and the failed ones grouped by error, with retry.
+Opening it needs `view_any_queue_monitor`; deleting its records, `delete_queue_monitor`. Anyone who
+can open it can also retry jobs and clear the history. The plugin's Pending and Failures pages
+check no permission of their own, so the app replaces them (`app/Filament/Resources/QueueMonitors`).
+It only sees jobs: if the scheduler never runs, it stays empty (check `php artisan schedule:list`).
+
 ### Scheduler
 
 Scheduled tasks (`routes/console.php`) only run when the scheduler is called every minute:
@@ -636,6 +645,7 @@ Current tasks:
 | `sanctum:prune-expired --hours=24` | daily at 00:00 | deletes tokens expired for more than a day (old 30-day tokens and the ones replaced by renewals), so `personal_access_tokens` does not grow forever |
 | `coverage:check` | daily at `COVERAGE_ALERTS_AT` (09:00) | warns everyone about days with nobody approved for a schedule type, 7 days and 1 day before (see "Coverage alerts") |
 | `notifications:digest --with-daily` / `notifications:digest` | daily at 08:00 / 18:00 | the email summaries (see "Email summaries"); the 08:00 run also covers who chose one a day |
+| `filament-jobs-monitor:prune` | daily at 03:30 | deletes the jobs monitor's records older than 7 days |
 
 Check them with `php artisan schedule:list`. Without the scheduler everything still works;
 expired tokens are just not cleaned up.

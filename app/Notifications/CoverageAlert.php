@@ -50,6 +50,15 @@ class CoverageAlert extends AppNotification
         return 'warning';
     }
 
+    /**
+     * With the day it is about: one run sends several alerts in the same second, and the lists
+     * show those by day, soonest first (User::notifications, SendEmailDigests).
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        return parent::toDatabase($notifiable) + ['sort_day' => $this->date];
+    }
+
     /** The new schedule form, already on this type and day. */
     protected function path(): string
     {

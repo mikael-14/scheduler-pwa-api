@@ -50,6 +50,7 @@ return [
      |                  'audience' => ['roles' => ['volunteer']]],
      */
     'rules' => [
+        'abrigo' => ['type' => 'Abrigo'],
         // 'walks' => ['type' => 'Passeios'],
     ],
 

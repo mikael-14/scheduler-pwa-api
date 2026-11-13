@@ -33,6 +33,7 @@ class ShieldPermissionsTest extends TestCase
             'view_any_schedule_type', 'view_schedule_type', 'create_schedule_type', 'update_schedule_type', 'delete_schedule_type',
             'view_any_user', 'create_user', 'delete_user', 'restore_user',
             'view_any_notification_log', 'view_notification_log',
+            'view_any_queue_monitor', 'delete_queue_monitor',
             // custom, declared under resources.manage
             'create_any_schedule', 'update_any_schedule', 'delete_any_schedule', 'update_past_schedule',
             'participate_schedule', 'cancel_participation_schedule', 'view_inactive_schedule', 'independent_schedule', 'all_day_schedule', 'update_status_schedule', 'approve_schedule',
