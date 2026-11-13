@@ -18,6 +18,12 @@ class PrimaryWeekHandler extends ApprovedHandler
         return ['auth:sanctum', 'active', 'approved'];
     }
 
+    /** No permission to list (the tokens screen asks every handler for its own). */
+    public static function getAbility(): array
+    {
+        return [];
+    }
+
     public static function getModel()
     {
         return static::$resource::getModel();

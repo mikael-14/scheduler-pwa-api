@@ -32,9 +32,17 @@ class DashboardCounters extends StatsOverviewWidget
         return (bool) ($user?->can('approve_user') || $user?->can('view_any_schedule') || ($user && ScheduleAccess::canApprove($user)));
     }
 
+    /**
+     * Every row full, whatever the number of counters (each person sees only theirs): one under
+     * the other on phones, then all in one row (4: two rows of two first, then one row from lg).
+     */
     protected function getColumns(): int | array
     {
-        return ['default' => 1, 'sm' => 2, 'xl' => max(1, count($this->getCachedStats()))];
+        $count = max(1, count($this->getCachedStats()));
+
+        return $count === 4
+            ? ['default' => 1, 'sm' => 2, 'lg' => 4]
+            : ['default' => 1, 'sm' => $count];
     }
 
     protected function getStats(): array
