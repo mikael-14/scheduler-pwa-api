@@ -331,6 +331,18 @@ class SecurityHardeningTest extends TestCase
 
     // ---- headers and CORS -----------------------------------------------------------------
 
+    public function test_a_signed_out_api_request_gets_a_401_even_without_asking_for_json(): void
+    {
+        // a browser or a bare curl: no Accept header. It used to try a redirect to a missing
+        // `login` route, a 500 with a stack trace in the log every time
+        $this->get('/api/user')->assertStatus(401)->assertJson(['message' => 'Unauthenticated.']);
+        $this->get('/api/admin/schedules')->assertStatus(401);
+        $this->post('/api/auth/refresh')->assertStatus(401);
+
+        // the admin panel still sends signed-out people to its login page
+        $this->get('/admin')->assertRedirect('/admin/login');
+    }
+
     public function test_responses_carry_the_security_headers(): void
     {
         foreach (['/api/user', '/admin/login'] as $url) {

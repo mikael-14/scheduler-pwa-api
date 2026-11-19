@@ -27,11 +27,22 @@ return Application::configure(basePath: dirname(__DIR__))
         // Every response, the admin panel's included (its routes do not use the web group)
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
+        // Signed-out: the API answers 401 (no redirect, see withExceptions); anything else goes to
+        // the admin panel's login (there is no route named `login`)
+        $middleware->redirectGuestsTo(
+            fn(\Illuminate\Http\Request $request) => $request->is('api/*') ? null : route('filament.admin.auth.login')
+        );
+
         $middleware->alias([
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
             'approved' => \App\Http\Middleware\EnsureUserIsApproved::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // The API only speaks JSON, whatever the client's Accept header: a signed-out request
+        // gets a 401 instead of a redirect to a `login` route that does not exist (a 500, and a
+        // stack trace in the log for every such request)
+        $exceptions->shouldRenderJsonWhen(
+            fn(\Illuminate\Http\Request $request) => $request->is('api/*') || $request->expectsJson()
+        );
     })->create();
