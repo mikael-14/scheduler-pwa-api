@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\EmailChangedNotice;
 use App\Support\AvatarImage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -175,33 +178,75 @@ class UserController extends Controller
             'all_push_notification' => ['sometimes', 'boolean'],
             // The emails that can wait: each right away, or in a summary twice / once a day
             'email_digest' => ['sometimes', Rule::enum(\App\Enums\DigestFrequency::class)],
-            // Changing the password proves knowledge of the current one (social-only accounts have none)
-            'current_password' => [Rule::requiredIf(fn() => $request->filled('password') && $user->password !== null), 'nullable', 'string'],
-            'password' => ['sometimes', 'nullable', 'min:8', 'confirmed'],
+            // Changing the password or the email proves knowledge of the current password
+            // (social-only accounts have none)
+            'current_password' => [Rule::requiredIf(fn() => ($request->filled('password') || $this->changesEmail($request, $user)) && $user->password !== null), 'nullable', 'string'],
+            'password' => ['sometimes', 'nullable', 'min:8', 'max:72', 'confirmed'],
         ]);
 
-        if (! empty($data['password'])) {
+        $emailChanged = array_key_exists('email', $data) && $data['email'] !== $user->email;
+        $passwordChanged = ! empty($data['password']);
+
+        if ($passwordChanged || $emailChanged) {
             if ($user->password !== null && ! Hash::check($data['current_password'] ?? '', $user->password)) {
                 return response()->json([
                     'message' => __('The current password is incorrect.'),
                     'errors' => ['current_password' => [__('The current password is incorrect.')]],
                 ], 422);
             }
-        } else {
+        }
+        if (! $passwordChanged) {
             unset($data['password']);
         }
         unset($data['current_password']);
 
-        $user->update($data);
+        $oldEmail = $user->email;
+        $user->fill($data);
 
-        // Other devices must sign in again after a password change
-        if (! empty($data['password'])) {
+        // A new address must be confirmed again before the rest of the API opens
+        if ($emailChanged) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        // Other devices must sign in again after a password or email change
+        if ($passwordChanged || $emailChanged) {
             $currentTokenId = $user->currentAccessToken()->id ?? null;
             $user->tokens()
                 ->when($currentTokenId, fn($query) => $query->where('id', '!=', $currentTokenId))
                 ->delete();
         }
 
+        if ($emailChanged) {
+            $this->announceEmailChange($user, $oldEmail);
+        }
+
         return response()->json(['message' => __('User updated successfully.'), 'user' => $this->present($user->fresh())]);
+    }
+
+    private function changesEmail(Request $request, User $user): bool
+    {
+        return $request->filled('email') && $request->input('email') !== $user->email;
+    }
+
+    /**
+     * The old address is warned (in case someone else made the change), the new one gets a
+     * confirmation link. Best effort: the change is saved even if the mail server is down.
+     */
+    private function announceEmailChange(User $user, string $oldEmail): void
+    {
+        try {
+            Notification::route('mail', $oldEmail)
+                ->notify((new EmailChangedNotice($user->name, $user->email))->locale($user->preferredLocale()));
+        } catch (\Throwable $e) {
+            Log::error('Could not warn the old email address: ' . $e->getMessage());
+        }
+
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (\Throwable $e) {
+            Log::error('Could not send the verification email: ' . $e->getMessage());
+        }
     }
 }

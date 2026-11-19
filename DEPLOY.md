@@ -101,7 +101,9 @@ npm run build
 ```
 
 Zip the **contents** of `pwa-scheduler/dist` into `pwa.zip`. It must include the hidden
-`.htaccess`: in Explorer, View → Show → Hidden items.
+`.htaccess`: in Explorer, View → Show → Hidden items. It holds the security headers, and the
+build writes the API's address from `VITE_API_URL` into them: if that address is wrong, the app
+cannot reach the API (the browser blocks it).
 
 ---
 
@@ -145,9 +147,10 @@ APP_ENV=production
 APP_KEY=base64:...                  # from 1.3
 APP_DEBUG=false
 APP_URL=https://api.example.pt
-PWA_URL=https://app.example.pt
+PWA_URL=https://app.example.pt      # exact address of the PWA: only it may call the API (CORS), and email links open it
 
 LOG_LEVEL=warning
+SESSION_SECURE_COOKIE=true          # admin session cookie only over HTTPS
 
 DB_HOST=localhost
 DB_DATABASE=myacc_scheduler         # from 2.2
@@ -227,6 +230,11 @@ Run **SSL/TLS Status → Run AutoSSL** for both domains.
 - [ ] `https://app.example.pt`: sign in, open the agenda, and reload the page there (it must
       not show 404).
 - [ ] Create a test schedule: the approvers' email arrives within a minute (the cron works).
+- [ ] Register a test account in the app with a password: the "confirm your email" email
+      arrives, and its link opens the app and confirms it. Without working email, nobody who
+      registers with a password can get in.
+- [ ] In the app, open the browser console (F12): no red "Content-Security-Policy" errors while
+      signing in (also with Google), opening the agenda and uploading a photo.
 - [ ] On a phone: install the app (Settings → Install) and turn on notifications.
 - [ ] Upload a profile photo and check that it shows.
 
@@ -246,6 +254,10 @@ If something fails, `scheduler-api/storage/logs/laravel-*.log` (File Manager) sa
    ```
    Wait a minute, check the log, then delete the cron job. New permissions then have to be given
    to the roles in Shield → Roles.
+
+   > The security update (email confirmation) has such a migration: it marks every existing
+   > account's email as confirmed. Run it **together with** the new files, or existing users
+   > who sign in with a password are asked to confirm their email first.
 3. The PWA: replace the folder's contents with the new `pwa.zip` (with its `version.json`).
    Open apps check that file when they start, when they come back to the screen and every
    30 minutes, and reload into the new version by themselves (someone filling in the schedule

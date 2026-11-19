@@ -17,6 +17,10 @@ use Illuminate\Notifications\DatabaseNotification;
 use App\Observers\FilamentNotificationObserver;
 use App\Notifications\DeliveryLog;
 use App\Notifications\PwaWebPushNotification;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
     {
         DatabaseNotification::observe(FilamentNotificationObserver::class);
         $this->trackNotificationDelivery();
+        $this->configureRateLimits();
         // Permission names as they have always been, "affix_subject" in snake case (view_any_schedule).
         // Shield 4.3+ no longer accepts "_" as the configured separator with snake case (it is ":" in
         // config/filament-shield.php), so the "_" is put here. Custom permissions (no affix) are left
@@ -83,6 +88,40 @@ class AppServiceProvider extends ServiceProvider
             });
 
         });
+    }
+
+    /**
+     * Request limits (429 when reached), so nobody can flood the server, the mailbox or the push
+     * service. Signed-in requests count per account, the others per IP address.
+     *
+     * - api:      every API route (bootstrap/app.php), generous: the PWA loads several lists at once
+     * - writes:   anything that changes data through the generated API handlers (ApprovedHandler):
+     *             each booking or change may email and push to many people
+     * - login:    per IP, and per email so a botnet cannot guess one account's password
+     * - register: per IP, per minute and per day
+     * - verification: (re)sending and checking email verification links
+     */
+    private function configureRateLimits(): void
+    {
+        $byUserOrIp = fn(Request $request): string => $request->user()?->id
+            ? 'user:' . $request->user()->id
+            : 'ip:' . $request->ip();
+
+        RateLimiter::for('api', fn(Request $request) => Limit::perMinute(120)->by($byUserOrIp($request)));
+
+        RateLimiter::for('writes', fn(Request $request) => Limit::perMinute(20)->by($byUserOrIp($request)));
+
+        RateLimiter::for('login', fn(Request $request) => [
+            Limit::perMinute(10)->by('ip:' . $request->ip()),
+            Limit::perHour(30)->by('email:' . Str::lower(trim((string) $request->input('email')))),
+        ]);
+
+        RateLimiter::for('register', fn(Request $request) => [
+            Limit::perMinute(3)->by('ip:' . $request->ip()),
+            Limit::perDay(20)->by('ip-day:' . $request->ip()),
+        ]);
+
+        RateLimiter::for('verification', fn(Request $request) => Limit::perMinute(6)->by($byUserOrIp($request)));
     }
 
     /** Email and push outcomes, written on the stored notification (see App\Notifications\DeliveryLog). */

@@ -21,6 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetApiLocale::class,
         ]);
 
+        // Every API route counts towards the `api` limit (AppServiceProvider::configureRateLimits)
+        $middleware->throttleApi('api');
+
+        // Every response, the admin panel's included (its routes do not use the web group)
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
             'approved' => \App\Http\Middleware\EnsureUserIsApproved::class,

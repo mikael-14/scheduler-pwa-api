@@ -132,7 +132,7 @@ class ScheduleUser extends Model implements Auditable
 			'schedule_id' => 'required|exists:schedules,id',
 			'user_id' => 'required|exists:users,id',
 			'status' => ['required', Rule::enum(ScheduleStatus::class)],
-			'description' => 'nullable|string',
+			'description' => 'nullable|string|max:255',
 		];
 	}
 

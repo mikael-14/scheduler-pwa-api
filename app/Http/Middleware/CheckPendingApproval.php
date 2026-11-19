@@ -18,8 +18,14 @@ class CheckPendingApproval
     {
         $user = Filament::auth()->user();
 
+        // The email comes first: Filament's own middleware sends an unconfirmed account to its
+        // "verify your email" screen, which must not be redirected here (that would loop)
+        if ($user && ! $user->hasVerifiedEmail()) {
+            return $next($request);
+        }
+
         if ($user && $user->approved_at === null
-            && ! $request->routeIs('filament.admin.pages.pending-approval', 'filament.admin.auth.logout')) {
+            && ! $request->routeIs('filament.admin.pages.pending-approval', 'filament.admin.auth.logout', 'filament.admin.auth.email-verification.*', 'filament.admin.auth.email-change-verification.*')) {
             return redirect()->route('filament.admin.pages.pending-approval');
         }
 

@@ -18,11 +18,15 @@ class ApiRouteGuardsTest extends TestCase
     private const PUBLIC = [
         'api/auth/login', 'api/auth/register', 'api/auth/forgot-password', 'api/auth/reset-password',
         'api/auth/{provider}/redirect', 'api/auth/{provider}/callback',
+        // the emailed confirmation link: its signature is the proof, so it works on any device
+        'api/auth/email/verify/{id}/{hash}',
     ];
 
     /** Signed in, but also while waiting for approval: the own account and its session. */
     private const PENDING_TOO = [
         'api/auth/logout', 'api/auth/refresh',
+        // an unconfirmed email cannot be approved-only: sending the link again
+        'api/auth/email/resend',
         'api/user', 'api/user/avatar', 'api/user/sessions', 'api/user/sessions/{id}',
     ];
 

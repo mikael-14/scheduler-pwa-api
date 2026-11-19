@@ -47,6 +47,11 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->registration()
             ->passwordReset()
+            // New accounts confirm their email before using the panel (Google / Facebook ones are
+            // verified by the provider), and a new email in the profile only takes effect once
+            // confirmed from that address (the old one is told and can block it)
+            ->emailVerification()
+            ->emailChangeVerification()
             ->colors([
                 'primary' => Color::Emerald,
             ])
@@ -137,6 +142,10 @@ class AdminPanelProvider extends PanelProvider
                                 $this->refuseSocialLogin(__('The email address from this provider is not verified.'));
                             }
 
+                            // the provider proved who owns the email: an account somebody else may
+                            // have registered with it loses its password (User::claimWithVerifiedEmail)
+                            $user?->claimWithVerifiedEmail();
+
                             return $user;
                         }
                     )
@@ -145,7 +154,7 @@ class AdminPanelProvider extends PanelProvider
                             string $provider,
                             SocialiteUserContract $oauthUser
                         ): Authenticatable {
-                            return User::create([
+                            $user = User::create([
                                 'name' => $oauthUser->getName()
                                     ?? $oauthUser->getNickname()
                                     ?? 'User',
@@ -154,6 +163,13 @@ class AdminPanelProvider extends PanelProvider
                                 'locale' => app()->getLocale(),
                                 'password' => null,
                             ]);
+
+                            // the provider vouches for the email: nothing to verify
+                            if (User::providerVerifiesEmail($oauthUser, $provider)) {
+                                $user->markEmailAsVerified();
+                            }
+
+                            return $user;
                         }
                     ),
                 FilamentAuthenticationLogPlugin::make(),

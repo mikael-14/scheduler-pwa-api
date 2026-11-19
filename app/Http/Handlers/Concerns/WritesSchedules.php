@@ -13,6 +13,9 @@ use App\Services\ScheduleAccess;
  */
 trait WritesSchedules
 {
+    /** Most people one request may put on a schedule. */
+    public const MAX_PARTICIPANTS = 50;
+
     /**
      * Validation rules for the schedule and its participants.
      * Participants are created through the schedule, so the schedule id is never client supplied.
@@ -21,7 +24,8 @@ trait WritesSchedules
     {
         $rules = Schedule::getValidationRules();
 
-        $rules['schedule_users'] = 'nullable|array';
+        // capped: each person added is told by email and push
+        $rules['schedule_users'] = 'nullable|array|max:' . self::MAX_PARTICIPANTS;
         foreach (ScheduleUser::getValidationRules() as $key => $rule) {
             if ($key === 'schedule_id') {
                 continue;

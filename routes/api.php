@@ -3,14 +3,26 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\EmailVerificationController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\UserController;
 
 Route::prefix('auth')->group(function () {
-    // Email + password (throttled: these are the brute-force targets)
-    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
-    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:6,1');
+    // Email + password (throttled: these are the brute-force targets). Limits in
+    // AppServiceProvider::configureRateLimits: login per IP and per email, register per IP.
+    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:register');
+
+    // Email verification (accounts made with a password, and after an email change).
+    // The link in the email opens the PWA, which posts its signed values here: no sign-in needed,
+    // so it also works when the email is opened on another device.
+    Route::post('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->whereNumber('id')
+        ->middleware('throttle:verification')
+        ->name('api.verification.verify');
+    Route::middleware(['auth:sanctum', 'active', 'throttle:verification'])
+        ->post('email/resend', [EmailVerificationController::class, 'resend']);
 
     // Forgot password: email a link to the PWA's reset screen, then set the new password
     Route::post('forgot-password', [PasswordResetController::class, 'sendLink'])->middleware('throttle:5,1');
@@ -69,8 +81,9 @@ Route::middleware(['auth:sanctum', 'active', 'approved'])->group(function () {
 // Profile: available to pending accounts too, the PWA reads `approved_at` from here
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('user', [UserController::class, 'user']);
-    Route::put('user', [UserController::class, 'update']);
-    Route::patch('user', [UserController::class, 'patch']);
+    // an email change sends emails: same limit as the other changes
+    Route::put('user', [UserController::class, 'update'])->middleware('throttle:writes');
+    Route::patch('user', [UserController::class, 'patch'])->middleware('throttle:writes');
 
     // Profile photo
     Route::post('user/avatar', [UserController::class, 'uploadAvatar'])->middleware('throttle:10,1');

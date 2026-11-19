@@ -504,5 +504,21 @@
     "No slots yet.": "Ainda não há turnos.",
     "A slot with people on it keeps its times.": "Um turno com pessoas inscritas mantém as suas horas.",
     "A slot with people on it cannot be removed (:slot).": "Um turno com pessoas inscritas não pode ser removido (:slot).",
-    ":count slot|:count slots": ":count turno|:count turnos"
+    ":count slot|:count slots": ":count turno|:count turnos",
+    "The registration could not be completed.": "Não foi possível concluir o registo.",
+    "This verification link is invalid or has expired.": "Esta ligação de confirmação é inválida ou expirou.",
+    "Your email address is confirmed.": "O seu email está confirmado.",
+    "Your email address is already confirmed.": "O seu email já está confirmado.",
+    "We sent a new confirmation link to :email.": "Enviámos uma nova ligação de confirmação para :email.",
+    "Please confirm your email address first.": "Confirme primeiro o seu endereço de email.",
+    "Confirm your email address": "Confirme o seu endereço de email",
+    "Please confirm that this email address belongs to you.": "Confirme que este endereço de email lhe pertence.",
+    "Confirm email": "Confirmar email",
+    "If you did not create an account or change your email, you can ignore this email.": "Se não criou uma conta nem alterou o seu email, pode ignorar esta mensagem.",
+    "The email of your account was changed": "O email da sua conta foi alterado",
+    "The email address of your account was changed to :email.": "O endereço de email da sua conta foi alterado para :email.",
+    "If you did not do this, contact an administrator right away.": "Se não foi você, contacte imediatamente um administrador.",
+    "Email confirmed": "Email confirmado",
+    "Email not confirmed yet": "Email ainda não confirmado",
+    "Too Many Attempts.": "Demasiadas tentativas. Aguarde um pouco e tente novamente."
 }

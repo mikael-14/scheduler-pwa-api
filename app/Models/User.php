@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
@@ -24,7 +25,7 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
 // IMPORT THE SOCIALITE USER CONTRACT TO FIX THE TYPE-HINTING
 use Laravel\Socialite\Contracts\User as ProviderUser;
 
-class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable, HasLocalePreference
+class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable, HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, AuthenticationLoggable, HasRoles, SoftDeletes, HasAvatars, \OwenIt\Auditing\Auditable, HasApiTokens, HasPushSubscriptions;
@@ -235,6 +236,37 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
     }
 
     /**
+     * A social login whose provider vouches for this account's email has just proved who owns it.
+     * If the email was never verified, whoever made the account with a password may not be that
+     * person: someone can register with another person's address and wait for them to sign in
+     * with Google ("pre-hijacking"). So that password is erased and every device signed out
+     * (the owner can set a new one with "Forgot password"), then the email counts as verified.
+     * An account whose email is already verified is left as it is.
+     */
+    public function claimWithVerifiedEmail(): void
+    {
+        if ($this->hasVerifiedEmail()) {
+            return;
+        }
+
+        if ($this->password !== null) {
+            $this->forceFill(['password' => null, 'remember_token' => Str::random(60)]);
+            $this->tokens()->delete();
+        }
+
+        $this->forceFill(['email_verified_at' => $this->freshTimestamp()])->save();
+    }
+
+    /**
+     * The PWA's verification email (sign-up with a password, email change): its link opens the
+     * PWA, which confirms it with the API. The admin panel sends its own (Filament's).
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new \App\Notifications\PwaVerifyEmail());
+    }
+
+    /**
      * Copy the provider's avatar to the public disk (used by the panel and the API social logins).
      * Best effort: a slow or broken avatar URL must not hang or fail the login.
      */
@@ -244,16 +276,34 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
             return null;
         }
 
+        // only real web addresses (never file://, php://... or a local path)
+        if (! in_array(strtolower((string) parse_url($avatarUrl, PHP_URL_SCHEME)), ['http', 'https'], true)) {
+            return null;
+        }
+
+        $temp = null;
+
         try {
             $avatarContents = \Illuminate\Support\Facades\Http::timeout(5)->get($avatarUrl)->throw()->body();
-            $filename = 'avatars/' . Str::random(40) . '.jpg';
-            Storage::disk('public')->put($filename, $avatarContents);
+
+            // Re-drawn like an uploaded photo (AvatarImage): only a real image is ever stored,
+            // shrunk, without whatever else the downloaded file carried
+            $temp = tempnam(sys_get_temp_dir(), 'avatar');
+            file_put_contents($temp, $avatarContents);
+            $image = \App\Support\AvatarImage::fromFile($temp);
+
+            $filename = 'avatars/' . Str::random(40) . '.' . $image['extension'];
+            Storage::disk('public')->put($filename, $image['contents']);
 
             return $filename;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("Failed to download social avatar: " . $e->getMessage());
 
             return null;
+        } finally {
+            if ($temp && is_file($temp)) {
+                @unlink($temp);
+            }
         }
     }
 
@@ -288,7 +338,10 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
             throw new \DomainException("Email from {$provider} is not verified; refusing to link to an existing account.");
         }
 
-        if (!$user) {
+        if ($user) {
+            // the provider just proved who owns the email: see claimWithVerifiedEmail
+            $user->claimWithVerifiedEmail();
+        } else {
             // Handle the Avatar Download (replicating your Filament logic)
             $avatarPath = self::storeSocialAvatar($socialiteUser->getAvatar());
 
@@ -301,6 +354,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, Auditable
                 'status' => 1, // Ensure default status allows API access depending on your application rules
                 'password' => null,
             ]);
+
+            // the provider vouches for the email: nothing to verify (rarely, Google does not)
+            if (self::providerVerifiesEmail($socialiteUser, $provider)) {
+                $user->markEmailAsVerified();
+            }
         }
 
         // 4. Link the social provider account to the user (handles both brand-new users 

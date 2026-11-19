@@ -28,7 +28,9 @@ return [
         'password' => 'required',
     ],
     'login-middleware' => [
-        // Add any additional middleware you want to apply to the login route
+        // The app's own POST /api/auth/login (routes/api.php) replaces the plugin's; should the
+        // plugin's ever answer, it is limited the same way
+        'throttle:login',
     ],
     'logout-middleware' => [
         'auth:sanctum',

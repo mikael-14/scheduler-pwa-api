@@ -33,7 +33,11 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        // Always one password check, even without an account (or without a password: Google /
+        // Facebook ones), so the response time does not tell which emails have an account
+        $passwordMatches = Hash::check($credentials['password'], $user?->password ?? self::dummyHash());
+
+        if (! $user || $user->password === null || ! $passwordMatches) {
             event(new Failed('sanctum', $user, $credentials));
 
             throw ValidationException::withMessages([
@@ -66,15 +70,32 @@ class AuthController extends Controller
         ]);
     }
 
+    /** A hash of a random value, made once per process, to compare against when there is no account. */
+    private static function dummyHash(): string
+    {
+        static $hash = null;
+
+        return $hash ??= Hash::make(Str::random(32));
+    }
+
     /**
      * Email + Password Register
+     *
+     * The account must confirm its email (a link is emailed, see PwaVerifyEmail) and then be
+     * approved by an admin before the rest of the API opens.
      */
     public function register(Request $request)
     {
+        // A field people never see (hidden in the PWA's form): only bots fill it in
+        if (filled($request->input('website'))) {
+            throw ValidationException::withMessages(['email' => [__('The registration could not be completed.')]]);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'min:8', 'confirmed'],
+            // bcrypt only reads the first 72 bytes
+            'password' => ['required', 'min:8', 'max:72', 'confirmed'],
             // The PWA sends the language the visitor was using; otherwise the app default (pt)
             'locale' => ['nullable', 'string', \Illuminate\Validation\Rule::in(collect(config('app-locales.available'))->pluck('code')->all())],
         ]);
@@ -90,11 +111,18 @@ class AuthController extends Controller
 
         event(new Login('sanctum', $user, false));
 
+        // The account exists even if the mail server is down: the PWA's verify screen can resend
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (\Throwable $e) {
+            Log::error('Could not send the verification email: ' . $e->getMessage());
+        }
+
         $token = $user->createToken(DeviceName::fromRequest($request))->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user' => $user,
+            'user' => $user->fresh(),
         ], 201);
     }
 

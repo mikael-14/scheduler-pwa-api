@@ -21,6 +21,11 @@ class ApprovedHandler extends Handlers
         // auth:sanctum first, then account state, then the permission middleware
         array_splice($middleware, 1, 0, ['active', 'approved']);
 
+        // Changes (bookings, joins, approvals...) email and push other people: a tighter limit
+        if (strtoupper((string) static::getMethod()) !== 'GET') {
+            $middleware[] = 'throttle:writes';
+        }
+
         return $middleware;
     }
 }

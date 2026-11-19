@@ -49,13 +49,15 @@ class PasswordResetController extends Controller
         $data = $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed'],
         ]);
 
         $status = Password::broker()->reset($data, function (User $user, string $password) {
             $user->forceFill([
                 'password' => Hash::make($password),
                 'remember_token' => Str::random(60),
+                // the reset link went to this address, so whoever used it owns it
+                'email_verified_at' => $user->email_verified_at ?? now(),
             ])->save();
 
             $user->tokens()->delete();

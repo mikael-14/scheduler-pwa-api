@@ -39,7 +39,11 @@ class UsersTable
                     ->searchable(),
                 TextColumn::make('email')
                     ->label(__('Email'))
-                    ->searchable(),
+                    ->searchable()
+                    // an unconfirmed email may not belong to whoever registered it: check before approving
+                    ->icon(fn(User $record) => $record->hasVerifiedEmail() ? 'heroicon-m-check-badge' : 'heroicon-m-exclamation-triangle')
+                    ->iconColor(fn(User $record) => $record->hasVerifiedEmail() ? 'success' : 'warning')
+                    ->tooltip(fn(User $record) => $record->hasVerifiedEmail() ? __('Email confirmed') : __('Email not confirmed yet')),
                 TextColumn::make('roles.name')
                     ->label(__('Roles'))
                     ->badge()

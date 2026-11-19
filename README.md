@@ -162,7 +162,8 @@ document root at `~/scheduler-api/public` (cPanel → Domains). Include
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://api.example.pt
-PWA_URL=https://app.example.pt
+PWA_URL=https://app.example.pt   # also the only origin CORS lets call the API, and where email links go
+SESSION_SECURE_COOKIE=true
 DB_HOST=localhost                 # plus DB_DATABASE / DB_USERNAME / DB_PASSWORD from step 2
 MAIL_HOST=mail.example.pt         # a cPanel email account (port 465 + MAIL_ENCRYPTION=ssl)
 MAIL_FROM_ADDRESS=no-reply@example.pt
@@ -200,8 +201,9 @@ Use the full PHP path if `php` is not found (e.g. `/usr/local/bin/php` or
 queue (emails and pushes leave within a minute).
 
 **7. PWA**: in `pwa-scheduler`, set `VITE_API_URL=https://api.example.pt/api` in `.env`, run
-`npm run build`, and upload the **contents** of `dist/` (including the hidden `.htaccess`) to the
-PWA subdomain's document root.
+`npm run build`, and upload the **contents** of `dist/` (including the hidden `.htaccess`, which
+carries the security headers, with the API's address put in by the build) to the PWA
+subdomain's document root.
 
 **Updating later**: upload the changed files, then `php artisan migrate --force`,
 `php artisan db:seed --class=PermissionsSeeder --force` (new permissions) and the three cache
@@ -378,10 +380,14 @@ forgets it):
 
 | Routes | Needs |
 |---|---|
-| sign in, register, forgot / reset password, Google / Facebook | nobody (rate limited) |
-| `api/user` (profile, photo, devices), refresh, sign out | signed in and active, also while waiting for approval |
-| notifications, push subscription | signed in, active and approved |
-| `api/admin/schedules…`, `api/admin/schedule-types…` | signed in, active, approved **and** the permission below |
+| sign in, register, forgot / reset password, Google / Facebook, confirm email (`auth/email/verify/{id}/{hash}`, the signed link is the proof) | nobody (rate limited) |
+| resend the confirmation email (`auth/email/resend`) | signed in and active, also with the email not confirmed yet |
+| `api/user` (profile, photo, devices), refresh, sign out | signed in and active, also while waiting for approval or email confirmation |
+| notifications, push subscription | signed in, active, email confirmed and approved |
+| `api/admin/schedules…`, `api/admin/schedule-types…` | signed in, active, email confirmed, approved **and** the permission below |
+
+The `approved` middleware answers 403 `email_unverified` before `pending`: the PWA then shows its
+"confirm your email" page. See "Security" for the rate limits.
 
 | Route | Permission | Then also checked on the schedule |
 |---|---|---|
@@ -439,7 +445,8 @@ what would not work; the API checks everything again.
   `can.past_dates`, `can.all_day`, `can.internal_note`).
 - The internal note is removed by the API for non-staff: it never reaches their phone.
 - The profile only changes name, email, language, notifications, password and photo: never
-  "Active", "Approved" or "Building Key".
+  "Active", "Approved" or "Building Key". Changing the email or the password needs the current
+  password (accounts that only use Google / Facebook have none).
 
 #### Roles
 
@@ -600,9 +607,64 @@ Each device has its own token, so signing out on one does not affect the others.
 | 30 days without using the app | API answers 401, the PWA shows the login page ("session ended") |
 | User signs out | that device's token is deleted |
 | Admin deactivates or deletes the user | all their tokens are deleted; each device goes to login on its next request |
+| User changes their email in the PWA | every other device's token is deleted; this one waits on the "confirm your email" page |
+| Someone signs in with Google / Facebook to an account whose email was **not confirmed** | all its tokens are deleted and its password erased (see "Security") |
 
 Network errors, timeouts and server errors never end a session: the PWA shows a message and
 keeps the user signed in.
+
+## Security
+
+### Rate limits
+
+Named limiters in `AppServiceProvider::configureRateLimits()`. Too many requests get a 429, which
+the PWA shows as "Demasiados pedidos seguidos".
+
+| Limiter | Where | Limit |
+|---|---|---|
+| `api` | every `api/*` route (`throttleApi` in `bootstrap/app.php`) | 120 / minute per user (per IP when signed out) |
+| `writes` | every non-GET of the API service handlers (`ApprovedHandler`), `PUT/PATCH api/user` | 20 / minute per user |
+| `login` | `api/auth/login` (also the plugin's `login-middleware`) | 10 / minute per IP **and** 30 / hour per email |
+| `register` | `api/auth/register` | 3 / minute and 20 / day per IP |
+| `verification` | confirm email, resend | 6 / minute |
+
+Other limits: a schedule takes at most 50 participants per request
+(`WritesSchedules::MAX_PARTICIPANTS`), a participant's note 255 characters, a password 72
+(bcrypt ignores the rest). Registration has a honeypot field (`website`): when filled in, it is
+refused. Sign-in checks a password hash even for unknown emails, so the timing does not show
+which emails exist.
+
+### Email confirmation
+
+- Accounts made with a password must confirm their email (`User` implements `MustVerifyEmail`).
+  The link (`App\Notifications\PwaVerifyEmail`) opens the PWA's `/verify-email` page, which
+  sends it to `POST api/auth/email/verify/{id}/{hash}`. It is signed and lasts 60 minutes
+  (`auth.verification.expire`). Until then the API answers `email_unverified` (see "In the API")
+  and the admin panel shows Filament's "verify your email" page.
+- Google / Facebook accounts are confirmed by the provider: no email. When the provider confirms
+  an email that belongs to an account **not confirmed yet** (someone may have registered it
+  first, to take it over later), that account is claimed: password erased, every token deleted,
+  email marked confirmed (`User::claimWithVerifiedEmail()`, PWA and admin panel).
+- A password reset also confirms the email (the link reached the inbox).
+- Changing the email (PWA profile) needs the current password, tells the **old** address
+  (`App\Notifications\EmailChangedNotice`), signs out the other devices and asks for the new
+  one to be confirmed. In the admin panel, Filament only changes it once the new address is
+  confirmed (`emailChangeVerification()`).
+- Accounts that existed before this was added were marked confirmed by a migration.
+- The admin's Users list shows next to each email whether it is confirmed: check it before
+  approving.
+
+### Headers, CORS and cookies
+
+- `App\Http\Middleware\SecurityHeaders` (every response): `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, and HSTS in production over HTTPS.
+- CORS (`config/cors.php`): `api/*` only from `PWA_URL` (plus `CORS_ALLOWED_ORIGINS`,
+  comma-separated, and `localhost:5173` when `APP_ENV=local`). No cookies: the PWA uses tokens.
+- The admin session cookie is HTTPS-only in production (`SESSION_SECURE_COOKIE`, defaults to
+  true when `APP_ENV=production`).
+- The PWA's own headers (Content-Security-Policy and others) are in `pwa-scheduler/public/.htaccess`.
+
+Tests: `tests/Feature/SecurityHardeningTest.php`.
 
 ## Background processes
 
@@ -668,8 +730,8 @@ and the admin "Notifications" log. Email and push are copies of it, per the user
 
 All four are on for new accounts. "All notifications" go to active, approved people who can open
 the agenda (`view_any_schedule`), except whoever did it and the people already told personally.
-Not stored: the password-reset email, email verification, and the "new device" email of the
-authentication log.
+Not stored: the password-reset email, email verification, the "your email was changed" notice to
+the old address, and the "new device" email of the authentication log.
 
 ### Email summaries
 
