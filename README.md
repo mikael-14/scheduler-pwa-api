@@ -308,6 +308,7 @@ don't open (`ScheduleAdminAccessTest`).
 | `restore_audit` | put a schedule / type back as an audit recorded it |
 | `view_any_notification_log`, `view_notification_log` | the notifications sent |
 | `send_notification_log` | send announcements |
+| `view_coverage_alerts` | the Coverage alerts page (Shield → Roles → Pages): a dry run of the daily coverage check for any day, and the alerts sent |
 | `view_any_token`, `view_token`, `create_token`, `update_token`, `delete_token` | the API plugin's tokens page (the PWA's own devices don't need it): your own tokens only, a super admin's all of them (`App\Policies\TokenPolicy`, registered over the plugin's own). A token signs in as its owner with all of their permissions: the abilities ticked there are not checked by the API |
 
 **Never above yourself:** the same idea runs through the Roles screen (`RoleManagement`) and the users:
@@ -473,6 +474,7 @@ depends on how much you trust that person.
 | roles (`view_any_role`, `view_role`, `create_role`, `update_role`, `delete_role`) | ✓ | ✓ | | | | |
 | `view_any_audit`, `view_audit`, `restore_audit` | ✓ | ✓ | | | | |
 | `view_any_notification_log`, `view_notification_log`, `send_notification_log` | ✓ | ✓ | | | | |
+| `view_coverage_alerts` | ✓ | ✓ | | | | |
 | tokens (all five) | ✓ | | | | | |
 
 - **Super Admin**: everything; the seeder keeps it complete. The only one who may edit the Admin
@@ -710,7 +712,7 @@ Current tasks:
 | Task | When | Why |
 |---|---|---|
 | `sanctum:prune-expired --hours=24` | daily at 00:00 | deletes tokens expired for more than a day (old 30-day tokens and the ones replaced by renewals), so `personal_access_tokens` does not grow forever |
-| `coverage:check` | daily at `COVERAGE_ALERTS_AT` (09:00) | warns everyone about days with nobody approved for a schedule type, 7 days and 1 day before (see "Coverage alerts") |
+| `coverage:check` | daily at each time of `COVERAGE_ALERTS_AT` (09:00 and 18:00) | warns everyone about the coming days with nobody approved for a schedule type, in an urgent and a look-ahead summary (see "Coverage alerts") |
 | `notifications:digest --with-daily` / `notifications:digest` | daily at 08:00 / 18:00 | the email summaries (see "Email summaries"); the 08:00 run also covers who chose one a day |
 | `filament-jobs-monitor:prune` | daily at 03:30 | deletes the jobs monitor's records older than 7 days |
 
@@ -761,28 +763,43 @@ stored as a plain string so a new value needs no migration):
 
 ## Coverage alerts
 
-When a day has nobody **approved** for a schedule type, everyone (active, approved accounts) is
-warned a week before and the day before, in the app, by email and by push (each person's settings).
-The alert opens the PWA's new schedule form on that type and day. Each alert is sent once
-(`coverage_alerts` table).
+At every run of the day (`run_at`, default 09:00 and 18:00) the next days are checked for each
+schedule type watched. The days with nobody **approved** are sent to everyone (active, approved
+accounts that can book) as at most **two summaries** per type and run, in the app, by email and
+by push (each person's settings). With an empty schedule that is 2 notifications at 09:00 and 2
+at 18:00. The same run started again sends nothing new.
+
+| Summary | Days | Looks | Email |
+|---|---|---|---|
+| urgent | the next `urgent_days` (default 1: tomorrow) | red, danger | right away, never waits for the email digest |
+| look-ahead | the days after those, up to `look_ahead_days` (default 7) | amber, warning | in the digest, for who chose one |
+
+Each summary lists its days; in the PWA every day is a link to the new schedule form on that type
+and day, and the notification itself opens the soonest one. The look-ahead one is sent first and
+the urgent one last, so on a phone the urgent push is on top; the lists show the urgent one first.
+What was sent: the `coverage_alerts` table (one row per day of each summary, with its run).
 
 Rules live in `config/coverage.php`, one per schedule type (by name). Every setting has a default
 and can be changed per rule:
 
 ```php
 'rules' => [
-    'walks' => ['type' => 'Passeios'],                       // defaults: every day, 1 approved, 7 and 1 days before, everyone
+    'walks' => ['type' => 'Passeios'],                       // defaults: every day, 1 approved, 7 days ahead, tomorrow urgent, everyone
     'cleaning' => ['type' => 'Limpeza', 'weekdays' => [6], 'min_approved' => 2,
-                   'notify_days_before' => [7, 3, 1], 'audience' => ['roles' => ['volunteer']]],
+                   'look_ahead_days' => 14, 'urgent_days' => 3, 'audience' => ['roles' => ['volunteer']]],
 ],
 ```
 
 Days outside the type's start / end, or on weekdays not listed, are not checked.
 
-- `.env`: `COVERAGE_ALERTS=false` switches everything off; `COVERAGE_ALERTS_AT=09:00` sets the time.
+- `.env`: `COVERAGE_ALERTS=false` switches everything off; `COVERAGE_ALERTS_AT=09:00,18:00` sets
+  the times (one or several, comma separated).
+- A given run: `php artisan coverage:check --date=2026-11-01 --at=18:00 --dry-run`
+- Without a terminal: **Administration → Coverage alerts** in the panel (permission
+  `view_coverage_alerts`) shows the same dry run for any day, the settings in use and the alerts sent.
 - Try rules without sending anything: `php artisan coverage:check --dry-run`
 - As if it were another day: `php artisan coverage:check --date=2026-11-01 --dry-run`
-- One rule, other days ahead: `php artisan coverage:check --rule=walks --days=3,1`
+- One rule, other days: `php artisan coverage:check --rule=walks --look-ahead=14 --urgent=3 --dry-run`
 
 ## Useful commands
 

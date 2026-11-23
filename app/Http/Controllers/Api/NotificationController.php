@@ -43,7 +43,12 @@ class NotificationController extends Controller
                 ->map(fn($notification) => [
                     'id' => $notification->id,
                     'title' => $notification->data['title'] ?? '',
-                    'body' => strip_tags((string) ($notification->data['body'] ?? '')),
+                    // with links (one per day of a coverage summary): the short text, the days are the links
+                    'body' => strip_tags((string) ($notification->data['summary'] ?? $notification->data['body'] ?? '')),
+                    'links' => array_values(array_filter(
+                        (array) ($notification->data['links'] ?? []),
+                        fn($link) => is_array($link) && filled($link['label'] ?? null) && filled($link['path'] ?? null),
+                    )),
                     'status' => $notification->data['status'] ?? 'info',
                     // what it is about, so the app can show an icon and a label per kind
                     'kind' => $notification->type === \App\Notifications\ScheduleJoinedOrLeft::class

@@ -313,6 +313,9 @@ return [
             \App\Filament\Widgets\PendingSchedulesWidget::class,
             \App\Filament\Widgets\DashboardCounters::class,
             \App\Filament\Widgets\WeekOverviewWidget::class,
+            // the Coverage alerts page's two tables: shown with the page (its view_coverage_alerts)
+            \App\Filament\Widgets\CoveragePreviewWidget::class,
+            \App\Filament\Widgets\SentCoverageAlertsWidget::class,
         ],
     ],
 

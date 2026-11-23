@@ -6,68 +6,119 @@ use App\Models\ScheduleType;
 use Illuminate\Support\Carbon;
 
 /**
- * "Nobody yet for Walks on Saturday": a day without enough approved schedules of a type
- * (config/coverage.php, sent by `coverage:check`). Opens the PWA's new schedule form on that
- * type and day, so volunteering takes one tap.
+ * "Nobody yet for Abrigo": the coming days without enough approved schedules of a type, one
+ * summary per run and level (config/coverage.php, sent by `coverage:check`):
+ *
+ * - urgent (danger): the next `urgent_days` days, e.g. tomorrow
+ * - look-ahead (warning): the days after those, up to `look_ahead_days`
+ *
+ * Push, email and the panel's bell show the days as a list; the PWA shows a link per day to the
+ * new schedule form on that type and day (data.links), so volunteering takes one tap. The
+ * notification itself opens the soonest day.
  */
 class CoverageAlert extends AppNotification
 {
-    /** Can wait for the email summary (see AppNotification::digestible). */
-    protected function digestible(): bool
-    {
-        return true;
-    }
+    public const URGENT = 'urgent';
 
+    public const AHEAD = 'ahead';
+
+    /**
+     * @param list<array{date: string, days_before: int, pending: int}> $days  the uncovered days
+     *        ("YYYY-MM-DD", how many days ahead, requests waiting), soonest first
+     */
     public function __construct(
         private readonly ScheduleType $type,
-        /** the uncovered day, "YYYY-MM-DD" */
-        private readonly string $date,
-        private readonly int $daysBefore,
-        private readonly int $pending,
+        private readonly string $level,
+        private readonly array $days,
     ) {
+    }
+
+    /**
+     * The look-ahead one can wait for the email summary (see AppNotification::digestible); the
+     * urgent one cannot: a morning summary would arrive on the day itself.
+     */
+    protected function digestible(): bool
+    {
+        return ! $this->urgent();
     }
 
     protected function title(): string
     {
-        return __('Nobody yet for :type on :date', ['type' => $this->type->name, 'date' => $this->dayName()]);
+        if ($this->urgent()) {
+            return count($this->days) === 1 && $this->days[0]['days_before'] === 1
+                ? __('Urgent: nobody yet for :type tomorrow', ['type' => $this->type->name])
+                : __('Urgent: nobody yet for :type', ['type' => $this->type->name]);
+        }
+
+        return trans_choice('Nobody yet for :type on :count day|Nobody yet for :type on :count days', count($this->days), ['type' => $this->type->name]);
     }
 
     protected function body(): string
     {
-        $lines = [
-            $this->daysBefore === 1 ? __('It is tomorrow and nobody is approved yet.') : __('Nobody is approved for this day yet.'),
-        ];
-        if ($this->pending > 0) {
-            $lines[] = __(':count request(s) waiting for approval.', ['count' => $this->pending]);
-        }
-        $lines[] = __('Can you help? Book it in the app.');
-
-        return implode("\n", $lines);
+        return implode("\n", [
+            $this->intro(),
+            ...array_map(fn(array $day) => '• ' . $this->dayLabel($day), $this->days),
+            __('Can you help? Book it in the app.'),
+        ]);
     }
 
     protected function status(): string
     {
-        return 'warning';
+        return $this->urgent() ? 'danger' : 'warning';
     }
 
     /**
-     * With the day it is about: one run sends several alerts in the same second, and the lists
-     * show those by day, soonest first (User::notifications, SendEmailDigests).
+     * With the soonest day it is about: one run sends its summaries in the same second, and the
+     * lists show those by day, urgent first (User::notifications, SendEmailDigests). The PWA shows
+     * `summary` and a link per day instead of the full list in the body.
      */
     public function toDatabase(object $notifiable): array
     {
-        return parent::toDatabase($notifiable) + ['sort_day' => $this->date];
+        return parent::toDatabase($notifiable) + [
+            'sort_day' => $this->days[0]['date'],
+            'level' => $this->level,
+            'summary' => $this->intro() . "\n" . __('Can you help? Tap a day to book it.'),
+            'links' => array_map(fn(array $day) => [
+                'label' => $this->dayLabel($day),
+                'path' => $this->dayPath($day['date']),
+            ], $this->days),
+        ];
     }
 
-    /** The new schedule form, already on this type and day. */
+    /** The new schedule form, already on this type and the soonest day. */
     protected function path(): string
     {
-        return '/schedules/new?' . http_build_query(['type' => $this->type->id, 'start' => $this->date]);
+        return $this->dayPath($this->days[0]['date']);
     }
 
-    /** "sábado, 25 de outubro", in the recipient's language (set by the sender). */
-    private function dayName(): string
+    private function urgent(): bool
     {
-        return Carbon::parse($this->date)->locale(app()->getLocale())->translatedFormat(__('l, j F'));
+        return $this->level === self::URGENT;
+    }
+
+    private function intro(): string
+    {
+        return trans_choice('Nobody is approved yet for this day:|Nobody is approved yet for these days:', count($this->days));
+    }
+
+    private function dayPath(string $date): string
+    {
+        return '/schedules/new?' . http_build_query(['type' => $this->type->id, 'start' => $date]);
+    }
+
+    /** "terça-feira, 24 de novembro (amanhã) · 2 a aguardar aprovação", in the recipient's language. */
+    private function dayLabel(array $day): string
+    {
+        $label = Carbon::parse($day['date'])->locale(app()->getLocale())->translatedFormat(__('l, j F'));
+
+        if ($day['days_before'] === 1) {
+            $label = __(':day (tomorrow)', ['day' => $label]);
+        }
+
+        if ($day['pending'] > 0) {
+            $label .= ' · ' . trans_choice(':count request waiting for approval|:count requests waiting for approval', $day['pending']);
+        }
+
+        return $label;
     }
 }

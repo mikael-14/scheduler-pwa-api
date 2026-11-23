@@ -27,12 +27,15 @@ Schedule::command('queue:work --stop-when-empty --max-time=55 --tries=3 --backof
     ->withoutOverlapping(5)
     ->when(fn() => (bool) config('queue.work_via_scheduler'));
 
-// Days with nobody approved for a schedule type: warn everyone a week and a day before
+// The coming days with nobody approved for a schedule type: an urgent and a look-ahead summary
 // (rules and on/off switch in config/coverage.php)
-Schedule::command('coverage:check')
-    ->dailyAt(config('coverage.run_at', '09:00'))
-    ->timezone(config('app.timezone'))
-    ->when(fn() => (bool) config('coverage.enabled'));
+// once per time in coverage.run_at; --at says which run it is, even when the cron starts it late
+foreach (\App\Services\CoverageChecker::runTimes() as $time) {
+    Schedule::command("coverage:check --at={$time}")
+        ->dailyAt($time)
+        ->timezone(config('app.timezone'))
+        ->when(fn() => (bool) config('coverage.enabled'));
+}
 
 // Email summaries of the news that can wait (users.email_digest): 08:00 for everyone who chose a
 // summary (twice or once a day), 18:00 only for those who chose twice a day
