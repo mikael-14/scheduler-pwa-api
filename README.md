@@ -713,7 +713,7 @@ Current tasks:
 |---|---|---|
 | `sanctum:prune-expired --hours=24` | daily at 00:00 | deletes tokens expired for more than a day (old 30-day tokens and the ones replaced by renewals), so `personal_access_tokens` does not grow forever |
 | `coverage:check` | daily at each time of `COVERAGE_ALERTS_AT` (09:00 and 18:00) | warns everyone about the coming days with nobody approved for a schedule type, in an urgent and a look-ahead summary (see "Coverage alerts") |
-| `notifications:digest --with-daily` / `notifications:digest` | daily at 08:00 / 18:00 | the email summaries (see "Email summaries"); the 08:00 run also covers who chose one a day |
+| `notifications:digest --with-daily` / `notifications:digest` | daily at 09:00 / 18:00 (after coverage:check) | the email summaries (see "Email summaries"); the 09:00 run also covers who chose one a day |
 | `filament-jobs-monitor:prune` | daily at 03:30 | deletes the jobs monitor's records older than 7 days |
 
 Check them with `php artisan schedule:list`. Without the scheduler everything still works;
@@ -771,12 +771,14 @@ at 18:00. The same run started again sends nothing new.
 
 | Summary | Days | Looks | Email |
 |---|---|---|---|
-| urgent | the next `urgent_days` (default 1: tomorrow) | red, danger | right away, never waits for the email digest |
-| look-ahead | the days after those, up to `look_ahead_days` (default 7) | amber, warning | in the digest, for who chose one |
+| urgent | the next `urgent_days` (default 1: tomorrow) | red, danger | right away, never waits for the email digest; also lists the look-ahead days of the same run |
+| look-ahead | the days after those, up to `look_ahead_days` (default 7) | amber, warning | none when the same run sends an urgent one (its days are in that email); otherwise in the digest, for who chose one |
 
-Each summary lists its days; in the PWA every day is a link to the new schedule form on that type
-and day, and the notification itself opens the soonest one. The look-ahead one is sent first and
-the urgent one last, so on a phone the urgent push is on top; the lists show the urgent one first.
+So a run with both sends **one email** with both lists, and two pushes. Each summary lists its
+days; in the PWA every day is a link to the new schedule form on that type and day, and the
+notification itself opens the soonest one. The look-ahead one is sent first and the urgent one
+last (its push 30 seconds later, as some phones drop pushes that arrive in the same second), so
+on a phone the urgent push is on top; the lists show the urgent one first.
 What was sent: the `coverage_alerts` table (one row per day of each summary, with its run).
 
 Rules live in `config/coverage.php`, one per schedule type (by name). Every setting has a default

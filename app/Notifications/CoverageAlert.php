@@ -28,12 +28,38 @@ class CoverageAlert extends AppNotification
     /**
      * @param list<array{date: string, days_before: int, pending: int}> $days  the uncovered days
      *        ("YYYY-MM-DD", how many days ahead, requests waiting), soonest first
+     * @param list<array{date: string, days_before: int, pending: int}> $later  urgent only: the
+     *        look-ahead days of the same run, added to its email (one email with both)
+     * @param bool $emailedWithUrgent  look-ahead only: its days are in the urgent email of the same
+     *        run, so it sends no email of its own (nor waits for the summary)
      */
     public function __construct(
         private readonly ScheduleType $type,
         private readonly string $level,
         private readonly array $days,
+        private readonly array $later = [],
+        private readonly bool $emailedWithUrgent = false,
     ) {
+    }
+
+    public function emailWanted(object $notifiable): bool
+    {
+        return ! $this->emailedWithUrgent && parent::emailWanted($notifiable);
+    }
+
+    /** The urgent email also lists the look-ahead days of the same run. */
+    protected function mailLines(): array
+    {
+        $lines = [$this->intro(), ...array_map(fn(array $day) => '• ' . $this->dayLabel($day), $this->days)];
+
+        if ($this->later) {
+            $lines[] = __('Also nobody yet in the coming days:');
+            array_push($lines, ...array_map(fn(array $day) => '• ' . $this->dayLabel($day), $this->later));
+        }
+
+        $lines[] = __('Can you help? Book it in the app.');
+
+        return $lines;
     }
 
     /**

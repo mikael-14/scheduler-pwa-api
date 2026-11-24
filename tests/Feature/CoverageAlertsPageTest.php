@@ -79,6 +79,10 @@ class CoverageAlertsPageTest extends TestCase
         ]);
 
         Livewire::actingAs($admin)->test(CoveragePreviewWidget::class)
+            // the filters take the whole row and apply at once (no "Apply filters" button)
+            ->assertSeeHtml('style="--col-span-default: 1 / -1;"')
+            ->assertSeeHtml('--cols-lg: repeat(4, minmax(0, 1fr));')
+            ->assertDontSee('Aplicar filtros')
             ->assertSee('Passeios: todos os dias')
             ->assertSee('quarta-feira, 21 de outubro')
             ->assertSee('Já enviado')

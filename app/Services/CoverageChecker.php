@@ -100,29 +100,39 @@ class CoverageChecker
                 $rows[] = $row;
             }
 
+            // which summaries this run sends: the levels with uncovered days, not sent yet
+            $uncovered = $toSend = [];
+            foreach ([CoverageAlert::AHEAD, CoverageAlert::URGENT] as $level) {
+                $uncovered[$level] = array_keys(array_filter($rows, fn(array $row) => $row['result'] === 'uncovered' && $row['level'] === $level));
+                if ($uncovered[$level] && ! $this->alreadySent($key, $level, $today, $at)) {
+                    $toSend[$level] = array_map(fn(int $i) => $rows[$i], $uncovered[$level]);
+                }
+            }
+            // both: one email with both (the urgent one lists the look-ahead days too)
+            $together = isset($toSend[CoverageAlert::AHEAD], $toSend[CoverageAlert::URGENT]);
+
             // look-ahead first, urgent last: on a phone the last push is on top (the lists in the
             // app put the urgent one first themselves, by its soonest day, see User::notifications)
             foreach ([CoverageAlert::AHEAD, CoverageAlert::URGENT] as $level) {
-                $uncovered = array_keys(array_filter($rows, fn(array $row) => $row['result'] === 'uncovered' && $row['level'] === $level));
-                if (! $uncovered) {
+                if (! $uncovered[$level]) {
                     continue;
                 }
 
-                $days = array_map(fn(int $i) => $rows[$i], $uncovered);
                 $recipients = null;
 
-                if ($this->alreadySent($key, $level, $today, $at)) {
+                if (! isset($toSend[$level])) {
                     $result = 'already sent';
                 } else {
                     $recipients = $this->audience($rule['audience']);
                     $result = $dryRun ? 'would send' : 'sent';
 
                     if (! $dryRun) {
-                        $this->send($key, $type, $level, $today, $at, $days, $recipients);
+                        $later = $together && $level === CoverageAlert::URGENT ? $toSend[CoverageAlert::AHEAD] : [];
+                        $this->send($key, $type, $level, $today, $at, $toSend[$level], $recipients, $later, $together && $level === CoverageAlert::AHEAD);
                     }
                 }
 
-                foreach ($uncovered as $i) {
+                foreach ($uncovered[$level] as $i) {
                     $rows[$i]['result'] = $result;
                     $rows[$i]['recipients'] = $recipients?->count() ?? 0;
                 }
@@ -205,8 +215,12 @@ class CoverageChecker
             ->values();
     }
 
-    /** @param list<array> $days the summary's rows, soonest first */
-    private function send(string $rule, ScheduleType $type, string $level, CarbonInterface $today, string $at, array $days, $recipients): void
+    /**
+     * @param list<array> $days the summary's rows, soonest first
+     * @param list<array> $later urgent: the look-ahead rows sent in the same run (added to its email)
+     * @param bool $emailedWithUrgent look-ahead: its days go in the urgent email, none of its own
+     */
+    private function send(string $rule, ScheduleType $type, string $level, CarbonInterface $today, string $at, array $days, $recipients, array $later = [], bool $emailedWithUrgent = false): void
     {
         // recorded first: a mail hiccup halfway must not make the next run warn everyone again
         DB::table('coverage_alerts')->insertOrIgnore(array_map(fn(array $day) => [
@@ -224,8 +238,8 @@ class CoverageChecker
             'updated_at' => now(),
         ], $days));
 
-        $summary = array_map(fn(array $day) => ['date' => $day['date'], 'days_before' => $day['days_before'], 'pending' => $day['pending']], $days);
+        $summary = fn(array $rows) => array_map(fn(array $day) => ['date' => $day['date'], 'days_before' => $day['days_before'], 'pending' => $day['pending']], $rows);
 
-        Notification::send($recipients, new CoverageAlert($type, $level, $summary));
+        Notification::send($recipients, new CoverageAlert($type, $level, $summary($days), $summary($later), $emailedWithUrgent));
     }
 }

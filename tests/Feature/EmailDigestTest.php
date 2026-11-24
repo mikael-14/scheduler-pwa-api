@@ -113,7 +113,7 @@ class EmailDigestTest extends TestCase
         $this->artisan('notifications:digest')->assertSuccessful(); // 18:00
         $this->assertCount(0, $this->emails());
 
-        $this->artisan('notifications:digest --with-daily')->assertSuccessful(); // 08:00
+        $this->artisan('notifications:digest --with-daily')->assertSuccessful(); // 09:00
         $this->assertCount(1, $this->emails());
         $this->assertSame('Resumo: 1 novidade', $this->emails()->first()->getSubject());
     }

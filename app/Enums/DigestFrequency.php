@@ -22,8 +22,8 @@ enum DigestFrequency: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Twice => __('Summary twice a day (08:00 and 18:00)'),
-            self::Daily => __('Summary once a day (08:00)'),
+            self::Twice => __('Summary twice a day (09:00 and 18:00)'),
+            self::Daily => __('Summary once a day (09:00)'),
             self::Instant => __('Each email right away'),
         };
     }

@@ -37,8 +37,10 @@ class CoveragePreviewWidget extends TableWidget
             ->records(fn(?array $filters) => $this->rows($filters['day']['day'] ?? null, $filters['day']['at'] ?? null))
             ->paginated(false)
             ->filters([
+                // the whole row: the date and the run side by side, each wide enough to read
                 Filter::make('day')
-                    ->columns(2)
+                    ->columnSpanFull()
+                    ->columns(['default' => 1, 'sm' => 2, 'lg' => 4])
                     ->schema([
                         DatePicker::make('day')
                             ->label(__('As if today were'))
@@ -53,6 +55,8 @@ class CoveragePreviewWidget extends TableWidget
                             ->selectablePlaceholder(false),
                     ]),
             ], layout: FiltersLayout::AboveContent)
+            // a dry run is cheap: show the new day or run at once, no "Apply filters" button
+            ->deferFilters(false)
             ->columns([
                 TextColumn::make('type')
                     ->label(__('Type')),

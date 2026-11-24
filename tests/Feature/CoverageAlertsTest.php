@@ -322,6 +322,42 @@ class CoverageAlertsTest extends TestCase
         $this->assertSame(['Nobody yet for Passeios on 2 days', 'Urgent: nobody yet for Passeios tomorrow'], $titles);
     }
 
+    public function test_one_email_lists_both_summaries(): void
+    {
+        config(['coverage.rules.walks' => ['type' => 'Passeios', 'look_ahead_days' => 3, 'urgent_days' => 1]]);
+        $summary = $this->user(['locale' => 'en', 'email_notification' => true, 'email_digest' => DigestFrequency::Twice]);
+        $instant = $this->user(['locale' => 'en', 'email_notification' => true, 'email_digest' => DigestFrequency::Instant]);
+
+        $this->artisan('coverage:check')->assertSuccessful();
+
+        foreach ([$summary, $instant] as $user) {
+            Notification::assertSentTo($user, CoverageAlert::class, function (CoverageAlert $alert) use ($user) {
+                $level = $alert->toDatabase($user)['level'];
+
+                if ($level === CoverageAlert::AHEAD) {
+                    // its days are in the urgent email: no email of its own, none waiting for the summary
+                    $this->assertSame(['database'], $alert->via($user));
+                    $this->assertFalse($alert->goesToDigest($user));
+                } else {
+                    $this->assertSame(['database', 'mail'], $alert->via($user));
+                    app()->setLocale('en'); // as the mail channel does for the recipient
+                    $lines = implode("\n", $alert->toMail($user)->introLines);
+                    $this->assertStringContainsString('Wednesday, 21 October (tomorrow)', $lines);
+                    $this->assertStringContainsString("Also nobody yet in the coming days:\n• Thursday, 22 October\n• Friday, 23 October", $lines);
+                }
+
+                return true;
+            });
+        }
+
+        // a look-ahead with no urgent one keeps its own email (here: waiting for the summary)
+        config(['coverage.rules.walks' => ['type' => 'Passeios', 'look_ahead_days' => 3, 'urgent_days' => 0]]);
+        Notification::fake();
+        $this->artisan('coverage:check --date=2026-10-21')->assertSuccessful();
+        Notification::assertSentTo($summary, CoverageAlert::class, fn(CoverageAlert $alert) => $alert->goesToDigest($summary));
+        Notification::assertSentTo($instant, CoverageAlert::class, fn(CoverageAlert $alert) => $alert->via($instant) === ['database', 'mail']);
+    }
+
     public function test_the_urgent_push_leaves_30_seconds_after_the_look_ahead_one(): void
     {
         $volunteer = $this->user(['push_notification' => true]);
@@ -358,5 +394,11 @@ class CoverageAlertsTest extends TestCase
         $this->assertStringContainsString('--at=09:00', $events[0]->command);
         $this->assertStringContainsString('--at=18:00', $events[1]->command);
         $this->assertSame('Europe/Lisbon', $events[0]->timezone);
+
+        // the email summaries at the same times, run after the check (a look-ahead waiting for one goes out at once)
+        $all = collect(app(Scheduler::class)->events())->values();
+        $digests = $all->filter(fn($event) => str_contains($event->command, 'notifications:digest'));
+        $this->assertSame(['0 9 * * *', '0 18 * * *'], $digests->pluck('expression')->values()->all());
+        $this->assertGreaterThan($all->search($events[0]), $digests->keys()->first());
     }
 }

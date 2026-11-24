@@ -37,10 +37,10 @@ foreach (\App\Services\CoverageChecker::runTimes() as $time) {
         ->when(fn() => (bool) config('coverage.enabled'));
 }
 
-// Email summaries of the news that can wait (users.email_digest): 08:00 for everyone who chose a
+// Email summaries of the news that can wait (users.email_digest): 09:00 for everyone who chose a
 // summary (twice or once a day), 18:00 only for those who chose twice a day
 Schedule::command('notifications:digest --with-daily')
-    ->dailyAt('08:00')
+    ->dailyAt('09:00')
     ->timezone(config('app.timezone'))
     ->withoutOverlapping(30);
 Schedule::command('notifications:digest')
