@@ -300,6 +300,54 @@ class CoverageAlertsTest extends TestCase
         $this->assertStringNotContainsString('•', $list[1]['body']);
     }
 
+    public function test_both_summaries_are_pushed_even_when_the_look_ahead_email_waits_for_the_digest(): void
+    {
+        // really stored and pushed (the test queue is sync); the push service only records the titles
+        Notification::swap(new \Illuminate\Notifications\ChannelManager($this->app));
+        $titles = [];
+        $webPush = \Mockery::mock(\Minishlink\WebPush\WebPush::class);
+        $webPush->shouldReceive('queueNotification')->andReturnUsing(function ($subscription, $payload) use (&$titles) {
+            $titles[] = json_decode($payload, true)['title'];
+        });
+        $webPush->shouldReceive('flush')->andReturnUsing(fn() => yield from []);
+        $this->app->instance(\NotificationChannels\WebPush\WebPushChannel::class, new \NotificationChannels\WebPush\WebPushChannel($webPush, app(\NotificationChannels\WebPush\ReportHandler::class)));
+
+        config(['coverage.rules.walks' => ['type' => 'Passeios', 'look_ahead_days' => 3, 'urgent_days' => 1]]);
+        $volunteer = $this->user(['locale' => 'en', 'push_notification' => true, 'email_notification' => true, 'email_digest' => DigestFrequency::Daily]);
+        $volunteer->updatePushSubscription('https://push.example/phone', 'key', 'token');
+
+        $this->artisan('coverage:check')->assertSuccessful();
+
+        // look-ahead first, urgent last (on top on the phone)
+        $this->assertSame(['Nobody yet for Passeios on 2 days', 'Urgent: nobody yet for Passeios tomorrow'], $titles);
+    }
+
+    public function test_the_urgent_push_leaves_30_seconds_after_the_look_ahead_one(): void
+    {
+        $volunteer = $this->user(['push_notification' => true]);
+        $volunteer->updatePushSubscription('https://push.example/phone', 'key', 'token');
+
+        // stored as coverage:check stores them: look-ahead first, then urgent
+        foreach ([CoverageAlert::AHEAD, CoverageAlert::URGENT] as $level) {
+            $volunteer->notifications()->create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => CoverageAlert::class,
+                'data' => ['title' => 'T', 'body' => 'B', 'level' => $level],
+            ]);
+        }
+
+        $delays = [];
+        Notification::assertSentTo($volunteer, \App\Notifications\PwaWebPushNotification::class,
+            function ($push) use (&$delays) {
+                $level = \Illuminate\Notifications\DatabaseNotification::find($push->storedId())->data['level'];
+                $delays[$level] = $push->delay ? (int) round(now()->diffInSeconds($push->delay)) : 0;
+
+                return true;
+            }
+        );
+        $this->assertSame([CoverageAlert::AHEAD => 0, CoverageAlert::URGENT => 30], $delays);
+    }
+
     public function test_the_check_is_scheduled_at_each_configured_time(): void
     {
         // the shipped default: 09:00 and 18:00

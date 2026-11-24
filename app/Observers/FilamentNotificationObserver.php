@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\User;
+use App\Notifications\CoverageAlert;
 use App\Notifications\DeliveryLog;
 use App\Notifications\PwaWebPushNotification;
 use Illuminate\Notifications\DatabaseNotification;
@@ -24,7 +25,15 @@ class FilamentNotificationObserver
 
         try {
             DeliveryLog::queuedPush($notification->id);
-            $user->notify(new PwaWebPushNotification($notification));
+            $push = new PwaWebPushNotification($notification);
+
+            // the urgent coverage summary is stored together with the look-ahead one: pushed a bit
+            // later, since some phones drop or merge pushes that arrive in the same second
+            if ($notification->type === CoverageAlert::class && ($notification->data['level'] ?? null) === CoverageAlert::URGENT) {
+                $push->delay(now()->addSeconds(CoverageAlert::PUSH_GAP_SECONDS));
+            }
+
+            $user->notify($push);
         } catch (\Throwable $e) {
             DeliveryLog::pushFailed($notification->id, $e);
             report($e);

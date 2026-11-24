@@ -22,6 +22,9 @@ class CoverageAlert extends AppNotification
 
     public const AHEAD = 'ahead';
 
+    /** The urgent push leaves this long after the look-ahead one (see FilamentNotificationObserver). */
+    public const PUSH_GAP_SECONDS = 30;
+
     /**
      * @param list<array{date: string, days_before: int, pending: int}> $days  the uncovered days
      *        ("YYYY-MM-DD", how many days ahead, requests waiting), soonest first
