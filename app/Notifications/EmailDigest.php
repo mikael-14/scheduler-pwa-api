@@ -40,28 +40,36 @@ class EmailDigest extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $count = $this->items->count();
+        $subject = $count === 1 ? __('Summary: 1 update') : __('Summary: :count updates', ['count' => $count]);
+        $shown = $this->items->take(self::MAX_ITEMS);
+
+        // a list per group, a row per piece of news with its colour and link
+        $sections = collect($this->grouped($shown))
+            ->map(fn(Collection $items, string $group) => [
+                'heading' => $this->heading($group),
+                'items' => $items->map(fn(DatabaseNotification $item) => $this->item($item))->values()->all(),
+            ])
+            ->values()
+            ->all();
+
         $mail = (new MailMessage)
-            ->subject($count === 1 ? __('Summary: 1 update') : __('Summary: :count updates', ['count' => $count]))
+            ->markdown('notifications::email', [
+                'status' => 'info',
+                'heading' => $subject, // "Summary: 4 updates"
+                'sections' => $sections,
+            ])
+            ->subject($subject)
             ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
             ->line($count === 1
                 ? __('Here is what happened since the last summary (1 update you have not seen in the app yet).')
-                : __('Here is what happened since the last summary (:count updates you have not seen in the app yet).', ['count' => $count]));
-
-        $shown = $this->items->take(self::MAX_ITEMS);
-        foreach ($this->grouped($shown) as $group => $items) {
-            $mail->line('**' . $this->heading($group) . '**');
-            foreach ($items as $item) {
-                $mail->line($this->line($item));
-            }
-        }
+                : __('Here is what happened since the last summary (:count updates you have not seen in the app yet).', ['count' => $count]))
+            ->action(__('Open the scheduler'), $this->pwaUrl('/notifications'));
 
         if ($count > $shown->count()) {
             $mail->line(__('And :count more in the app.', ['count' => $count - $shown->count()]));
         }
 
-        return $mail
-            ->action(__('Open the scheduler'), $this->pwaUrl('/notifications'))
-            ->line(__('You get these summaries because you chose them in your settings. You can get each email right away instead.'));
+        return $mail->line(__('You get these summaries because you chose them in your settings. You can get each email right away instead.'));
     }
 
     /** @return array<string, Collection<int, DatabaseNotification>> */
@@ -90,24 +98,44 @@ class EmailDigest extends Notification
         };
     }
 
-    /** "[Maria joined your schedule](link) — Passeios · 12/11 10:00" */
-    private function line(DatabaseNotification $item): string
+    /** A row: "Maria joined your schedule" / "Passeios · 12/11 10:00" [Open], in its colour. */
+    private function item(DatabaseNotification $item): array
     {
         $data = $item->data ?? [];
-        // plain text: no brackets that would break the link, the lines of the body on one line
-        $title = str_replace(['[', ']'], '', strip_tags((string) ($data['title'] ?? '')));
-        $body = Str::limit(trim(preg_replace('/\s*\R\s*/', ' · ', strip_tags((string) ($data['body'] ?? '')))), 200);
-
-        $url = $this->pwaUrl($data['path'] ?? '/notifications');
+        // plain text, the lines of the body on one line
+        $title = trim(strip_tags((string) ($data['title'] ?? '')));
+        $body = Str::limit($this->oneLine(strip_tags((string) ($data['body'] ?? ''))), 200);
 
         // the body already says it all ("Rita juntou-se ao seu agendamento de Passeios, a ..."): only that
         if ($body !== '' && str_starts_with($body, $title)) {
-            return '[' . str_replace(['[', ']'], '', $body) . '](' . $url . ')';
+            [$title, $body] = [$body, ''];
         }
 
-        $line = '[' . $title . '](' . $url . ')';
+        return [
+            'label' => $title !== '' ? $title : $body,
+            'meta' => $title !== '' && $body !== '' ? $body : null,
+            'url' => $this->pwaUrl($data['path'] ?? '/notifications'),
+            'link' => __('Open'),
+            'status' => $data['status'] ?? 'info',
+        ];
+    }
 
-        return $body !== '' ? "{$line} — {$body}" : $line;
+    /**
+     * The body's lines on one line, bullets dropped: "Nobody is approved yet for these days:
+     * Friday, 27 November · Saturday, 28 November".
+     */
+    private function oneLine(string $text): string
+    {
+        $line = '';
+        foreach (preg_split('/\R/', $text) as $part) {
+            $part = trim(preg_replace('/^[•\-*]\s*/u', '', trim($part)));
+            if ($part === '') {
+                continue;
+            }
+            $line .= $line === '' ? $part : (str_ends_with($line, ':') ? ' ' : ' · ') . $part;
+        }
+
+        return $line;
     }
 
     private function pwaUrl(string $path): string

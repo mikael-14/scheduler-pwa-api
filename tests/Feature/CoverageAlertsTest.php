@@ -341,9 +341,21 @@ class CoverageAlertsTest extends TestCase
                 } else {
                     $this->assertSame(['database', 'mail'], $alert->via($user));
                     app()->setLocale('en'); // as the mail channel does for the recipient
-                    $lines = implode("\n", $alert->toMail($user)->introLines);
-                    $this->assertStringContainsString('Wednesday, 21 October (tomorrow)', $lines);
-                    $this->assertStringContainsString("Also nobody yet in the coming days:\n• Thursday, 22 October\n• Friday, 23 October", $lines);
+                    $mail = $alert->toMail($user);
+                    // a list per summary, a row per day with a button to book it
+                    $sections = $mail->viewData['sections'];
+                    $this->assertSame(['Wednesday, 21 October (tomorrow)'], array_column($sections[0]['items'], 'label'));
+                    $this->assertSame('danger', $sections[0]['items'][0]['status']);
+                    $this->assertSame('Also nobody yet in the coming days:', $sections[1]['heading']);
+                    $this->assertSame(['Thursday, 22 October', 'Friday, 23 October'], array_column($sections[1]['items'], 'label'));
+                    $this->assertSame('warning', $sections[1]['items'][0]['status']);
+                    $this->assertStringEndsWith("/schedules/new?type={$this->walks->id}&start=2026-10-22", $sections[1]['items'][0]['url']);
+
+                    // all of it in the email itself, html and text
+                    $html = (string) $mail->render();
+                    $this->assertStringContainsString('URGENT', mb_strtoupper($html));
+                    $this->assertStringContainsString('Friday, 23 October', $html);
+                    $this->assertStringContainsString('class="item-link"', $html);
                 }
 
                 return true;

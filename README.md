@@ -761,6 +761,17 @@ stored as a plain string so a new value needs no migration):
   read in the app before the summary (or email turned off): empty.
 - Push and the in-app list are not affected.
 
+### Email look
+
+Every email uses the app's own templates (`resources/views/vendor/mail`, theme
+`html/themes/scheduler.css`, set in `config/mail.php` → `markdown`): the PWA's icon and name on
+top, a white card with a banner in the notification's colour (`status()`: red, amber, green, blue)
+and its title, and a footer linking to the app and its settings. Notifications can add a small
+word above the title (`mailKicker()`) and lists with a button per row (`mailSections()`): the
+coverage alert lists its days with "Book", the summary its news by group with "Open". The icon
+is loaded from `PWA_URL/img/icons/icon-192x192.png`. After changing a template, clear the
+compiled views (`php artisan view:clear` or `optimize:clear`).
+
 ## Coverage alerts
 
 At every run of the day (`run_at`, default 09:00 and 18:00) the next days are checked for each

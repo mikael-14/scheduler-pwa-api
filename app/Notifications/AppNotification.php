@@ -155,15 +155,45 @@ abstract class AppNotification extends Notification implements ShouldQueueAfterC
         return __('Open the scheduler');
     }
 
+    /** A short word above the title in the email's banner ("Urgent"...); none by default. */
+    protected function mailKicker(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Lists shown after the email's paragraphs, each row with its own link
+     * (resources/views/vendor/mail/html/items.blade.php).
+     *
+     * @return list<array{heading?: string|null, items: list<array{label: string, meta?: string|null, url?: string|null, link?: string, status?: string}>}>
+     */
+    protected function mailSections(): array
+    {
+        return [];
+    }
+
+    /** The PWA address of a path ("/schedules/12"). */
+    protected function pwaUrl(string $path): string
+    {
+        return rtrim((string) config('app.pwa_url'), '/') . '/' . ltrim($path, '/');
+    }
+
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
+            // the app's template: a banner in the notification's colour with its title, then the text
+            ->markdown('notifications::email', [
+                'status' => $this->status(),
+                'kicker' => $this->mailKicker(),
+                'heading' => $this->title(),
+                'sections' => $this->mailSections(),
+            ])
             ->subject($this->title())
             ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
             ->lines($this->mailLines())
             ->action(
                 $this->mailActionLabel(),
-                $this->url() ?? rtrim((string) config('app.pwa_url'), '/') . $this->path()
+                $this->url() ?? $this->pwaUrl($this->path())
             )
             ->lineIf(
                 ! $this->alwaysEmail(),

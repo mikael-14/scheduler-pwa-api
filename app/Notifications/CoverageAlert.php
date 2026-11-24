@@ -47,19 +47,41 @@ class CoverageAlert extends AppNotification
         return ! $this->emailedWithUrgent && parent::emailWanted($notifiable);
     }
 
-    /** The urgent email also lists the look-ahead days of the same run. */
+    /** The days are the email's lists (mailSections), each with a button to book it. */
     protected function mailLines(): array
     {
-        $lines = [$this->intro(), ...array_map(fn(array $day) => '• ' . $this->dayLabel($day), $this->days)];
+        return [__('Can you help? Pick a day and book it in the app.')];
+    }
+
+    /** The urgent title already starts with "Urgent". */
+    protected function mailKicker(): ?string
+    {
+        return $this->urgent() ? null : __('Look-ahead');
+    }
+
+    /** Its days; the urgent email also the look-ahead days of the same run (amber). */
+    protected function mailSections(): array
+    {
+        $sections = [['heading' => $this->intro(), 'items' => $this->mailDays($this->days, $this->status())]];
 
         if ($this->later) {
-            $lines[] = __('Also nobody yet in the coming days:');
-            array_push($lines, ...array_map(fn(array $day) => '• ' . $this->dayLabel($day), $this->later));
+            $sections[] = ['heading' => __('Also nobody yet in the coming days:'), 'items' => $this->mailDays($this->later, 'warning')];
         }
 
-        $lines[] = __('Can you help? Book it in the app.');
+        return $sections;
+    }
 
-        return $lines;
+    private function mailDays(array $days, string $status): array
+    {
+        return array_map(fn(array $day) => [
+            'label' => $this->dayName($day),
+            'meta' => $day['pending'] > 0
+                ? trans_choice(':count request waiting for approval|:count requests waiting for approval', $day['pending'])
+                : null,
+            'url' => $this->pwaUrl($this->dayPath($day['date'])),
+            'link' => __('Book'),
+            'status' => $status,
+        ], $days);
     }
 
     /**
@@ -138,16 +160,20 @@ class CoverageAlert extends AppNotification
     /** "terça-feira, 24 de novembro (amanhã) · 2 a aguardar aprovação", in the recipient's language. */
     private function dayLabel(array $day): string
     {
-        $label = Carbon::parse($day['date'])->locale(app()->getLocale())->translatedFormat(__('l, j F'));
-
-        if ($day['days_before'] === 1) {
-            $label = __(':day (tomorrow)', ['day' => $label]);
-        }
+        $label = $this->dayName($day);
 
         if ($day['pending'] > 0) {
             $label .= ' · ' . trans_choice(':count request waiting for approval|:count requests waiting for approval', $day['pending']);
         }
 
         return $label;
+    }
+
+    /** "terça-feira, 24 de novembro (amanhã)" */
+    private function dayName(array $day): string
+    {
+        $label = Carbon::parse($day['date'])->locale(app()->getLocale())->translatedFormat(__('l, j F'));
+
+        return $day['days_before'] === 1 ? __(':day (tomorrow)', ['day' => $label]) : $label;
     }
 }

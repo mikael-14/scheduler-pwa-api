@@ -115,4 +115,24 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email look
+    |--------------------------------------------------------------------------
+    |
+    | The app's own templates and theme (resources/views/vendor/mail, theme
+    | html/themes/scheduler.css): the PWA's icon and colours, a coloured banner
+    | per notification and lists with a link per row. Laravel's own files are
+    | used for anything not there.
+    |
+    */
+
+    'markdown' => [
+        'theme' => env('MAIL_MARKDOWN_THEME', 'scheduler'),
+
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+    ],
+
 ];
