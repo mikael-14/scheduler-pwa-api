@@ -788,7 +788,7 @@ at 18:00. The same run started again sends nothing new.
 So a run with both sends **one email** with both lists, and two pushes. Each summary lists its
 days; in the PWA every day is a link to the new schedule form on that type and day, and the
 notification itself opens the soonest one. The look-ahead one is sent first and the urgent one
-last (its push 30 seconds later, as some phones drop pushes that arrive in the same second), so
+last (its push waits 90 seconds, so it leaves in the next once-a-minute queue run: some phones drop pushes that arrive in the same second), so
 on a phone the urgent push is on top; the lists show the urgent one first.
 What was sent: the `coverage_alerts` table (one row per day of each summary, with its run).
 

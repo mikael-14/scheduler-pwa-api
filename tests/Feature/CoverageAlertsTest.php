@@ -370,7 +370,7 @@ class CoverageAlertsTest extends TestCase
         Notification::assertSentTo($instant, CoverageAlert::class, fn(CoverageAlert $alert) => $alert->via($instant) === ['database', 'mail']);
     }
 
-    public function test_the_urgent_push_leaves_30_seconds_after_the_look_ahead_one(): void
+    public function test_the_urgent_push_waits_for_a_later_queue_run(): void
     {
         $volunteer = $this->user(['push_notification' => true]);
         $volunteer->updatePushSubscription('https://push.example/phone', 'key', 'token');
@@ -393,7 +393,9 @@ class CoverageAlertsTest extends TestCase
                 return true;
             }
         );
-        $this->assertSame([CoverageAlert::AHEAD => 0, CoverageAlert::URGENT => 30], $delays);
+        $this->assertSame([CoverageAlert::AHEAD => 0, CoverageAlert::URGENT => CoverageAlert::PUSH_GAP_SECONDS], $delays);
+        // the queue is worked once a minute: a shorter wait is over by the next run, which sends both together
+        $this->assertGreaterThan(60, CoverageAlert::PUSH_GAP_SECONDS);
     }
 
     public function test_the_check_is_scheduled_at_each_configured_time(): void

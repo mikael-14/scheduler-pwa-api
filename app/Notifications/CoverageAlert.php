@@ -22,8 +22,13 @@ class CoverageAlert extends AppNotification
 
     public const AHEAD = 'ahead';
 
-    /** The urgent push leaves this long after the look-ahead one (see FilamentNotificationObserver). */
-    public const PUSH_GAP_SECONDS = 30;
+    /**
+     * The urgent push waits this long (see FilamentNotificationObserver), so it leaves in a later
+     * queue run than the look-ahead one. Over a minute on purpose: with QUEUE_WORK_VIA_SCHEDULER the
+     * queue is only worked once a minute, and a shorter wait has already passed by the next run,
+     * which then sends both in the same second (some phones drop one of them).
+     */
+    public const PUSH_GAP_SECONDS = 90;
 
     /**
      * @param list<array{date: string, days_before: int, pending: int}> $days  the uncovered days
