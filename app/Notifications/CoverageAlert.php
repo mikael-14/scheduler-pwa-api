@@ -23,10 +23,11 @@ class CoverageAlert extends AppNotification
     public const AHEAD = 'ahead';
 
     /**
-     * The urgent push waits this long (see FilamentNotificationObserver), so it leaves in a later
-     * queue run than the look-ahead one. Over a minute on purpose: with QUEUE_WORK_VIA_SCHEDULER the
-     * queue is only worked once a minute, and a shorter wait has already passed by the next run,
-     * which then sends both in the same second (some phones drop one of them).
+     * When a run sends both summaries, the look-ahead push waits this long (see
+     * FilamentNotificationObserver), so the urgent one arrives first, alone: some phones keep only
+     * the first of two pushes that arrive in the same second. Over a minute on purpose: with
+     * QUEUE_WORK_VIA_SCHEDULER the queue is only worked once a minute, and a shorter wait has
+     * already passed by the next run, which then sends both together.
      */
     public const PUSH_GAP_SECONDS = 90;
 
@@ -133,6 +134,8 @@ class CoverageAlert extends AppNotification
         return parent::toDatabase($notifiable) + [
             'sort_day' => $this->days[0]['date'],
             'level' => $this->level,
+            // sent together with an urgent one: its push waits (FilamentNotificationObserver)
+            'with_urgent' => $this->emailedWithUrgent,
             'summary' => $this->intro() . "\n" . __('Can you help? Tap a day to book it.'),
             'links' => array_map(fn(array $day) => [
                 'label' => $this->dayLabel($day),

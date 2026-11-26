@@ -27,9 +27,12 @@ class FilamentNotificationObserver
             DeliveryLog::queuedPush($notification->id);
             $push = new PwaWebPushNotification($notification);
 
-            // the urgent coverage summary is stored together with the look-ahead one: pushed a bit
-            // later, since some phones drop or merge pushes that arrive in the same second
-            if ($notification->type === CoverageAlert::class && ($notification->data['level'] ?? null) === CoverageAlert::URGENT) {
+            // a coverage run that sends both summaries: the urgent push right away, the look-ahead
+            // one in a later queue run, since some phones keep only the first of pushes that arrive
+            // in the same second (a look-ahead on its own is not held back)
+            if ($notification->type === CoverageAlert::class
+                && ($notification->data['level'] ?? null) === CoverageAlert::AHEAD
+                && ! empty($notification->data['with_urgent'])) {
                 $push->delay(now()->addSeconds(CoverageAlert::PUSH_GAP_SECONDS));
             }
 

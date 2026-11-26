@@ -318,7 +318,7 @@ class CoverageAlertsTest extends TestCase
 
         $this->artisan('coverage:check')->assertSuccessful();
 
-        // look-ahead first, urgent last (on top on the phone)
+        // both pushed (the test queue is sync, so the look-ahead's wait does not show here)
         $this->assertSame(['Nobody yet for Passeios on 2 days', 'Urgent: nobody yet for Passeios tomorrow'], $titles);
     }
 
@@ -370,30 +370,37 @@ class CoverageAlertsTest extends TestCase
         Notification::assertSentTo($instant, CoverageAlert::class, fn(CoverageAlert $alert) => $alert->via($instant) === ['database', 'mail']);
     }
 
-    public function test_the_urgent_push_waits_for_a_later_queue_run(): void
+    public function test_the_urgent_push_goes_first_and_the_look_ahead_one_waits_for_a_later_queue_run(): void
     {
+        config(['coverage.rules.walks' => ['type' => 'Passeios', 'look_ahead_days' => 3, 'urgent_days' => 1]]);
         $volunteer = $this->user(['push_notification' => true]);
         $volunteer->updatePushSubscription('https://push.example/phone', 'key', 'token');
 
-        // stored as coverage:check stores them: look-ahead first, then urgent
-        foreach ([CoverageAlert::AHEAD, CoverageAlert::URGENT] as $level) {
+        // the check marks the look-ahead summary sent together with an urgent one
+        $this->artisan('coverage:check')->assertSuccessful();
+        $stored = $this->summaries($volunteer);
+        $this->assertTrue($stored[CoverageAlert::AHEAD]['with_urgent']);
+        $this->assertFalse($stored[CoverageAlert::URGENT]['with_urgent']);
+
+        // stored as coverage:check stores them, and a later run with only look-ahead days
+        foreach ([[CoverageAlert::AHEAD, true], [CoverageAlert::URGENT, false], [CoverageAlert::AHEAD, false]] as $i => [$level, $withUrgent]) {
             $volunteer->notifications()->create([
-                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'id' => "n$i",
                 'type' => CoverageAlert::class,
-                'data' => ['title' => 'T', 'body' => 'B', 'level' => $level],
+                'data' => ['title' => 'T', 'body' => 'B', 'level' => $level, 'with_urgent' => $withUrgent],
             ]);
         }
 
         $delays = [];
         Notification::assertSentTo($volunteer, \App\Notifications\PwaWebPushNotification::class,
             function ($push) use (&$delays) {
-                $level = \Illuminate\Notifications\DatabaseNotification::find($push->storedId())->data['level'];
-                $delays[$level] = $push->delay ? (int) round(now()->diffInSeconds($push->delay)) : 0;
+                $delays[$push->storedId()] = $push->delay ? (int) round(now()->diffInSeconds($push->delay)) : 0;
 
                 return true;
             }
         );
-        $this->assertSame([CoverageAlert::AHEAD => 0, CoverageAlert::URGENT => CoverageAlert::PUSH_GAP_SECONDS], $delays);
+        // urgent right away; the look-ahead waits only when an urgent one goes with it
+        $this->assertSame(['n0' => CoverageAlert::PUSH_GAP_SECONDS, 'n1' => 0, 'n2' => 0], $delays);
         // the queue is worked once a minute: a shorter wait is over by the next run, which sends both together
         $this->assertGreaterThan(60, CoverageAlert::PUSH_GAP_SECONDS);
     }

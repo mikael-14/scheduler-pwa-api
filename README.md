@@ -385,6 +385,7 @@ forgets it):
 | resend the confirmation email (`auth/email/resend`) | signed in and active, also with the email not confirmed yet |
 | `api/user` (profile, photo, devices), refresh, sign out | signed in and active, also while waiting for approval or email confirmation |
 | notifications, push subscription | signed in, active, email confirmed and approved |
+| renew a push subscription the browser replaced (`pwa/subscription/renew`, from the service worker) | nobody (rate limited): the old subscription address is the proof, and only an active, approved account's is accepted |
 | `api/admin/schedules…`, `api/admin/schedule-types…` | signed in, active, email confirmed, approved **and** the permission below |
 
 The `approved` middleware answers 403 `email_unverified` before `pending`: the PWA then shows its
@@ -735,6 +736,20 @@ the agenda (`view_any_schedule`), except whoever did it and the people already t
 Not stored: the password-reset email, email verification, the "your email was changed" notice to
 the old address, and the "new device" email of the authentication log.
 
+### Keeping push working on a device
+
+Browsers replace or drop a device's push subscription now and then. The API keeps pushing to the
+old address (Google may still accept it, so it shows as `sent`) and the phone gets nothing. So:
+
+- **When the app opens** (at most every 6 hours, or at once if the address changed) it sends the
+  device's current subscription again, or subscribes again if it was dropped (`src/utils/push.ts`).
+- **Without opening it**, the service worker (`public/push-sw.js`) subscribes again and swaps the
+  address through `POST /api/pwa/subscription/renew`: on the browser's `pushsubscriptionchange`
+  (Firefox, Edge, Chrome sometimes), and on a check about twice a day (Periodic Background Sync:
+  Chrome, installed app only). It uses the API address, VAPID key and current address the app saved
+  in Cache Storage (`push-config`), removed on sign-out or when push is turned off.
+- Old addresses Google no longer accepts are deleted by the push channel when it next tries them.
+
 ### Email summaries
 
 News that can wait does not get an email of its own: it is kept for a summary (`users.email_digest`,
@@ -787,9 +802,12 @@ at 18:00. The same run started again sends nothing new.
 
 So a run with both sends **one email** with both lists, and two pushes. Each summary lists its
 days; in the PWA every day is a link to the new schedule form on that type and day, and the
-notification itself opens the soonest one. The look-ahead one is sent first and the urgent one
-last (its push waits 90 seconds, so it leaves in the next once-a-minute queue run: some phones drop pushes that arrive in the same second), so
-on a phone the urgent push is on top; the lists show the urgent one first.
+notification itself opens the soonest one; the lists show the urgent one first. The urgent push
+goes out first; when both are sent, the look-ahead push waits 90 seconds, so it leaves in the
+next once-a-minute queue run (some phones keep only the first of two pushes arriving in the same
+second, and that must be the urgent one). Only uncovered days are sent: when the urgent days are
+covered there is no urgent summary (and the look-ahead push does not wait), and when every day
+is covered nothing is sent.
 What was sent: the `coverage_alerts` table (one row per day of each summary, with its run).
 
 Rules live in `config/coverage.php`, one per schedule type (by name). Every setting has a default

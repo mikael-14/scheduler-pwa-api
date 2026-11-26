@@ -41,6 +41,32 @@ Route::prefix('auth')->group(function () {
 
 });
 
+// The browser replaced or dropped a device's push subscription (Chrome does this now and then):
+// the app's service worker subscribes again and swaps it here, with nobody signed in (it cannot
+// use the app's token). The old endpoint is the proof: a long random address only that device and
+// this server know. Only for subscriptions of accounts that may still get push.
+Route::post('/pwa/subscription/renew', function (Request $request) {
+    $data = $request->validate([
+        'old_endpoint' => 'required|string|max:2000',
+        'endpoint'     => 'required|string|url|max:2000',
+        'keys.auth'    => 'required|string|max:255',
+        'keys.p256dh'  => 'required|string|max:255',
+    ]);
+
+    $old = app(config('webpush.model'))->findByEndpoint($data['old_endpoint']);
+    $user = $old?->subscribable;
+    if (! $user instanceof \App\Models\User || ! $user->status || ! $user->approved_at) {
+        return response()->json(['message' => 'Unknown subscription.'], 404);
+    }
+
+    $user->updatePushSubscription($data['endpoint'], $data['keys']['p256dh'], $data['keys']['auth']);
+    if ($data['endpoint'] !== $data['old_endpoint']) {
+        $old->delete();
+    }
+
+    return response()->json(['success' => true]);
+})->middleware('throttle:10,1');
+
 // Push, notification list: only for active, approved accounts
 Route::middleware(['auth:sanctum', 'active', 'approved'])->group(function () {
     // The public VAPID key the browser needs to create a push subscription
