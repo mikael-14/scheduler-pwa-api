@@ -647,6 +647,91 @@ class NotificationsTest extends TestCase
         $this->getJson('/api/notifications')->assertJsonPath('unread', 0);
     }
 
+    public function test_notifications_are_listed_a_page_at_a_time_and_can_be_filtered_to_unread(): void
+    {
+        $user = $this->user();
+        foreach (range(1, 5) as $i) {
+            $user->notifications()->create([
+                'id' => (string) \Illuminate\Support\Str::uuid(), 'type' => 'x', 'data' => ['title' => "n$i"],
+                'created_at' => now()->subMinutes($i),
+                // the even ones were already read
+                'read_at' => $i % 2 === 0 ? now() : null,
+            ]);
+        }
+        Sanctum::actingAs($user);
+
+        $first = $this->getJson('/api/notifications?per_page=2')->assertOk()
+            ->assertJsonPath('unread', 3)
+            ->assertJsonPath('data.0.title', 'n1')
+            ->assertJsonPath('data.1.title', 'n2');
+        $cursor = $first->json('next_cursor');
+        $this->assertNotNull($cursor);
+
+        $this->getJson('/api/notifications?per_page=2&cursor=' . urlencode($cursor))->assertOk()
+            ->assertJsonPath('data.0.title', 'n3')
+            ->assertJsonPath('data.1.title', 'n4');
+
+        $last = $this->getJson('/api/notifications?per_page=10&filter=unread')->assertOk();
+        $this->assertSame(['n1', 'n3', 'n5'], array_column($last->json('data'), 'title'));
+        $this->assertNull($last->json('next_cursor'));
+
+        $this->getJson('/api/notifications?filter=nope')->assertStatus(422);
+        $this->getJson('/api/notifications?per_page=500')->assertStatus(422);
+        $this->getJson('/api/notifications?cursor=garbage')->assertStatus(422);
+    }
+
+    public function test_a_page_never_cuts_notifications_of_the_same_second_in_two(): void
+    {
+        $user = $this->user();
+        $second = now()->subHour()->startOfSecond();
+        foreach (['a', 'b', 'c'] as $title) {
+            $user->notifications()->create([
+                'id' => (string) \Illuminate\Support\Str::uuid(), 'type' => 'x', 'data' => ['title' => $title], 'created_at' => $second,
+            ]);
+        }
+        $user->notifications()->create([
+            'id' => (string) \Illuminate\Support\Str::uuid(), 'type' => 'x', 'data' => ['title' => 'older'], 'created_at' => $second->copy()->subDay(),
+        ]);
+        Sanctum::actingAs($user);
+
+        $first = $this->getJson('/api/notifications?per_page=2')->assertOk();
+        $this->assertCount(3, $first->json('data'));
+
+        $next = $this->getJson('/api/notifications?per_page=2&cursor=' . urlencode($first->json('next_cursor')))->assertOk();
+        $this->assertSame(['older'], array_column($next->json('data'), 'title'));
+        $this->assertNull($next->json('next_cursor'));
+    }
+
+    public function test_chosen_notifications_can_be_marked_read_or_unread(): void
+    {
+        $user = $this->user();
+        $other = $this->user();
+        $make = fn(User $owner, $readAt = null) => $owner->notifications()->create([
+            'id' => (string) \Illuminate\Support\Str::uuid(), 'type' => 'x', 'data' => ['title' => 'T'], 'read_at' => $readAt,
+        ]);
+        $a = $make($user);
+        $b = $make($user);
+        $c = $make($user);
+        $theirs = $make($other);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/notifications/read', ['ids' => [$a->id, $b->id, $theirs->id]])
+            ->assertOk()->assertJsonPath('unread', 1);
+        $this->assertNotNull($a->fresh()->read_at);
+        $this->assertNull($c->fresh()->read_at);
+        // someone else's is left alone
+        $this->assertNull($theirs->fresh()->read_at);
+
+        $this->postJson('/api/notifications/unread', ['ids' => [$a->id]])
+            ->assertOk()->assertJsonPath('unread', 2);
+        $this->assertNull($a->fresh()->read_at);
+        $this->assertNotNull($b->fresh()->read_at);
+
+        $this->postJson('/api/notifications/read', ['ids' => []])->assertStatus(422);
+        $this->postJson('/api/notifications/unread', [])->assertStatus(422);
+    }
+
     public function test_each_notification_says_what_kind_it_is_for_the_pwa(): void
     {
         $user = $this->user();

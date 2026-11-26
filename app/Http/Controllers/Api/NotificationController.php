@@ -30,16 +30,50 @@ class NotificationController extends Controller
         \App\Notifications\AccountApproved::class => 'account',
     ];
 
+    /** Most notifications one page holds (the PWA loads more as the list scrolls). */
+    private const MAX_PER_PAGE = 50;
+
+    /**
+     * The latest notifications, a page at a time: `filter=unread` for the unread ones only,
+     * `per_page` (default and at most 50), and `cursor` (the previous page's `next_cursor`) for the next page.
+     *
+     * Pages go by time: the next one holds what is older than the last one shown. So reading some in
+     * between moves nothing, and the list keeps User::notifications()'s order (within one second: the
+     * urgent coverage summary first), a page never cuts a second in two.
+     */
     public function index(Request $request)
     {
+        $request->validate([
+            'filter' => ['nullable', 'in:all,unread'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:' . self::MAX_PER_PAGE],
+            'cursor' => ['nullable', 'date_format:Y-m-d H:i:s'],
+        ]);
+
         $user = $request->user();
+        $query = fn() => $request->input('filter') === 'unread' ? $user->unreadNotifications() : $user->notifications();
+        $perPage = (int) $request->input('per_page', self::MAX_PER_PAGE);
+
+        $notifications = $query()
+            ->when($request->input('cursor'), fn($q, $cursor) => $q->where('created_at', '<', $cursor))
+            ->limit($perPage)
+            ->get();
+
+        $nextCursor = null;
+        if ($notifications->count() === $perPage) {
+            $last = $notifications->last()->created_at;
+            // the rest of that same second, so the next page (older than it) does not skip them
+            $notifications = $notifications->concat(
+                $query()->where('created_at', $last)->whereKeyNot($notifications->modelKeys())->get()
+            );
+            if ($query()->where('created_at', '<', $last)->exists()) {
+                $nextCursor = $last->format('Y-m-d H:i:s');
+            }
+        }
 
         return response()->json([
             'unread' => $user->unreadNotifications()->count(),
-            'data' => $user->notifications()
-                ->latest()
-                ->limit(50)
-                ->get()
+            'next_cursor' => $nextCursor,
+            'data' => $notifications
                 ->map(fn($notification) => [
                     'id' => $notification->id,
                     'title' => $notification->data['title'] ?? '',
@@ -79,5 +113,34 @@ class NotificationController extends Controller
         $request->user()->unreadNotifications->markAsRead();
 
         return response()->json(['message' => 'ok']);
+    }
+
+    /** Marks the chosen notifications (`ids`) as read; ids that are not the user's are ignored. */
+    public function readMany(Request $request)
+    {
+        $request->user()->unreadNotifications()->whereKey($this->ids($request))->update(['read_at' => now()]);
+
+        return $this->unreadCount($request);
+    }
+
+    /** Marks the chosen notifications (`ids`) as unread again; ids that are not the user's are ignored. */
+    public function unreadMany(Request $request)
+    {
+        $request->user()->readNotifications()->whereKey($this->ids($request))->update(['read_at' => null]);
+
+        return $this->unreadCount($request);
+    }
+
+    private function ids(Request $request): array
+    {
+        return $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:200'],
+            'ids.*' => ['required', 'string', 'max:64'],
+        ])['ids'];
+    }
+
+    private function unreadCount(Request $request)
+    {
+        return response()->json(['message' => 'ok', 'unread' => $request->user()->unreadNotifications()->count()]);
     }
 }
