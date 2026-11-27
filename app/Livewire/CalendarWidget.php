@@ -251,8 +251,9 @@ class CalendarWidget extends FullCalendarWidget
     }
 
     /**
-     * A click opens the edit popup for who may edit the schedule (SchedulePolicy::update: their own
-     * from today on, or anyone's with update_any_schedule); anyone else who may see it gets its page.
+     * A click opens the edit popup for who may edit the schedule (SchedulePolicy::update: their own,
+     * or anyone's with update_any_schedule; once it started only its description, see ScheduleForm);
+     * anyone else who may see it gets its page.
      */
     public function onEventClick(array $info): void
     {

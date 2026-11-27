@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Http\Middleware\ApplyUserLocale;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
@@ -9,6 +10,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
+use SensitiveParameter;
 
 /**
  * Filament's own profile page, plus the user's photo, language and notification preferences.
@@ -33,6 +36,7 @@ class EditProfile extends BaseEditProfile
                 $this->getEmailFormComponent(),
                 Select::make('locale')
                     ->label(__('Language'))
+                    ->helperText(__('Used for notifications and email, and when you sign in. The language menu at the top only changes this session.'))
                     ->options(collect(config('app-locales.available'))->pluck('name', 'code')->all())
                     ->selectablePlaceholder(false)
                     ->native(false)
@@ -67,6 +71,20 @@ class EditProfile extends BaseEditProfile
                 $this->getPasswordConfirmationFormComponent(),
                 $this->getCurrentPasswordFormComponent(),
             ]);
+    }
+
+    /** A new profile language also becomes this session's (over a switcher choice). */
+    protected function handleRecordUpdate(Model $record, #[SensitiveParameter] array $data): Model
+    {
+        $before = $record->locale;
+        $record = parent::handleRecordUpdate($record, $data);
+
+        if ($record->locale !== $before) {
+            session()->forget(ApplyUserLocale::SESSION_CHOICE);
+            session()->put('locale', $record->locale);
+        }
+
+        return $record;
     }
 
     /** Reload after saving so a changed language applies to the page straight away. */

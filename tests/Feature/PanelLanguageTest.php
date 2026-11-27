@@ -87,6 +87,42 @@ class PanelLanguageTest extends TestCase
     }
 
     #[RunInSeparateProcess]
+    public function test_a_language_switched_in_the_session_renders_the_panel_without_changing_the_profile(): void
+    {
+        $this->withoutVite();
+        Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        Gate::before(fn($user) => $user->hasRole('super_admin') ? true : null);
+        $user = User::factory()->create(['approved_at' => now(), 'status' => true, 'locale' => 'pt']);
+        $user->assignRole('super_admin');
+
+        $html = $this->actingAs($user)
+            ->withSession(['locale' => 'en', \App\Http\Middleware\ApplyUserLocale::SESSION_CHOICE => true])
+            ->get('/admin')->assertOk()->getContent();
+
+        $this->assertStringContainsString('Dashboard', $html);
+        $this->assertStringNotContainsString('Painel de Controlo', $html);
+        $this->assertSame('pt', $user->fresh()->locale);
+    }
+
+    #[RunInSeparateProcess]
+    public function test_saving_a_new_profile_language_replaces_the_session_choice(): void
+    {
+        $this->withoutVite();
+        $user = User::factory()->create(['approved_at' => now(), 'status' => true, 'locale' => 'pt']);
+        $this->actingAs($user);
+        session([\App\Http\Middleware\ApplyUserLocale::SESSION_CHOICE => true, 'locale' => 'en']);
+
+        \Livewire\Livewire::test(\App\Filament\Pages\Auth\EditProfile::class)
+            ->set('data.locale', 'en')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('en', $user->fresh()->locale);
+        $this->assertFalse(session()->has(\App\Http\Middleware\ApplyUserLocale::SESSION_CHOICE));
+        $this->assertSame('en', session('locale'));
+    }
+
+    #[RunInSeparateProcess]
     public function test_user_deactivated_mid_session_is_signed_out_with_a_reason(): void
     {
         $this->withoutVite();

@@ -134,6 +134,34 @@ class ScheduleAdminAccessTest extends TestCase
         $this->assertSame($member->id, $schedule->fresh()->user_id, 'handed over without update_any_schedule');
     }
 
+    public function test_once_started_the_panel_form_only_changes_the_description(): void
+    {
+        $member = $this->userWith(self::MEMBER);
+        $this->actingAs($member);
+        $start = now()->subHour();
+        $schedule = Schedule::withoutEvents(fn() => Schedule::create([
+            'schedule_type_id' => $this->type()->id, 'user_id' => $member->id,
+            'status' => ScheduleStatus::Approved, 'start' => $start, 'end' => $start->copy()->addHours(2),
+        ]));
+        $end = $schedule->end->format('Y-m-d H:i');
+
+        Livewire::test(EditSchedule::class, ['record' => $schedule->getRouteKey()])
+            // the pickers are keyed by type and "all day" (ScheduleForm)
+            ->assertFormFieldDisabled("start_{$this->type()->id}_0")
+            ->assertFormFieldDisabled("end_{$this->type()->id}_0")
+            ->assertFormFieldDisabled('schedule_type_id')
+            ->assertFormFieldDisabled('status')
+            ->assertFormFieldEnabled('description')
+            ->fillForm(['description' => 'Running late'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $schedule->refresh();
+        $this->assertSame('Running late', $schedule->description);
+        $this->assertSame($end, $schedule->end->format('Y-m-d H:i'));
+        $this->assertSame(ScheduleStatus::Approved, $schedule->status);
+    }
+
     public function test_the_calendar_does_not_edit_other_peoples_schedules(): void
     {
         $member = $this->userWith(self::MEMBER);

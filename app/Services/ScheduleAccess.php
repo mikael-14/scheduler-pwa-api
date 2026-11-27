@@ -16,8 +16,9 @@ use Illuminate\Validation\ValidationException;
  *
  * - `view_any_schedule` opens the shared agenda; without `view_inactive_schedule` it only shows
  *   pending / approved schedules and the person's own.
- * - A person manages their own schedules from today on; other people's need the *_any_schedule
- *   permissions, past ones `update_past_schedule`.
+ * - A person changes or deletes their own schedules until they start; other people's need the
+ *   *_any_schedule permissions. Once started only the description changes (and participants are
+ *   marked as not shown), unless they have `update_past_schedule`.
  * - `participate_schedule` / `cancel_participation_schedule`: join / leave other people's schedules.
  * - Approving / rejecting / setting any status is limited to the approval permissions, and the
  *   primary type has its own rule (PrimaryScheduleRule).
@@ -88,11 +89,73 @@ class ScheduleAccess
             && ! $user->can('update_past_schedule');
     }
 
-    /** Own schedules (or anyone's with `update_any_schedule`), from today on. */
+    /** Its start time has come and the user lacks `update_past_schedule`: no more full edits or deleting. */
+    public static function isStartLocked(User $user, Schedule $schedule): bool
+    {
+        return static::hasStarted($schedule) && ! $user->can('update_past_schedule');
+    }
+
+    /** Own schedules (or anyone's with `update_any_schedule`), everything, until they start. */
     public static function canUpdate(User $user, Schedule $schedule): bool
     {
-        return ($schedule->user_id === $user->id || $user->can('update_any_schedule'))
-            && ! static::isPastLocked($user, $schedule);
+        return static::isOwnerOrEditor($user, $schedule)
+            && ! static::isStartLocked($user, $schedule);
+    }
+
+    /**
+     * The description (and the staff's internal note): like canUpdate, and once it started also,
+     * while it is still pending or approved (not completed, cancelled, rejected or not shown).
+     * Participants who did not come are marked on their own (canMarkParticipantNotShown).
+     */
+    public static function canUpdateDescription(User $user, Schedule $schedule): bool
+    {
+        return static::canUpdate($user, $schedule)
+            || (static::isOwnerOrEditor($user, $schedule)
+                && in_array($schedule->status, [ScheduleStatus::Pending, ScheduleStatus::Approved], true));
+    }
+
+    /** Started, so only the description may change (canUpdateDescription without canUpdate). */
+    public static function onlyDescription(User $user, Schedule $schedule): bool
+    {
+        return ! static::canUpdate($user, $schedule) && static::canUpdateDescription($user, $schedule);
+    }
+
+    private static function isOwnerOrEditor(User $user, Schedule $schedule): bool
+    {
+        return $schedule->user_id === $user->id || $user->can('update_any_schedule');
+    }
+
+    /** What a started schedule keeps, for whoever lacks `update_past_schedule`. */
+    public const FIXED_ONCE_STARTED = ['start', 'end', 'all_day', 'schedule_type_id', 'schedule_type_slot_id', 'user_id'];
+
+    /**
+     * From Schedule::saving: once a schedule started, its times, type and owner only change with
+     * `update_past_schedule`, and its status only by approvers / admins (not shown, ...), on every
+     * path (API, admin form, calendar drag). Tasks without a user and slot hand-overs are not limited.
+     */
+    public static function enforceStartLock(Schedule $schedule): void
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User || ! $schedule->exists || static::$handingOver) {
+            return;
+        }
+
+        // the start before this change: moving a started schedule to later does not unlock it
+        $start = $schedule->getOriginal('start');
+        if (! $start || $start->gt(now()) || $user->can('update_past_schedule')) {
+            return;
+        }
+
+        $problem = __('This schedule has already started: only its description can be changed.');
+
+        if ($schedule->isDirty(self::FIXED_ONCE_STARTED)) {
+            static::fail('start', __('This schedule cannot be changed'), $problem);
+        }
+
+        if ($schedule->isDirty('status') && ! static::canApprove($user)) {
+            static::failStatus($problem);
+        }
     }
 
     /**
@@ -386,7 +449,7 @@ class ScheduleAccess
     public static function canDelete(User $user, Schedule $schedule): bool
     {
         return ($schedule->user_id === $user->id || $user->can('delete_any_schedule'))
-            && ! static::isPastLocked($user, $schedule);
+            && ! static::isStartLocked($user, $schedule);
     }
 
     /** Whose schedule is being created: only `create_any_schedule` may book for someone else. */

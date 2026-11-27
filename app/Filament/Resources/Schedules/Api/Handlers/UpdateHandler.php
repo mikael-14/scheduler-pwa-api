@@ -38,7 +38,9 @@ class UpdateHandler extends ApprovedHandler
     /**
      * Update Schedule
      *
-     * Only the owner (or someone with `update_any_schedule`) can change a schedule.
+     * Only the owner (or someone with `update_any_schedule`) can change a schedule, until it starts.
+     * After that only `description` (and staff's `internal_note`) may be sent, while it is pending or
+     * approved; it keeps its status. `update_past_schedule` lifts the start limit.
      * Changing the slot of an approved schedule sends it back to `pending` unless the caller can approve.
      *
      * @param Request $request
@@ -57,12 +59,19 @@ class UpdateHandler extends ApprovedHandler
         // A request that only carries `status` is a status change, governed by update_status_schedule
         $statusOnly = array_keys($request->all()) === ['status'];
         $mayEditContent = $actor->can('update_schedule') && ScheduleAccess::canUpdate($actor, $schedule);
+        // started: the description (and the staff's internal note) and nothing else
+        $descriptionOnly = ! $mayEditContent && $actor->can('update_schedule')
+            && ScheduleAccess::canUpdateDescription($actor, $schedule)
+            && array_diff(array_keys($request->all()), ['description', 'internal_note']) === [];
 
-        if (! ($statusOnly && ScheduleAccess::canSetAnyStatus($actor)) && ! $mayEditContent) {
-            return $this->forbidden(__('You can only change your own schedules.'));
+        if (! ($statusOnly && ScheduleAccess::canSetAnyStatus($actor)) && ! $mayEditContent && ! $descriptionOnly) {
+            return ScheduleAccess::onlyDescription($actor, $schedule) && $actor->can('update_schedule')
+                ? $this->forbidden(__('This schedule has already started: only its description can be changed.'))
+                : $this->forbidden(__('You can only change your own schedules.'));
         }
 
-        $data = $request->validate($this->scheduleRules($this->partial));
+        // a description-only change is validated as a partial one, also through PUT
+        $data = $request->validate($this->scheduleRules($this->partial || $descriptionOnly));
         $staff = ScheduleAccess::isStaff($actor);
         $canApprove = $actor->can('approve_schedule') || $actor->can('update_status_schedule');
 

@@ -88,8 +88,8 @@ class ScheduleLifecycleTest extends TestCase
         $this->patchJson(self::URL . "/{$approved->id}", ['status' => 'cancelled'])->assertOk();
         $this->assertSame(ScheduleStatus::Cancelled, $approved->fresh()->status);
 
-        // once it started it is too late
-        $this->patchJson(self::URL . "/{$started->id}", ['status' => 'cancelled'])->assertStatus(422);
+        // once it started it is too late (only its description can still change)
+        $this->patchJson(self::URL . "/{$started->id}", ['status' => 'cancelled'])->assertForbidden();
         $this->assertSame(ScheduleStatus::Approved, $started->fresh()->status);
 
         // and someone else cannot cancel it
@@ -97,6 +97,93 @@ class ScheduleLifecycleTest extends TestCase
         Sanctum::actingAs($this->user(self::MEMBER));
         $this->assertFalse($this->getJson(self::URL . "/{$other->id}")->json('data.can.cancel'));
         $this->patchJson(self::URL . "/{$other->id}", ['status' => 'cancelled'])->assertStatus(403);
+    }
+
+    public function test_the_owner_edits_everything_until_the_start_then_only_the_description(): void
+    {
+        $this->travelTo(now()->setTime(12, 0));
+        $later = $this->schedule($this->owner, ScheduleStatus::Approved, now()->addHour(), now()->addHours(2));
+        $started = $this->startedAnHourAgo();
+
+        Sanctum::actingAs($this->owner);
+
+        // not started yet (same day): everything
+        $this->assertTrue($this->getJson(self::URL . "/{$later->id}")->json('data.can.update'));
+        $this->patchJson(self::URL . "/{$later->id}", ['end' => now()->addHours(3)->format('Y-m-d H:i')])->assertOk();
+
+        // started: the times, the participants, the status are fixed...
+        $this->assertFalse($this->getJson(self::URL . "/{$started->id}")->json('data.can.update'));
+        $this->assertTrue($this->getJson(self::URL . "/{$started->id}")->json('data.can.update_description'));
+        $this->patchJson(self::URL . "/{$started->id}", ['end' => now()->addHours(3)->format('Y-m-d H:i')])
+            ->assertForbidden()
+            ->assertJsonPath('message', __('This schedule has already started: only its description can be changed.'));
+        $this->patchJson(self::URL . "/{$started->id}", ['description' => 'x', 'schedule_users' => [['user_id' => $this->user(self::MEMBER)->id]]])
+            ->assertForbidden();
+        $this->assertSame(0, $started->schedule_users()->count());
+
+        // ...but the description changes, through PATCH or PUT, and it stays approved
+        $this->patchJson(self::URL . "/{$started->id}", ['description' => 'Running late'])->assertOk();
+        $this->putJson(self::URL . "/{$started->id}", ['description' => 'Running very late'])->assertOk();
+        $this->assertSame('Running very late', $started->fresh()->description);
+        $this->assertSame(ScheduleStatus::Approved, $started->fresh()->status);
+    }
+
+    public function test_the_description_locks_once_the_schedule_is_completed_or_cancelled(): void
+    {
+        $completed = $this->schedule($this->owner, ScheduleStatus::Completed, now()->subDays(2), now()->subDays(2)->addHour());
+        $cancelled = $this->schedule($this->owner, ScheduleStatus::Cancelled, now()->subHour(), now()->addHour());
+
+        Sanctum::actingAs($this->owner);
+        foreach ([$completed, $cancelled] as $schedule) {
+            $this->assertFalse($this->getJson(self::URL . "/{$schedule->id}")->json('data.can.update_description'));
+            $this->patchJson(self::URL . "/{$schedule->id}", ['description' => 'too late'])->assertForbidden();
+        }
+    }
+
+    public function test_others_schedules_follow_the_same_rule_and_update_past_schedule_lifts_it(): void
+    {
+        $started = $this->startedAnHourAgo();
+        $newEnd = now()->addHours(3)->format('Y-m-d H:i');
+
+        // update_any_schedule without update_past_schedule: description only
+        Sanctum::actingAs($this->user([...self::MEMBER, 'update_any_schedule']));
+        $this->patchJson(self::URL . "/{$started->id}", ['end' => $newEnd])->assertForbidden();
+        $this->patchJson(self::URL . "/{$started->id}", ['description' => 'noted'])->assertOk();
+
+        // update_past_schedule: everything, at any time
+        Sanctum::actingAs($this->user(self::ADMIN));
+        $this->patchJson(self::URL . "/{$started->id}", ['end' => $newEnd])->assertOk();
+        $this->assertSame($newEnd, $started->fresh()->end->format('Y-m-d H:i'));
+    }
+
+    public function test_the_start_lock_also_holds_outside_the_api(): void
+    {
+        $started = $this->startedAnHourAgo();
+        $this->actingAs($this->owner);
+
+        // e.g. a drag on the panel calendar
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $started->update(['end' => now()->addHours(3)]);
+    }
+
+    public function test_the_owner_still_marks_a_participant_as_not_shown_after_the_start(): void
+    {
+        $started = $this->startedAnHourAgo();
+        $participant = $started->schedule_users()->create(['user_id' => $this->user(self::MEMBER)->id, 'status' => ScheduleStatus::Approved]);
+
+        Sanctum::actingAs($this->owner);
+        $this->assertTrue(\App\Services\ScheduleAccess::canMarkParticipantNotShown($this->owner, $started, $participant));
+    }
+
+    public function test_deleting_follows_the_start_time(): void
+    {
+        $this->travelTo(now()->setTime(12, 0));
+        $later = $this->schedule($this->owner, ScheduleStatus::Pending, now()->addHour(), now()->addHours(2));
+        $started = $this->startedAnHourAgo(ScheduleStatus::Pending);
+
+        $this->assertTrue(\App\Services\ScheduleAccess::canDelete($this->owner, $later));
+        $this->assertFalse(\App\Services\ScheduleAccess::canDelete($this->owner, $started));
+        $this->assertTrue(\App\Services\ScheduleAccess::canDelete($this->user(['delete_any_schedule', 'update_past_schedule']), $started));
     }
 
     public function test_nobody_completes_a_schedule_by_hand(): void

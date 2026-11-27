@@ -641,8 +641,11 @@ class RolesAndPrimaryRuleTest extends TestCase
 
         Sanctum::actingAs($novo);
         $this->postJson(self::URL . "/{$past->id}/participation")->assertStatus(422);
-        $this->patchJson(self::URL . "/{$mine->id}", ['description' => 'late edit'])->assertForbidden();
+        // started: only the description of a pending or approved one still changes
+        $this->patchJson(self::URL . "/{$mine->id}", ['start' => now()->addDay()->format('Y-m-d') . ' 10:00'])->assertForbidden();
+        $this->patchJson(self::URL . "/{$mine->id}", ['description' => 'late edit'])->assertOk();
         $this->assertFalse($this->getJson(self::URL . "/{$mine->id}")->json('data.can.update'));
+        $this->assertTrue($this->getJson(self::URL . "/{$mine->id}")->json('data.can.update_description'));
 
         Sanctum::actingAs($past->schedule_users()->first()->user);
         $this->deleteJson(self::URL . "/{$past->id}/participation")->assertStatus(422);

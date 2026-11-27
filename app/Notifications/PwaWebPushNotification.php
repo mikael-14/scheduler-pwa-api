@@ -45,16 +45,28 @@ class PwaWebPushNotification extends Notification implements ShouldQueue
     {
         // The stored notification is in Filament's format: title/body live inside `data`
         $data = $this->filamentNotification->data ?? [];
+        $delivery = PushDelivery::for($this->filamentNotification);
 
         return (new WebPushMessage)
             ->title($data['title'] ?? config('app.name'))
             ->body(strip_tags((string) ($data['body'] ?? '')))
             ->icon('/img/icons/icon-192x192.png')
             ->tag($this->storedId()) // also how DeliveryLog finds the row again
-            ->data(['url' => $data['path'] ?? '/notifications']) // route inside the PWA
+            ->data([
+                'url' => $data['path'] ?? '/notifications', // route inside the PWA
+                // the number on the app icon, and the service worker's summary when several pile up
+                // (written in the recipient's language: notifications are sent in their locale)
+                'unread' => $notifiable->unreadNotifications()->count(),
+                'summary_title' => __('You have :count unread notifications'),
+            ])
             // high: delivered at once even on a locked, idle phone (Android Doze holds back
-            // "normal" pushes); TTL: the push service keeps trying for a day if the phone is off
-            ->options(['urgency' => 'high', 'TTL' => 86400]);
+            // "normal" pushes); TTL / Topic: how long the push service keeps trying while the phone
+            // is off, and which waiting pushes replace each other (PushDelivery)
+            ->options(array_filter([
+                'urgency' => 'high',
+                'TTL' => $delivery['ttl'],
+                'topic' => $delivery['topic'],
+            ], fn($value) => $value !== null));
     }
 
     /** The queued job gave up (e.g. the push service could not be reached). */

@@ -45,14 +45,15 @@ class ScheduleForm
                     ->allowHtml(true)
                     ->native(false)
                     ->preload(true)
+                    ->disabled(fn($record) => self::onlyDescription($record))
                     ->required(),
                 // the owner: you, unless you may book for / hand over to others (also enforced on save)
                 UserSelect::make('user_id')
                     ->label(__('Select User'))
                     ->relationship('user', 'name')
                     ->default(fn() => Filament::auth()->id())
-                    ->disabled(fn($record) => ! ScheduleAccess::maySetOwner(Filament::auth()->user(), $record instanceof \App\Models\Schedule ? $record : null))
-                    ->dehydrated(fn($record) => ScheduleAccess::maySetOwner(Filament::auth()->user(), $record instanceof \App\Models\Schedule ? $record : null))
+                    ->disabled(fn($record) => self::onlyDescription($record) || ! ScheduleAccess::maySetOwner(Filament::auth()->user(), $record instanceof \App\Models\Schedule ? $record : null))
+                    ->dehydrated(fn($record) => ! self::onlyDescription($record) && ScheduleAccess::maySetOwner(Filament::auth()->user(), $record instanceof \App\Models\Schedule ? $record : null))
                     ->live()
                     ->searchable()
                     ->preload(true),
@@ -87,6 +88,7 @@ class ScheduleForm
                     ->altFormat(fn(Get $get) => self::pickerFormat($get))
                     ->time24hr(true)
                     ->live()
+                    ->disabled(fn($record) => self::onlyDescription($record))
                     ->required(),
                 Flatpickr::make('end')
                     ->allowInput()
@@ -102,6 +104,7 @@ class ScheduleForm
                     ->format(fn(Get $get) => self::pickerFormat($get))
                     ->altFormat(fn(Get $get) => self::pickerFormat($get))
                     ->time24hr(true)
+                    ->disabled(fn($record) => self::onlyDescription($record))
                     ->required(),
                 Toggle::make('all_day')
                     ->label(__('No time'))
@@ -110,8 +113,11 @@ class ScheduleForm
                     // only on types that allow it, for people who may give no hours (AllDayRule)
                     ->visible(fn(Get $get, $record) => (self::rules($get)?->allowsAllDay() ?? false) && ! self::usesSlots($get)
                         && (\App\Services\AllDayRule::mayBook(Filament::auth()->user()) || $record?->all_day))
+                    ->disabled(fn($record) => self::onlyDescription($record))
                     ->default(false),
-                Textarea::make('description')->autosize(),
+                // once it started, the one thing its owner still changes
+                Textarea::make('description')->autosize()
+                    ->helperText(fn($record) => self::onlyDescription($record) ? __('This schedule has already started: only its description can be changed.') : null),
                 // staff only; hidden fields are not saved, so others cannot change it either
                 Textarea::make('internal_note')
                     ->autosize()
@@ -136,6 +142,8 @@ class ScheduleForm
                             $value instanceof ScheduleStatus ? $value : ScheduleStatus::from($value),
                         );
                     }, merge: true)
+                    // started: only approvers / admins change it (not shown, ...), as enforced on save
+                    ->disabled(fn($record) => self::onlyDescription($record) && ! ScheduleAccess::canApprove(Filament::auth()->user()))
                     ->columnSpanFull(),
                 Repeater::make('schedules')
                     // a new slot booking: the others take the slot themselves
@@ -143,6 +151,9 @@ class ScheduleForm
                     ->defaultItems(0)
                     ->relationship('schedule_users') // Use the new hasMany relationship to the pivot model
                     ->reorderable(false)
+                    // started: nobody added or removed, only marked as not shown
+                    ->addable(fn($record) => ! self::onlyDescription($record))
+                    ->deletable(fn($record) => ! self::onlyDescription($record))
                     ->schema([
                         UserSelect::make('user_id')
                             ->label(__('Select User'))
@@ -153,6 +164,7 @@ class ScheduleForm
                                 return $value && $mainUserId && (string) $value === (string) $mainUserId;
                             }, merge: true)
                             ->searchable()
+                            ->disabled(fn($record) => $record instanceof ScheduleUser && $record->schedule && self::onlyDescription($record->schedule))
                             ->required()
                             ->preload(true),
                         // Participants share the schedule's status: a new one gets it when saved, and
@@ -178,7 +190,8 @@ class ScheduleForm
                             ->suffixIcon(fn($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getIcon() ?? Heroicon::QuestionMarkCircle)
                             ->suffixIconColor(fn($state) => ($state instanceof ScheduleStatus ? $state : ScheduleStatus::tryFrom((string) $state))?->getColor() ?? 'gray')
                             ->required(),
-                        Textarea::make('description')->autosize()->rows(1),
+                        Textarea::make('description')->autosize()->rows(1)
+                            ->disabled(fn($record) => $record instanceof ScheduleUser && $record->schedule && self::onlyDescription($record->schedule)),
                     ])
                     ->mutateRelationshipDataBeforeCreateUsing(function (array $data, Get $get): ?array {
                         $mainUserId = $get('../../user_id');
@@ -204,6 +217,19 @@ class ScheduleForm
                     ->columnSpanFull()
 
             ];
+    }
+
+    /**
+     * An existing schedule that has started, for someone without `update_past_schedule`: only its
+     * description (and the staff's internal note) can change, and participants be marked as not shown.
+     * Disabled fields are not saved; ScheduleAccess::enforceStartLock checks it again on save.
+     */
+    private static function onlyDescription(mixed $record): bool
+    {
+        $user = Filament::auth()->user();
+
+        return $record instanceof \App\Models\Schedule && $record->exists && $user instanceof User
+            && ScheduleAccess::onlyDescription($user, $record);
     }
 
     /** The rules of the type chosen in the form (looked up once per request). */

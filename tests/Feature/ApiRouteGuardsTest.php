@@ -20,6 +20,9 @@ class ApiRouteGuardsTest extends TestCase
         'api/auth/{provider}/redirect', 'api/auth/{provider}/callback',
         // the emailed confirmation link: its signature is the proof, so it works on any device
         'api/auth/email/verify/{id}/{hash}',
+        // the service worker renews a push subscription the browser replaced: it has no app token,
+        // the old subscription address is the proof (only an active, approved account's is accepted)
+        'api/pwa/subscription/renew',
     ];
 
     /** Signed in, but also while waiting for approval: the own account and its session. */

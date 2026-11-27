@@ -58,6 +58,31 @@ class LocaleTest extends TestCase
             ->assertJsonPath('errors.email.0', 'O campo email deve ser um endereço de email válido.');
     }
 
+    public function test_the_pwa_device_language_wins_over_the_profile_language(): void
+    {
+        $user = User::factory()->create(['approved_at' => now(), 'status' => true, 'locale' => 'pt']);
+        $token = $user->createToken('t')->plainTextToken;
+
+        $this->withToken($token)
+            ->patchJson('/api/user', ['email' => 'not-an-email'], ['X-App-Language' => 'en', 'Accept-Language' => 'en'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'The email field must be a valid email address.');
+
+        // answering in the device language does not change the profile
+        $this->assertSame('pt', $user->fresh()->locale);
+    }
+
+    public function test_an_unsupported_device_language_falls_back_to_the_profile_language(): void
+    {
+        $user = User::factory()->create(['approved_at' => now(), 'status' => true, 'locale' => 'en']);
+        $token = $user->createToken('t')->plainTextToken;
+
+        $this->withToken($token)
+            ->patchJson('/api/user', ['email' => 'not-an-email'], ['X-App-Language' => 'fr', 'Accept-Language' => 'pt'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.email.0', 'The email field must be a valid email address.');
+    }
+
     public function test_pending_message_is_translated(): void
     {
         $user = User::factory()->create(['approved_at' => null, 'status' => true, 'locale' => 'pt']);
@@ -81,15 +106,38 @@ class LocaleTest extends TestCase
         $this->assertSame('pt', User::where('email', 'b@x.test')->value('locale'));
     }
 
-    public function test_language_switcher_only_accepts_supported_languages_and_saves_the_choice(): void
+    public function test_language_switcher_only_accepts_supported_languages_and_keeps_the_choice_in_the_session(): void
     {
         $user = User::factory()->create(['approved_at' => now(), 'status' => true, 'locale' => 'pt']);
 
         $this->actingAs($user)->get('/filament/switch-language/xx')->assertNotFound();
         $this->assertSame('pt', $user->fresh()->locale);
 
-        $this->actingAs($user)->from('/admin')->get('/filament/switch-language/en')->assertRedirect('/admin');
-        $this->assertSame('en', $user->fresh()->locale);
+        $this->actingAs($user)->from('/admin')->get('/filament/switch-language/en')
+            ->assertRedirect('/admin')
+            ->assertSessionHas('locale', 'en')
+            ->assertSessionHas(\App\Http\Middleware\ApplyUserLocale::SESSION_CHOICE, true);
+
+        // the profile (notifications, email, next login) keeps its language
+        $this->assertSame('pt', $user->fresh()->locale);
+    }
+
+    public function test_a_guest_switch_on_the_login_page_is_not_a_session_choice(): void
+    {
+        $this->from('/admin/login')->get('/filament/switch-language/en')
+            ->assertSessionMissing(\App\Http\Middleware\ApplyUserLocale::SESSION_CHOICE);
+    }
+
+    public function test_logging_in_drops_the_session_choice(): void
+    {
+        $user = User::factory()->create(['approved_at' => now(), 'status' => true, 'locale' => 'pt']);
+        $this->withSession([\App\Http\Middleware\ApplyUserLocale::SESSION_CHOICE => true, 'locale' => 'en']);
+        // the session store is started by a request first
+        $this->get('/admin/login');
+
+        event(new \Illuminate\Auth\Events\Login('web', $user, false));
+
+        $this->assertFalse(session()->has(\App\Http\Middleware\ApplyUserLocale::SESSION_CHOICE));
     }
 
     public function test_a_guest_language_choice_is_remembered_in_a_cookie(): void

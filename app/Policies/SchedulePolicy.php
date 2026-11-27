@@ -31,9 +31,10 @@ class SchedulePolicy
         return $authUser->can('create_schedule');
     }
 
+    /** Opens the edit form: everything until it starts, then only the description (ScheduleForm locks the rest). */
     public function update(AuthUser $authUser, Schedule $schedule): bool
     {
-        return $authUser->can('update_schedule') && ScheduleAccess::canUpdate($authUser, $schedule);
+        return $authUser->can('update_schedule') && ScheduleAccess::canUpdateDescription($authUser, $schedule);
     }
 
     public function delete(AuthUser $authUser, Schedule $schedule): bool

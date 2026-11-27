@@ -112,6 +112,8 @@ class ScheduleTransformer extends JsonResource
 
         return [
             'update' => $update,
+            // started: only the description (and the staff's internal note) can still change
+            'update_description' => $user->can('update_schedule') && ScheduleAccess::canUpdateDescription($user, $schedule),
             // its creator, before it starts (deleting is only done in the admin panel)
             'cancel' => ScheduleAccess::canCancel($user, $schedule),
             'approve' => ScheduleAccess::canApprove($user) && $status === ScheduleStatus::Pending,

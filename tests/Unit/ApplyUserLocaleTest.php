@@ -12,7 +12,7 @@ use Tests\TestCase;
 
 class ApplyUserLocaleTest extends TestCase
 {
-    private function pass(?User $user, ?string $sessionLocale, string $current): array
+    private function pass(?User $user, ?string $sessionLocale, string $current, bool $chosenInSession = false): array
     {
         App::setLocale($current);
 
@@ -20,6 +20,9 @@ class ApplyUserLocaleTest extends TestCase
         $session = new Store('test', new ArraySessionHandler(120));
         if ($sessionLocale) {
             $session->put('locale', $sessionLocale);
+        }
+        if ($chosenInSession) {
+            $session->put(ApplyUserLocale::SESSION_CHOICE, true);
         }
         $request->setLaravelSession($session);
         $request->setUserResolver(fn() => $user);
@@ -39,6 +42,27 @@ class ApplyUserLocaleTest extends TestCase
 
         $this->assertSame('en', $app);
         $this->assertSame('en', $session, 'the switcher state is kept in sync');
+    }
+
+    public function test_a_language_switched_in_this_session_wins_over_the_profile(): void
+    {
+        $user = new User();
+        $user->locale = 'en';
+
+        [$app, $session] = $this->pass($user, 'pt', 'pt', chosenInSession: true);
+
+        $this->assertSame('pt', $app);
+        $this->assertSame('pt', $session);
+    }
+
+    public function test_an_unsupported_session_choice_falls_back_to_the_profile(): void
+    {
+        $user = new User();
+        $user->locale = 'en';
+
+        [$app] = $this->pass($user, 'fr', 'pt', chosenInSession: true);
+
+        $this->assertSame('en', $app);
     }
 
     public function test_guest_keeps_whatever_the_switcher_chose(): void

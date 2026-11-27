@@ -62,8 +62,8 @@ class AppServiceProvider extends ServiceProvider
         // the API plugin registers its own token policy (it asks for permissions Shield does not
         // declare here, e.g. delete_any_token); the app's follows the declared ones
         Gate::policy(\Rupadana\ApiService\Models\Token::class, \App\Policies\TokenPolicy::class);
-        // Saving the language chosen in the panel's switcher is done by the
-        // App\Listeners\PersistUserLocale listener (auto-discovered); it used to be duplicated here.
+        // The panel switcher's language holds for the session only: App\Listeners\SessionLocaleChoice
+        // (auto-discovered) and App\Http\Middleware\ApplyUserLocale.
 
         // Generated labels ("Schedule type id", "Internal note", ...) are looked up in lang/pt.json
         Field::configureUsing(fn(Field $component) => $component->translateLabel());

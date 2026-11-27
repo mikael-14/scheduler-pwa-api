@@ -269,11 +269,11 @@ needed and take part.
 | `view_inactive_schedule` | also see other people's rejected, cancelled, completed and not-shown schedules (without it: only pending / approved, plus your own and the ones you take part in) |
 | `create_schedule` | book for yourself |
 | `create_any_schedule` | book for someone else (without it the owner field is locked to you, everywhere) |
-| `update_schedule` | edit (and cancel, before it starts) your own schedules, add / remove their participants, mark one of them "não compareceu" once it started |
+| `update_schedule` | edit, cancel and add / remove participants of your own schedules **until they start**; after that only the description (while still pending or approved; it stays approved) and marking a participant "não compareceu" |
 | `update_any_schedule` | the same on anyone's, and hand a schedule over to another owner |
-| `delete_schedule` / `delete_any_schedule` | delete your own / anyone's (admin panel). Bulk delete needs `delete_any_schedule` and skips the selected ones you could not delete one by one (e.g. past ones without `update_past_schedule`) |
+| `delete_schedule` / `delete_any_schedule` | delete your own / anyone's (admin panel). Bulk delete needs `delete_any_schedule` and skips the selected ones you could not delete one by one (e.g. started ones without `update_past_schedule`). Without it, only until the schedule starts |
 | `restore_schedule`, `restore_any_schedule`, `force_delete_schedule`, `force_delete_any_schedule` | bring back / delete forever deleted schedules (admin panel) |
-| `update_past_schedule` | anything on schedules before today (without it, from today on only) |
+| `update_past_schedule` | edit and delete schedules that already started, and book / move them to past dates (without it: full edits and deleting until the start, then only the description; bookings from today on) |
 | `participate_schedule` | add **yourself** to someone else's pending / approved schedule, from today on; never a whole-day one. You get the schedule's status (joining an approved one keeps it approved; on the primary type the "may go alone" rule still applies) |
 | `cancel_participation_schedule` | **cancel your attendance** (pending or approved) on a schedule you take part in, **before it starts**. You stay on it as cancelled (see "Cancelled participants" below) and may join again before it starts. Always give it together with `participate_schedule` |
 | `approve_schedule` | approve / reject pending schedules (their participants follow). Approvers may approve their own |
@@ -749,6 +749,27 @@ old address (Google may still accept it, so it shows as `sent`) and the phone ge
   Chrome, installed app only). It uses the API address, VAPID key and current address the app saved
   in Cache Storage (`push-config`), removed on sign-out or when push is turned off.
 - Old addresses Google no longer accepts are deleted by the push channel when it next tries them.
+
+### A phone that is off or offline
+
+A push is not lost when the phone is off: the push service (Google, Apple, Mozilla) keeps it and
+delivers it when the phone is back, for as long as its TTL. Pushes still waiting with the same
+Topic replace each other, so a phone back after a while gets the latest of each, not a flood
+(`App\Notifications\PushDelivery`):
+
+| Topic | Notifications | Kept (TTL) |
+|---|---|---|
+| `activity` | "all notifications": other people's schedules | 6 hours |
+| `joined-left` | someone joined / left a schedule | 1 day |
+| `to-decide` | approvers: approval and participation requests, no-show recorded | 3 days |
+| `coverage-urgent` / `coverage-ahead` | the coverage summaries (each run's replaces the last) | 1 day |
+| none (never replaced) | about the person: decisions, added / removed, booked for them, changes, account, announcements | 7 days |
+
+On the phone (`public/push-sw.js`), one or two notifications show on their own; from the third on
+they become one summary ("You have 5 unread notifications" and the latest titles). Each push carries
+the unread count, shown on the installed app's icon (Android, iOS 16.4+, desktop); the app keeps it
+in step, removes its notifications from the phone once all are read, and says how many came in when
+it is back online or on screen. The notifications list always has everything.
 
 ### Email summaries
 

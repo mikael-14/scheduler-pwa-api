@@ -77,6 +77,8 @@ class Schedule extends Model implements Auditable, HasAllowedFields, HasAllowedF
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleAccess::enforceStatusChange($schedule));
 		// Who owns it: booking for / handing over to someone else needs create_any / update_any_schedule
 		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleAccess::enforceOwner($schedule));
+		// Started: times, type, owner and status are fixed without update_past_schedule (description only)
+		static::saving(fn(Schedule $schedule) => \App\Services\ScheduleAccess::enforceStartLock($schedule));
 		// Moved to a type without slots (shifts): it is no longer on a slot
 		static::saving(function (Schedule $schedule) {
 			if ($schedule->schedule_type_slot_id && $schedule->isDirty('schedule_type_id')

@@ -443,6 +443,17 @@ class NotificationsTest extends TestCase
         $this->assertSame("/schedules/{$schedule->id}", $stored->data['path']);
     }
 
+    public function test_the_actors_device_language_does_not_change_the_notification_language(): void
+    {
+        $owner = $this->user(['locale' => 'pt']);
+        $schedule = $this->pendingSchedule($owner);
+
+        Sanctum::actingAs($this->approver());
+        $this->postJson("/api/admin/schedules/{$schedule->id}/approve", [], ['X-App-Language' => 'en'])->assertOk();
+
+        $this->assertSame('O seu agendamento foi aprovado', $owner->notifications()->first()?->data['title']);
+    }
+
     public function test_mail_is_written_in_the_recipients_language(): void
     {
         $owner = $this->user(['locale' => 'en', 'email_notification' => true]);
@@ -573,9 +584,40 @@ class NotificationsTest extends TestCase
 
         $message = (new PwaWebPushNotification($stored))->toWebPush($user, null);
 
-        $this->assertSame(['urgency' => 'high', 'TTL' => 86400], $message->getOptions());
+        // about the person: no topic (never replaced while waiting), kept for a week
+        $this->assertSame(['urgency' => 'high', 'TTL' => 7 * 86400], $message->getOptions());
         $this->assertSame('T', $message->toArray()['title']);
         $this->assertSame('B', $message->toArray()['body']);
+        // the icon count and the summary's title, for the service worker
+        $this->assertSame(1, $message->toArray()['data']['unread']);
+        $this->assertStringContainsString(':count', $message->toArray()['data']['summary_title']);
+    }
+
+    public function test_pushes_waiting_for_an_offline_phone_collapse_by_topic(): void
+    {
+        $user = $this->user(['push_notification' => true]);
+        $options = function (string $type, array $data = []) use ($user) {
+            $stored = $user->notifications()->create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => $type,
+                'data' => ['title' => 'T', 'body' => 'B'] + $data,
+            ]);
+
+            return (new PwaWebPushNotification($stored))->toWebPush($user, null)->getOptions();
+        };
+
+        $this->assertSame(['urgency' => 'high', 'TTL' => 6 * 3600, 'topic' => 'activity'],
+            $options(\App\Notifications\ScheduleActivity::class, ['activity' => 'booked']));
+        $this->assertSame(['urgency' => 'high', 'TTL' => 86400, 'topic' => 'joined-left'],
+            $options(\App\Notifications\ScheduleJoinedOrLeft::class));
+        $this->assertSame(['urgency' => 'high', 'TTL' => 3 * 86400, 'topic' => 'to-decide'],
+            $options(\App\Notifications\SchedulePendingApproval::class));
+        $this->assertSame(['urgency' => 'high', 'TTL' => 86400, 'topic' => 'coverage-urgent'],
+            $options(\App\Notifications\CoverageAlert::class, ['level' => \App\Notifications\CoverageAlert::URGENT]));
+        $this->assertSame(['urgency' => 'high', 'TTL' => 86400, 'topic' => 'coverage-ahead'],
+            $options(\App\Notifications\CoverageAlert::class, ['level' => \App\Notifications\CoverageAlert::AHEAD]));
+        $this->assertSame(['urgency' => 'high', 'TTL' => 7 * 86400],
+            $options(\App\Notifications\ScheduleBookedForYou::class));
     }
 
     public function test_new_accounts_start_with_email_and_push_on(): void
